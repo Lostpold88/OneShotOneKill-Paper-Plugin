@@ -52,7 +52,7 @@ public class ItemTestCommand implements CommandExecutor, Listener {
             case 1 -> plugin.getKillstreakManager().createSpecialItem(org.bukkit.Material.TNT, "§c§l[★] Explosiv-Schuss (Rechtsklick)", "§7Klick zum Testen");
             case 2 -> plugin.getKillstreakManager().createSpecialItem(org.bukkit.Material.NETHER_STAR, "§b§l[🛡] Reflektor-Schild (Rechtsklick)", "§7Klick zum Testen");
             case 3 -> plugin.getKillstreakManager().createSpecialItem(org.bukkit.Material.SNOWBALL, "§f§l[☁] Rauchbombe (Werfen)", "§7Klick zum Testen");
-            case 4 -> plugin.getKillstreakManager().createSpecialItem(org.bukkit.Material.HEAVY_WEIGHTED_PRESSURE_PLATE, "§8§l[⚙] Bärenfalle (Plazieren)", "§7Klick zum Testen");
+            case 4 -> plugin.getKillstreakManager().createSpecialItem(org.bukkit.Material.HEAVY_WEIGHTED_PRESSURE_PLATE, "§b§l[❄] Frost-Trap (Plazieren)", "§7Klick zum Testen");
             case 5 -> plugin.getKillstreakManager().createSpecialItem(org.bukkit.Material.BLAZE_ROD, "§6§l[🔥] Krass Minigun (Rechtsklick)", "§7Klick zum Testen");
             case 6 -> plugin.getKillstreakManager().createSpecialItem(org.bukkit.Material.ENDER_PEARL, "§d§l[🌀] Teleport-Granate (Werfen)", "§7Klick zum Testen");
             case 7 -> plugin.getKillstreakManager().createSpecialItem(org.bukkit.Material.PHANTOM_MEMBRANE, "§7§l[✦] Unsichtbarkeits-Mantel (Rechtsklick)", "§7Klick zum Testen");

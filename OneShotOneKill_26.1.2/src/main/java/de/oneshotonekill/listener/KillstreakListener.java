@@ -68,7 +68,7 @@ public class KillstreakListener implements Listener {
 
     private boolean isSpecialItemName(String name) {
         return name.contains("Radar-Puls") || name.contains("Explosiv-Schuss") || name.contains("Reflektor-Schild") ||
-               name.contains("Rauchbombe") || name.contains("Bärenfalle") || name.contains("Minigun") ||
+               name.contains("Rauchbombe") || name.contains("Frost-Trap") || name.contains("Bärenfalle") || name.contains("Minigun") ||
                name.contains("Teleport-Granate") || name.contains("Unsichtbarkeits-Mantel") ||
                name.contains("Pfeil-Magnetfeld") || name.contains("Kettenblitz-Schuss") || name.contains("Raketen-Sprung");
     }
@@ -82,10 +82,18 @@ public class KillstreakListener implements Listener {
         if (event.getAction() == Action.PHYSICAL && event.getClickedBlock() != null) {
             Block block = event.getClickedBlock();
             if (activeBearTraps.remove(block.getLocation())) {
-                block.setType(Material.AIR);
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 60, 10));
-                player.playSound(player.getLocation(), Sound.ENTITY_ITEM_BREAK, SoundCategory.MASTER, 1.0f, 0.5f);
-                player.sendMessage("§c[OneShot] ⚙ Du bist in eine Bärenfalle getreten und für 3s gefangen!");
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 140, 10));
+                player.setFreezeTicks(140);
+                player.playSound(player.getLocation(), Sound.BLOCK_GLASS_BREAK, SoundCategory.MASTER, 1.0f, 0.5f);
+                player.sendMessage("§c[OneShot] ❄ Du bist in eine Frost-Trap getreten und für 7s eingefroren!");
+
+                // Nach 7 Sekunden (140 Ticks) verschwindet die Druckplatte
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (block.getType() == Material.HEAVY_WEIGHTED_PRESSURE_PLATE || block.getType().name().contains("PRESSURE_PLATE")) {
+                        block.setType(Material.AIR);
+                        block.getWorld().spawnParticle(Particle.SNOWFLAKE, block.getLocation().add(0.5, 0.2, 0.5), 15, 0.2, 0.2, 0.2, 0.05);
+                    }
+                }, 140L);
                 return;
             }
         }
@@ -166,16 +174,16 @@ public class KillstreakListener implements Listener {
                 return;
             }
 
-            // Bärenfalle Platzieren
-            if (name.contains("Bärenfalle") && event.getClickedBlock() != null) {
+            // Frost-Trap Platzieren
+            if ((name.contains("Frost-Trap") || name.contains("Bärenfalle")) && event.getClickedBlock() != null) {
                 event.setCancelled(true);
                 Block targetBlock = event.getClickedBlock().getRelative(BlockFace.UP);
                 if (targetBlock.getType() == Material.AIR) {
                     targetBlock.setType(Material.HEAVY_WEIGHTED_PRESSURE_PLATE);
                     activeBearTraps.add(targetBlock.getLocation());
                     consumeItem(player, item);
-                    player.playSound(player.getLocation(), Sound.BLOCK_METAL_PLACE, SoundCategory.MASTER, 1.0f, 1.0f);
-                    player.sendMessage("§a[OneShot] ⚙ Bärenfalle platziert!");
+                    player.playSound(player.getLocation(), Sound.BLOCK_GLASS_PLACE, SoundCategory.MASTER, 1.0f, 1.0f);
+                    player.sendMessage("§a[OneShot] ❄ Frost-Trap platziert!");
                 }
                 return;
             }
