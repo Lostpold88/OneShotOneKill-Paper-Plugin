@@ -62,7 +62,6 @@ public class OneShotOneKill extends JavaPlugin {
         registerCommand("itemtest", itemTestCommand, null);
         registerCommand("testgui", itemTestCommand, null);
         registerCommand("clearpfeile", new ClearPfeileCommand(this), null);
-        registerCommand("killeffects", killEffectCommand, killEffectCommand);
         registerCommand("killeffect", killEffectCommand, killEffectCommand);
         registerCommand("effects", killEffectCommand, killEffectCommand);
 
