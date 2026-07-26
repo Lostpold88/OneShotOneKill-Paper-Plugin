@@ -15,6 +15,10 @@ import java.util.*;
 
 public class KillstreakManager {
 
+    public enum ItemMode {
+        STREAK, SPAWN, BOTH
+    }
+
     private final OneShotOneKill plugin;
     private ItemMode currentItemMode = ItemMode.BOTH;
 
