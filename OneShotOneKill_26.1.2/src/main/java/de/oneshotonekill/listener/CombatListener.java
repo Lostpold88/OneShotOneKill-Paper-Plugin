@@ -37,11 +37,11 @@ public class CombatListener implements Listener {
         }
 
         if (damager != null) {
-            // Prüfung: Leere Faust schlägt zu -> KEIN One-Shot 1000.0 Schaden!
+            // Prüfung: Nahkampfschlaf mit leerer Hand oder Bogen -> KEIN One-Shot 1000.0 Schaden! (Dafür ist der Dolch da)
             if (isMelee) {
                 ItemStack mainHand = damager.getInventory().getItemInMainHand();
-                if (mainHand == null || mainHand.getType() == Material.AIR) {
-                    return; // Normaler Faustschaden
+                if (mainHand == null || mainHand.getType() == Material.AIR || mainHand.getType() == Material.BOW) {
+                    return; // Normaler Faust-/Bogenschlagschaden
                 }
             }
 
