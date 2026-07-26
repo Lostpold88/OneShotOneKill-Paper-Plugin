@@ -1,7 +1,7 @@
 package de.oneshotonekill.listener;
 
 import de.oneshotonekill.OneShotOneKill;
-import de.oneshotonekill.model.ItemMode;
+import de.oneshotonekill.manager.ItemMode;
 import de.oneshotonekill.manager.KillstreakManager;
 import org.bukkit.Material;
 import org.bukkit.Sound;

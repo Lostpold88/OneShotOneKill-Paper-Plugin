@@ -1,7 +1,6 @@
 package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
-import de.oneshotonekill.model.ItemMode;
 import org.bukkit.*;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Item;
