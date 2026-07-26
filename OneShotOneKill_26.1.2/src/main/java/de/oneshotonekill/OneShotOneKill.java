@@ -5,8 +5,8 @@ import de.oneshotonekill.command.ItemTestCommand;
 import de.oneshotonekill.command.OsokCommand;
 import de.oneshotonekill.command.StartCommand;
 import de.oneshotonekill.listener.CombatListener;
-import de.oneshotonekill.listener.KillstreakListener;
-import de.oneshotonekill.listener.PlayerJoinRespawnListener;
+import de.oneshotonekill.listener.PlayerConnectionListener;
+import de.oneshotonekill.listener.SpecialItemListener;
 import de.oneshotonekill.manager.ArenaManager;
 import de.oneshotonekill.manager.EquipmentManager;
 import de.oneshotonekill.manager.KillstreakManager;
@@ -38,9 +38,9 @@ public class OneShotOneKill extends JavaPlugin {
 
         // 3. Event-Listener registrieren
         ItemTestCommand itemTestCommand = new ItemTestCommand(this);
-        getServer().getPluginManager().registerEvents(new PlayerJoinRespawnListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
-        getServer().getPluginManager().registerEvents(new KillstreakListener(this), this);
+        getServer().getPluginManager().registerEvents(new SpecialItemListener(this), this);
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
 
         // 4. Befehle registrieren
