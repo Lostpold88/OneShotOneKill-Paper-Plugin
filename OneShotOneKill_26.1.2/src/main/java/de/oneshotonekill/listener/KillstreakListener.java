@@ -30,9 +30,31 @@ public class KillstreakListener implements Listener {
     private final OneShotOneKill plugin;
     private final Set<Location> activeBearTraps = new HashSet<>();
     private final Set<UUID> noFallPlayers = new HashSet<>();
+    private final Set<UUID> vanishedPlayers = new HashSet<>();
 
     public KillstreakListener(OneShotOneKill plugin) {
         this.plugin = plugin;
+    }
+
+    @EventHandler
+    public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+        Player joiner = event.getPlayer();
+        for (UUID uuid : vanishedPlayers) {
+            Player v = Bukkit.getPlayer(uuid);
+            if (v != null && v.isOnline()) {
+                joiner.hidePlayer(plugin, v);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onPlayerQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        Player leaver = event.getPlayer();
+        if (vanishedPlayers.remove(leaver.getUniqueId())) {
+            for (Player other : Bukkit.getOnlinePlayers()) {
+                other.showPlayer(plugin, leaver);
+            }
+        }
     }
 
     @EventHandler
@@ -200,14 +222,33 @@ public class KillstreakListener implements Listener {
                 return;
             }
 
-            // Unsichtbarkeits-Mantel
+            // Unsichtbarkeits-Mantel (Echter Vanish 15s)
             if (name.contains("Unsichtbarkeits-Mantel")) {
                 event.setCancelled(true);
                 consumeItem(player, item);
 
-                player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 120, 0, false, false));
+                vanishedPlayers.add(player.getUniqueId());
+                player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, 300, 0, false, false));
+
+                for (Player other : Bukkit.getOnlinePlayers()) {
+                    if (!other.equals(player)) {
+                        other.hidePlayer(plugin, player);
+                    }
+                }
+
                 player.playSound(player.getLocation(), Sound.ENTITY_PHANTOM_FLAP, SoundCategory.MASTER, 1.0f, 1.5f);
-                player.sendMessage("§a[OneShot] ✦ Unsichtbarkeits-Mantel aktiviert! Du bist für 6s komplett unsichtbar.");
+                player.sendMessage("§a[OneShot] ✦ Unsichtbarkeits-Mantel aktiviert! Du bist für 15s komplett unsichtbar (Vanish).");
+
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                    if (vanishedPlayers.remove(player.getUniqueId())) {
+                        if (player.isOnline()) {
+                            for (Player other : Bukkit.getOnlinePlayers()) {
+                                other.showPlayer(plugin, player);
+                            }
+                            player.sendMessage("§c[OneShot] ✦ Unsichtbarkeits-Mantel abgelaufen.");
+                        }
+                    }
+                }, 300L); // 15 Sekunden
                 return;
             }
 
