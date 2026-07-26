@@ -1,6 +1,8 @@
 package de.oneshotonekill.manager;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
@@ -15,12 +17,21 @@ public class ScoreboardManager {
     private final Map<UUID, Integer> deathsMap = new HashMap<>();
     private final Map<UUID, Integer> streakMap = new HashMap<>();
     private final Map<UUID, Integer> highestStreakMap = new HashMap<>();
+    private final Set<UUID> bountyTargets = new HashSet<>();
 
     public void updateAllScoreboards() {
         for (Player p : Bukkit.getOnlinePlayers()) {
             updateScoreboard(p);
             updateTabList(p);
         }
+    }
+
+    public boolean isBountyTarget(UUID uuid) {
+        return bountyTargets.contains(uuid);
+    }
+
+    public boolean removeBountyTarget(UUID uuid) {
+        return bountyTargets.remove(uuid);
     }
 
     public void updateScoreboard(Player player) {
@@ -51,7 +62,8 @@ public class ScoreboardManager {
             String kd = getKDRatio(p.getUniqueId());
 
             String prefix = (i < rankColors.length) ? rankColors[i] : "§f#" + (i + 1) + " ";
-            String playerLine = prefix + "§f" + p.getName() + " §7» §a" + k + "K §7| §b" + kd + " §7| §e⚡" + s + " §6(★" + hs + ")";
+            String bountyTag = isBountyTarget(p.getUniqueId()) ? "§e[👑] " : "";
+            String playerLine = prefix + bountyTag + "§f" + p.getName() + " §7» §a" + k + "K §7| §b" + kd + " §7| §e⚡" + s + " §6(★" + hs + ")";
 
             addScoreLine(obj, playerLine, scorePos--);
         }
@@ -86,6 +98,7 @@ public class ScoreboardManager {
         deathsMap.clear();
         streakMap.clear();
         highestStreakMap.clear();
+        bountyTargets.clear();
         updateAllScoreboards();
     }
 
@@ -108,10 +121,11 @@ public class ScoreboardManager {
             String kd = getKDRatio(p.getUniqueId());
 
             String rankPrefix = "§e#" + (rank + 1) + " ";
+            String bountyTag = isBountyTarget(p.getUniqueId()) ? "§e[👑] " : "";
             String nameText = "§f" + p.getName();
             String statsText = " §7| §aK: " + k + " §7| §cD: " + d + " §7| §bK/D: " + kd + " §7| §e⚡" + s + " §6(★" + hs + ")";
 
-            p.setPlayerListName(rankPrefix + nameText + statsText);
+            p.setPlayerListName(rankPrefix + bountyTag + nameText + statsText);
         }
     }
 
@@ -145,11 +159,24 @@ public class ScoreboardManager {
         if (streak > highscore) {
             highestStreakMap.put(uuid, streak);
         }
+
+        // Kopfgeld aussetzen ab 5er Killstreak!
+        if (streak == 5) {
+            bountyTargets.add(uuid);
+            Player p = Bukkit.getPlayer(uuid);
+            String pName = p != null ? p.getName() : "Ein Spieler";
+            Bukkit.broadcastMessage("§e[OneShot] 👑 KOPFGELD AUSGESETZT! §f" + pName + " §7hat eine §l5er Killstreak §7erreicht! Eliminiere ihn für 2 Spezial-Items!");
+            for (Player online : Bukkit.getOnlinePlayers()) {
+                online.playSound(online.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 0.6f, 1.8f);
+            }
+        }
+
         return streak;
     }
 
     public void resetStreak(UUID uuid) {
         streakMap.put(uuid, 0);
+        bountyTargets.remove(uuid);
     }
 
     public int getKills(UUID uuid) {

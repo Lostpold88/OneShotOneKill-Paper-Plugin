@@ -28,3 +28,7 @@ commands:
   clearpfeile:
     description: Loescht sofort alle herumliegenden Pfeile aus der Welt
     usage: /clearpfeile
+  killeffects:
+    description: Oeffnet das Menue zur Auswahl deines persoehnlichen Kill-Effekts
+    aliases: [killeffect, effects]
+    usage: /killeffects

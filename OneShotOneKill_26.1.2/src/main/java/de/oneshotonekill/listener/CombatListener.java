@@ -2,6 +2,7 @@ package de.oneshotonekill.listener;
 
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.manager.KillstreakManager;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -37,7 +38,7 @@ public class CombatListener implements Listener {
         }
 
         if (damager != null) {
-            // Prüfung: Nahkampfschlaf mit leerer Hand oder Bogen -> KEIN One-Shot 1000.0 Schaden! (Dafür ist der Dolch da)
+            // Prüfung: Nahkampfschlag mit leerer Hand oder Bogen -> KEIN One-Shot 1000.0 Schaden! (Dafür ist der Dolch da)
             if (isMelee) {
                 ItemStack mainHand = damager.getInventory().getItemInMainHand();
                 if (mainHand == null || mainHand.getType() == Material.AIR || mainHand.getType() == Material.BOW) {
@@ -75,6 +76,9 @@ public class CombatListener implements Listener {
         event.getDrops().clear();
         event.setDroppedExp(0);
 
+        // Kopfgeld-Prüfung & Auszahlung vor Stats-Reset
+        boolean wasBounty = plugin.getScoreboardManager().removeBountyTarget(victim.getUniqueId());
+
         // Deaths erhöhen
         int d = plugin.getScoreboardManager().incrementDeaths(victim.getUniqueId());
         plugin.getScoreboardManager().resetStreak(victim.getUniqueId());
@@ -83,8 +87,19 @@ public class CombatListener implements Listener {
             int k = plugin.getScoreboardManager().incrementKills(killer.getUniqueId());
             int s = plugin.getScoreboardManager().incrementStreak(killer.getUniqueId());
 
+            // Gewählten Kill-Effekt des Täters beim Opfer abspielen
+            plugin.getKillEffectManager().playKillEffect(killer, victim.getLocation());
+
             killer.playSound(killer.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER, 1.0f, 1.2f);
             killer.sendMessage("§a[OneShot] Du hast §e" + victim.getName() + " §aeliminiert! §7(Streak: §e" + s + "§7)");
+
+            // Kopfgeld Belohnung: 2 Spezial-Items für den Killer!
+            if (wasBounty) {
+                plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
+                plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
+                killer.playSound(killer.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.5f);
+                Bukkit.broadcastMessage("§a[OneShot] 💰 KOPFGELD KASSIERT! §f" + killer.getName() + " §7hat das Kopfgeld auf §e" + victim.getName() + " §7geholt und 2 Spezial-Items kassiert!");
+            }
 
             // Alle 3er Streaks zufälliges Spezial-Item verleihen (im STREAK- oder BOTH-Modus)
             KillstreakManager.ItemMode mode = plugin.getKillstreakManager().getItemMode();
