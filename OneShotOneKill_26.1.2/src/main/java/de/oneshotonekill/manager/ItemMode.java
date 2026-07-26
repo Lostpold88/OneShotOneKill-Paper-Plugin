@@ -1,4 +1,4 @@
-package de.oneshotonekill.model;
+package de.oneshotonekill.manager;
 
 public enum ItemMode {
     STREAK,
