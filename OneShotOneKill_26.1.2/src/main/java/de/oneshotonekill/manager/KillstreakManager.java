@@ -179,7 +179,7 @@ public class KillstreakManager {
             case 4 -> createSpecialItem(Material.HEAVY_WEIGHTED_PRESSURE_PLATE, "§b§l[❄] Frost-Trap (Plazieren)", "§7Friert betretende Gegner für 7s fest!");
             case 5 -> createSpecialItem(Material.BLAZE_ROD, "§6§l[🔥] Krass Minigun (Rechtsklick)", "§7Feuert 8 Sekunden lang automatisch Pfeile ab!");
             case 6 -> createSpecialItem(Material.ENDER_PEARL, "§d§l[🌀] Teleport-Granate (Werfen)", "§7Teleportiert & erzeugt eine Druckwelle!");
-            case 7 -> createSpecialItem(Material.PHANTOM_MEMBRANE, "§7§l[✦] Unsichtbarkeits-Mantel (Rechtsklick)", "§7Macht dich für 6s komplett unsichtbar!");
+            case 7 -> createSpecialItem(Material.PHANTOM_MEMBRANE, "§7§l[✦] Unsichtbarkeits-Mantel (Rechtsklick)", "§7Macht dich für 15s komplett unsichtbar!");
             case 8 -> createSpecialItem(Material.HEART_OF_THE_SEA, "§9§l[⚓] Pfeil-Magnetfeld (Rechtsklick)", "§7Lenkt herannahende Pfeile für 15s ab!");
             case 9 -> createSpecialItem(Material.LIGHTNING_ROD, "§e§l[⚡] Kettenblitz-Schuss (Rechtsklick)", "§7Dein nächster Schuss erzeugt Blitze!");
             default -> createSpecialItem(Material.FIREWORK_ROCKET, "§c§l[★] Raketen-Sprung (Rechtsklick)", "§7Schleudert dich 15 Blöcke in die Höhe!");
