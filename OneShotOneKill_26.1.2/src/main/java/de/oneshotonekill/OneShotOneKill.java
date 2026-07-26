@@ -2,6 +2,7 @@ package de.oneshotonekill;
 
 import de.oneshotonekill.command.ClearPfeileCommand;
 import de.oneshotonekill.command.ItemTestCommand;
+import de.oneshotonekill.command.KillEffectCommand;
 import de.oneshotonekill.command.OsokCommand;
 import de.oneshotonekill.command.StartCommand;
 import de.oneshotonekill.listener.CombatListener;
@@ -9,6 +10,7 @@ import de.oneshotonekill.listener.PlayerConnectionListener;
 import de.oneshotonekill.listener.SpecialItemListener;
 import de.oneshotonekill.manager.ArenaManager;
 import de.oneshotonekill.manager.EquipmentManager;
+import de.oneshotonekill.manager.KillEffectManager;
 import de.oneshotonekill.manager.KillstreakManager;
 import de.oneshotonekill.manager.ScoreboardManager;
 import de.oneshotonekill.manager.WorldManager;
@@ -23,6 +25,7 @@ public class OneShotOneKill extends JavaPlugin {
     private EquipmentManager equipmentManager;
     private ScoreboardManager scoreboardManager;
     private KillstreakManager killstreakManager;
+    private KillEffectManager killEffectManager;
 
     @Override
     public void onEnable() {
@@ -32,16 +35,20 @@ public class OneShotOneKill extends JavaPlugin {
         this.equipmentManager = new EquipmentManager();
         this.scoreboardManager = new ScoreboardManager();
         this.killstreakManager = new KillstreakManager(this);
+        this.killEffectManager = new KillEffectManager();
 
         // 2. Map & Welt laden
         this.worldManager.setupWorld();
 
         // 3. Event-Listener registrieren
         ItemTestCommand itemTestCommand = new ItemTestCommand(this);
+        KillEffectCommand killEffectCommand = new KillEffectCommand(this);
+
         getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
         getServer().getPluginManager().registerEvents(new SpecialItemListener(this), this);
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
+        getServer().getPluginManager().registerEvents(killEffectCommand, this);
 
         // 4. Befehle registrieren
         OsokCommand osokCommand = new OsokCommand(this);
@@ -55,6 +62,9 @@ public class OneShotOneKill extends JavaPlugin {
         registerCommand("itemtest", itemTestCommand, null);
         registerCommand("testgui", itemTestCommand, null);
         registerCommand("clearpfeile", new ClearPfeileCommand(this), null);
+        registerCommand("killeffects", killEffectCommand, killEffectCommand);
+        registerCommand("killeffect", killEffectCommand, killEffectCommand);
+        registerCommand("effects", killEffectCommand, killEffectCommand);
 
         // 5. Scoreboards für alle bereits verbundenen Spieler aktualisieren
         this.scoreboardManager.updateAllScoreboards();
@@ -99,5 +109,9 @@ public class OneShotOneKill extends JavaPlugin {
 
     public KillstreakManager getKillstreakManager() {
         return killstreakManager;
+    }
+
+    public KillEffectManager getKillEffectManager() {
+        return killEffectManager;
     }
 }
