@@ -32,40 +32,35 @@ public class ScoreboardManager {
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
         hideRedNumbers(obj);
 
-        int onlineCount = Bukkit.getOnlinePlayers().size();
-
         // Alle Online-Spieler nach Kills sortieren
         List<Player> sortedPlayers = Bukkit.getOnlinePlayers().stream()
                 .sorted((p1, p2) -> Integer.compare(getKills(p2.getUniqueId()), getKills(p1.getUniqueId())))
                 .collect(Collectors.toList());
 
-        addScoreLine(obj, "§7----------------------------------", 15);
-        addScoreLine(obj, "§fSpieler: §a" + onlineCount + " §7online", 14);
-        addScoreLine(obj, "§1 ", 13);
-        addScoreLine(obj, "§e§l🏆 RANGLISTE & MATCH STATS:", 12);
+        addScoreLine(obj, "§7-------------------", 15);
+        addScoreLine(obj, "§e§l🏆 TOP RANKING:", 14);
 
         String[] rankColors = new String[]{"§e#1 ", "§7#2 ", "§c#3 ", "§f#4 ", "§f#5 ", "§f#6 ", "§f#7 ", "§f#8 ", "§f#9 ", "§f#10 "};
-        int scorePos = 11;
+        int scorePos = 13;
 
         for (int i = 0; i < Math.min(10, sortedPlayers.size()); i++) {
             Player p = sortedPlayers.get(i);
             int k = getKills(p.getUniqueId());
-            int d = getDeaths(p.getUniqueId());
             int s = getStreak(p.getUniqueId());
             int hs = getHighestStreak(p.getUniqueId());
             String kd = getKDRatio(p.getUniqueId());
 
             String prefix = (i < rankColors.length) ? rankColors[i] : "§f#" + (i + 1) + " ";
-            String playerLine = prefix + "§f" + p.getName() + " §7| §aK:" + k + " §7| §cD:" + d + " §7| §bK/D:" + kd + " §7| §e⚡" + s + " §6(★" + hs + ")";
+            String playerLine = prefix + "§f" + p.getName() + " §7» §a" + k + "K §7| §b" + kd + " §7| §e⚡" + s + " §6(★" + hs + ")";
 
             addScoreLine(obj, playerLine, scorePos--);
         }
 
         if (sortedPlayers.isEmpty()) {
-            addScoreLine(obj, "§7Keine Spieler online", 11);
+            addScoreLine(obj, "§7Keine Spieler online", 13);
         }
 
-        addScoreLine(obj, "§7-----------------------------------", 0);
+        addScoreLine(obj, "§7--------------------", 0);
 
         // Nametags über den Köpfen aller Spieler komplett ausblenden
         org.bukkit.scoreboard.Team noNametagTeam = board.getTeam("nonametags");

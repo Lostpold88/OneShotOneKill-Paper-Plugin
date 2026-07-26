@@ -20,7 +20,7 @@ public class KillstreakManager {
     }
 
     private final OneShotOneKill plugin;
-    private ItemMode currentItemMode = ItemMode.STREAK;
+    private ItemMode currentItemMode = ItemMode.BOTH;
 
     private final Set<UUID> activeShields = new HashSet<>();
     private final Set<UUID> explosiveShots = new HashSet<>();
