@@ -79,7 +79,6 @@ public class PlayerJoinRespawnListener implements Listener {
             player.teleport(randomLoc);
             plugin.getEquipmentManager().giveOneShotEquipment(player);
             plugin.getScoreboardManager().updateAllScoreboards();
-            player.sendMessage("§a[OneShot] 🌀 Random-TP ausgeführt!");
             player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.MASTER, 1.0f, 1.2f);
         } else {
             player.sendMessage("§c[OneShot] Arena-Welt ist aktuell nicht geladen.");
