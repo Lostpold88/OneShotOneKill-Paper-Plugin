@@ -26,6 +26,11 @@ public class PlayerJoinRespawnListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        event.setJoinMessage("§a[✦] §f" + player.getName() + " §7hat §e§lOneShotOneKill §7betreten!");
+
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.0f, 1.5f);
+        }
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             World targetWorld = plugin.getWorldManager().getOsokWorld();
@@ -42,6 +47,9 @@ public class PlayerJoinRespawnListener implements Listener {
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        event.setQuitMessage("§c[❌] §f" + player.getName() + " §7hat §e§lOneShotOneKill §7verlassen.");
+
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             plugin.getScoreboardManager().updateAllScoreboards();
         }, 2L);
