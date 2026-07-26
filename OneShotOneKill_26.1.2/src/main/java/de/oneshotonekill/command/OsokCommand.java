@@ -1,6 +1,7 @@
 package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
+import de.oneshotonekill.model.ItemMode;
 import de.oneshotonekill.manager.KillstreakManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
@@ -125,25 +126,25 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         if (args.length >= 1) {
             String modeArg = args[0].toLowerCase();
             if (modeArg.equals("spawn") || modeArg.equals("map") || modeArg.equals("ground")) {
-                plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.SPAWN);
+                plugin.getKillstreakManager().setItemMode(ItemMode.SPAWN);
                 Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lMAP-SPAWN §7(Items spawnen alle 30s als Mario Kart Boxen!)");
             } else if (modeArg.equals("both") || modeArg.equals("kombi") || modeArg.equals("all")) {
-                plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.BOTH);
+                plugin.getKillstreakManager().setItemMode(ItemMode.BOTH);
                 Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lKOMBI-MODUS §7(Streaks + 30s Map-Spawns gleichzeitig!)");
             } else {
-                plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.STREAK);
+                plugin.getKillstreakManager().setItemMode(ItemMode.STREAK);
                 Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lKILLSTREAK §7(Items nur alle 3 Kills!)");
             }
         } else {
-            KillstreakManager.ItemMode current = plugin.getKillstreakManager().getItemMode();
-            if (current == KillstreakManager.ItemMode.STREAK) {
-                plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.SPAWN);
+            ItemMode current = plugin.getKillstreakManager().getItemMode();
+            if (current == ItemMode.STREAK) {
+                plugin.getKillstreakManager().setItemMode(ItemMode.SPAWN);
                 Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lMAP-SPAWN §7(Items spawnen alle 30s als Mario Kart Boxen!)");
-            } else if (current == KillstreakManager.ItemMode.SPAWN) {
-                plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.BOTH);
+            } else if (current == ItemMode.SPAWN) {
+                plugin.getKillstreakManager().setItemMode(ItemMode.BOTH);
                 Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lKOMBI-MODUS §7(Streaks + 30s Map-Spawns gleichzeitig!)");
             } else {
-                plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.STREAK);
+                plugin.getKillstreakManager().setItemMode(ItemMode.STREAK);
                 Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lKILLSTREAK §7(Items nur alle 3 Kills!)");
             }
         }

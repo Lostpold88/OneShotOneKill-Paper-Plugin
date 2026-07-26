@@ -8,9 +8,8 @@ import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -18,21 +17,19 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.Vector;
 
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-public class KillstreakListener implements Listener {
+public class SpecialItemListener implements Listener {
 
     private final OneShotOneKill plugin;
     private final Set<Location> activeBearTraps = new HashSet<>();
     private final Set<UUID> noFallPlayers = new HashSet<>();
     private final Set<UUID> vanishedPlayers = new HashSet<>();
 
-    public KillstreakListener(OneShotOneKill plugin) {
+    public SpecialItemListener(OneShotOneKill plugin) {
         this.plugin = plugin;
     }
 
@@ -190,7 +187,6 @@ public class KillstreakListener implements Listener {
                     player.teleport(randomLoc);
                     plugin.getEquipmentManager().giveOneShotEquipment(player);
                     plugin.getScoreboardManager().updateAllScoreboards();
-                    player.sendMessage("§a[OneShot] ☁ Rauchbombe gezündet! Ninja-Escape Random-TP ausgeführt!");
                     player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.MASTER, 1.0f, 1.2f);
                 }
                 return;
@@ -277,7 +273,7 @@ public class KillstreakListener implements Listener {
                 event.setCancelled(true);
                 consumeItem(player, item);
 
-                player.setVelocity(new Vector(0, 1.8, 0));
+                player.setVelocity(new org.bukkit.util.Vector(0, 1.8, 0));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 400, 2, false, false));
                 player.getWorld().spawnParticle(Particle.FIREWORK, player.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
                 player.playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, SoundCategory.MASTER, 1.0f, 1.2f);
@@ -340,7 +336,7 @@ public class KillstreakListener implements Listener {
             if (pearl.getShooter() instanceof Player shooter) {
                 for (Entity entity : loc.getWorld().getNearbyEntities(loc, 5.0, 5.0, 5.0)) {
                     if (entity instanceof Player victim && !victim.equals(shooter)) {
-                        Vector push = victim.getLocation().toVector().subtract(loc.toVector()).normalize().multiply(1.5).setY(0.5);
+                        org.bukkit.util.Vector push = victim.getLocation().toVector().subtract(loc.toVector()).normalize().multiply(1.5).setY(0.5);
                         victim.setVelocity(push);
                         victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 2));
                         victim.sendMessage("§c[OneShot] 🌀 Du wurdest von einer Teleport-Granate weggeschleudert!");

@@ -15,11 +15,11 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 
-public class PlayerJoinRespawnListener implements Listener {
+public class PlayerConnectionListener implements Listener {
 
     private final OneShotOneKill plugin;
 
-    public PlayerJoinRespawnListener(OneShotOneKill plugin) {
+    public PlayerConnectionListener(OneShotOneKill plugin) {
         this.plugin = plugin;
     }
 

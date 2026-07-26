@@ -1,6 +1,7 @@
 package de.oneshotonekill.listener;
 
 import de.oneshotonekill.OneShotOneKill;
+import de.oneshotonekill.model.ItemMode;
 import de.oneshotonekill.manager.KillstreakManager;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -87,8 +88,8 @@ public class CombatListener implements Listener {
             killer.sendMessage("§a[OneShot] Du hast §e" + victim.getName() + " §aeliminiert! §7(Streak: §e" + s + "§7)");
 
             // Alle 3er Streaks zufälliges Spezial-Item verleihen (im STREAK- oder BOTH-Modus)
-            KillstreakManager.ItemMode mode = plugin.getKillstreakManager().getItemMode();
-            if (s > 0 && s % 3 == 0 && (mode == KillstreakManager.ItemMode.STREAK || mode == KillstreakManager.ItemMode.BOTH)) {
+            ItemMode mode = plugin.getKillstreakManager().getItemMode();
+            if (s > 0 && s % 3 == 0 && (mode == ItemMode.STREAK || mode == ItemMode.BOTH)) {
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, s);
             }
 
