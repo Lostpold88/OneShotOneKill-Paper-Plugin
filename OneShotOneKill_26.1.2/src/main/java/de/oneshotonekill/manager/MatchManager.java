@@ -342,7 +342,7 @@ public class MatchManager {
 
             broadcast(" ");
             broadcast("§c§l=======================================");
-            broadcast("§c§l   ⏸ MATCH BEI 223 48 55 PAUSIERT!   ");
+            broadcast("§c§l   ⏸ MATCH PAUSIERT!   ");
             broadcast("§7  Spieler wurden in die Lobby teleportiert.");
             broadcast("§c§l=======================================");
             broadcast(" ");
