@@ -1,6 +1,8 @@
 package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Item;
@@ -8,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
@@ -19,7 +22,20 @@ public class KillstreakManager {
         STREAK, SPAWN, BOTH
     }
 
+    public static final String KEY_RADAR = "radar_puls";
+    public static final String KEY_EXPLOSIVE = "explosive_shot";
+    public static final String KEY_REFLECTOR = "reflector_shield";
+    public static final String KEY_SMOKE = "smoke_bomb";
+    public static final String KEY_FROST = "frost_trap";
+    public static final String KEY_MINIGUN = "minigun";
+    public static final String KEY_TELEPORT = "teleport_grenade";
+    public static final String KEY_INVISIBILITY = "invisibility_cloak";
+    public static final String KEY_MAGNET = "arrow_magnet";
+    public static final String KEY_CHAIN_LIGHTNING = "chain_lightning";
+    public static final String KEY_ROCKET_JUMP = "rocket_jump";
+
     private final OneShotOneKill plugin;
+    private final NamespacedKey specialItemKey;
     private ItemMode currentItemMode = ItemMode.BOTH;
 
     private final Set<UUID> activeShields = new HashSet<>();
@@ -31,8 +47,13 @@ public class KillstreakManager {
 
     public KillstreakManager(OneShotOneKill plugin) {
         this.plugin = plugin;
+        this.specialItemKey = new NamespacedKey(plugin, "special_item_type");
         startGroundSpawnTask();
         startMarioKartParticleAnimation();
+    }
+
+    public NamespacedKey getSpecialItemKey() {
+        return specialItemKey;
     }
 
     public ItemMode getItemMode() {
@@ -83,6 +104,9 @@ public class KillstreakManager {
                 while (iterator.hasNext()) {
                     Item item = iterator.next();
                     if (item == null || !item.isValid()) {
+                        if (item != null && item.getLocation() != null && item.getWorld() != null) {
+                            item.getWorld().removePluginChunkTicket(item.getLocation().getBlockX() >> 4, item.getLocation().getBlockZ() >> 4, plugin);
+                        }
                         iterator.remove();
                         continue;
                     }
@@ -135,14 +159,18 @@ public class KillstreakManager {
 
         if (spawnLoc == null) return;
 
-        spawnLoc.getChunk().load();
+        int chunkX = spawnLoc.getBlockX() >> 4;
+        int chunkZ = spawnLoc.getBlockZ() >> 4;
+        spawnLoc.getWorld().addPluginChunkTicket(chunkX, chunkZ, plugin);
 
         Random random = new Random();
         int itemType = random.nextInt(11);
         ItemStack specialItem = createSpecificSpecialItem(itemType);
 
         Item dropped = spawnLoc.getWorld().dropItem(spawnLoc, specialItem);
-        dropped.setGlowing(true);
+        dropped.setPickupDelay(5);
+        dropped.setCanPlayerPickup(true);
+        dropped.setCanMobPickup(false);
         dropped.setMetadata("osok_ground_special", new FixedMetadataValue(plugin, true));
         dropped.setPickupDelay(0);
         activeGroundItems.add(dropped);
@@ -172,40 +200,55 @@ public class KillstreakManager {
 
     public ItemStack createSpecificSpecialItem(int itemType) {
         return switch (itemType) {
-            case 0 -> createSpecialItem(Material.ENDER_EYE, "§e§l[✦] Radar-Puls (Rechtsklick)", "§7Enthüllt alle Gegner in der Arena für 30 Sekunden!");
-            case 1 -> createSpecialItem(Material.TNT, "§c§l[★] Explosiv-Schuss (Rechtsklick)", "§7Dein nächster Pfeil erzeugt eine Explosion!");
-            case 2 -> createSpecialItem(Material.NETHER_STAR, "§b§l[🛡] Reflektor-Schild (Rechtsklick)", "§7Blockiert den nächsten tödlichen Treffer!");
-            case 3 -> createSpecialItem(Material.SNOWBALL, "§f§l[☁] Rauchbombe (Werfen)", "§7Erzeugt eine dichte Rauchwolke!");
-            case 4 -> createSpecialItem(Material.HEAVY_WEIGHTED_PRESSURE_PLATE, "§b§l[❄] Frost-Trap (Plazieren)", "§7Friert betretende Gegner für 7s fest!");
-            case 5 -> createSpecialItem(Material.BLAZE_ROD, "§6§l[🔥] Krass Minigun (Rechtsklick)", "§7Feuert 8 Sekunden lang automatisch Pfeile ab!");
-            case 6 -> createSpecialItem(Material.ENDER_PEARL, "§d§l[🌀] Teleport-Granate (Werfen)", "§7Teleportiert & erzeugt eine Druckwelle!");
-            case 7 -> createSpecialItem(Material.PHANTOM_MEMBRANE, "§7§l[✦] Unsichtbarkeits-Mantel (Rechtsklick)", "§7Macht dich für 15s komplett unsichtbar!");
-            case 8 -> createSpecialItem(Material.HEART_OF_THE_SEA, "§9§l[⚓] Pfeil-Magnetfeld (Rechtsklick)", "§7Lenkt herannahende Pfeile für 15s ab!");
-            case 9 -> createSpecialItem(Material.LIGHTNING_ROD, "§e§l[⚡] Kettenblitz-Schuss (Rechtsklick)", "§7Dein nächster Schuss erzeugt Blitze!");
-            default -> createSpecialItem(Material.FIREWORK_ROCKET, "§c§l[★] Raketen-Sprung (Rechtsklick)", "§7Schleudert dich 15 Blöcke in die Höhe!");
+            case 0 -> createSpecialItem(Material.ENDER_EYE, "§e§l[✦] Radar-Puls (Rechtsklick)", "§7Enthüllt alle Gegner in der Arena für 30 Sekunden!", KEY_RADAR);
+            case 1 -> createSpecialItem(Material.TNT, "§c§l[★] Explosiv-Schuss (Rechtsklick)", "§7Dein nächster Pfeil erzeugt eine Explosion!", KEY_EXPLOSIVE);
+            case 2 -> createSpecialItem(Material.NETHER_STAR, "§b§l[🛡] Reflektor-Schild (Rechtsklick)", "§7Blockiert den nächsten tödlichen Treffer!", KEY_REFLECTOR);
+            case 3 -> createSpecialItem(Material.SNOWBALL, "§f§l[☁] Rauchbombe (Werfen)", "§7Erzeugt eine dichte Rauchwolke!", KEY_SMOKE);
+            case 4 -> createSpecialItem(Material.HEAVY_WEIGHTED_PRESSURE_PLATE, "§b§l[❄] Frost-Trap (Plazieren)", "§7Friert betretende Gegner für 7s fest!", KEY_FROST);
+            case 5 -> createSpecialItem(Material.BLAZE_ROD, "§6§l[🔥] Krass Minigun (Rechtsklick)", "§7Feuert 8 Sekunden lang automatisch Pfeile ab!", KEY_MINIGUN);
+            case 6 -> createSpecialItem(Material.ENDER_PEARL, "§d§l[🌀] Teleport-Granate (Werfen)", "§7Teleportiert & erzeugt eine Druckwelle!", KEY_TELEPORT);
+            case 7 -> createSpecialItem(Material.PHANTOM_MEMBRANE, "§7§l[✦] Unsichtbarkeits-Mantel (Rechtsklick)", "§7Macht dich für 15s komplett unsichtbar!", KEY_INVISIBILITY);
+            case 8 -> createSpecialItem(Material.HEART_OF_THE_SEA, "§9§l[⚓] Pfeil-Magnetfeld (Rechtsklick)", "§7Lenkt herannahende Pfeile für 15s ab!", KEY_MAGNET);
+            case 9 -> createSpecialItem(Material.LIGHTNING_ROD, "§e§l[⚡] Kettenblitz-Schuss (Rechtsklick)", "§7Dein nächster Schuss erzeugt Blitze!", KEY_CHAIN_LIGHTNING);
+            default -> createSpecialItem(Material.FIREWORK_ROCKET, "§c§l[★] Raketen-Sprung (Rechtsklick)", "§7Schleudert dich 15 Blöcke in die Höhe!", KEY_ROCKET_JUMP);
         };
     }
 
     public void giveSpecificSpecialItem(Player player, int itemType, int streak) {
         ItemStack item = createSpecificSpecialItem(itemType);
-        String itemName = item.getItemMeta().getDisplayName();
+        ItemMeta meta = item.getItemMeta();
+        Component itemNameComponent = meta != null && meta.hasDisplayName() ? meta.displayName() : Component.text("Spezial-Item");
 
         player.getInventory().addItem(item);
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
         if (streak > 0) {
-            player.sendMessage("§a[OSOK] 🎁 §l" + streak + "er Killstreak! §7Du hast den Spezial-Item erhalten: " + itemName);
-            Bukkit.broadcastMessage("§e[OSOK] 🔥 §f" + player.getName() + " §ehat eine §l" + streak + "er Killstreak §eerreicht!");
+            Component msg = LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🎁 §l" + streak + "er Killstreak! §7Du hast den Spezial-Item erhalten: ")
+                    .append(itemNameComponent);
+            player.sendMessage(msg);
+
+            Component bc = LegacyComponentSerializer.legacySection().deserialize("§e[OSOK] 🔥 §f" + player.getName() + " §ehat eine §l" + streak + "er Killstreak §eerreicht!");
+            Bukkit.broadcast(bc);
         } else {
-            player.sendMessage("§a[OSOK] 🧪 Itemtest: " + itemName + " §aerhalten!");
+            Component msg = LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🧪 Itemtest: ")
+                    .append(itemNameComponent)
+                    .append(LegacyComponentSerializer.legacySection().deserialize(" §aerhalten!"));
+            player.sendMessage(msg);
         }
     }
 
     public ItemStack createSpecialItem(Material mat, String name, String loreLine) {
+        return createSpecialItem(mat, name, loreLine, null);
+    }
+
+    public ItemStack createSpecialItem(Material mat, String name, String loreLine, String itemTypeId) {
         ItemStack stack = new ItemStack(mat);
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(name);
-            meta.setLore(Collections.singletonList(loreLine));
+            meta.displayName(LegacyComponentSerializer.legacySection().deserialize(name));
+            meta.lore(Collections.singletonList(LegacyComponentSerializer.legacySection().deserialize(loreLine)));
+            if (itemTypeId != null) {
+                meta.getPersistentDataContainer().set(specialItemKey, PersistentDataType.STRING, itemTypeId);
+            }
             stack.setItemMeta(meta);
         }
         return stack;
@@ -213,12 +256,12 @@ public class KillstreakManager {
 
     public void activateMinigun(Player player) {
         if (activeMiniguns.contains(player.getUniqueId())) {
-            player.sendMessage("§c[OSOK] 🔥 Minigun ist bereits aktiv!");
+            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] 🔥 Minigun ist bereits aktiv!"));
             return;
         }
 
         activeMiniguns.add(player.getUniqueId());
-        player.sendMessage("§a[OSOK] 🔥 §lMINIGUN AKTIVIERT! §78 Sekunden Dauerfeuer!");
+        player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🔥 §lMINIGUN AKTIVIERT! §78 Sekunden Dauerfeuer!"));
         player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 0.8f, 1.5f);
 
         List<Arrow> minigunArrows = new ArrayList<>();
@@ -240,7 +283,7 @@ public class KillstreakManager {
                     minigunArrows.clear();
 
                     if (player.isOnline()) {
-                        player.sendMessage("§c[OSOK] 🔥 Minigun abgelaufen. Pfeile wurden entfernt!");
+                        player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] 🔥 Minigun abgelaufen. Pfeile wurden entfernt!"));
                         player.playSound(player.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, SoundCategory.MASTER, 1.0f, 1.0f);
                     }
                     return;
@@ -262,7 +305,7 @@ public class KillstreakManager {
     public void activateArrowMagnet(Player player) {
         if (arrowMagnets.contains(player.getUniqueId())) return;
         arrowMagnets.add(player.getUniqueId());
-        player.sendMessage("§a[OSOK] ⚓ Pfeil-Magnetfeld für 15 Sekunden aktiv!");
+        player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] ⚓ Pfeil-Magnetfeld für 15 Sekunden aktiv!"));
         player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, SoundCategory.MASTER, 1.0f, 1.5f);
 
         new BukkitRunnable() {
@@ -274,7 +317,7 @@ public class KillstreakManager {
                     arrowMagnets.remove(player.getUniqueId());
                     cancel();
                     if (player.isOnline()) {
-                        player.sendMessage("§c[OSOK] ⚓ Pfeil-Magnetfeld abgelaufen.");
+                        player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ⚓ Pfeil-Magnetfeld abgelaufen."));
                         player.playSound(player.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, SoundCategory.MASTER, 1.0f, 1.0f);
                     }
                     return;
