@@ -242,6 +242,17 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        String cmdName = command != null ? command.getName().toLowerCase() : "";
+        if (cmdName.equals("itemmode") || cmdName.equals("itemmodus") || cmdName.equals("mode")) {
+            if (args.length == 1) {
+                return StringUtil.copyPartialMatches(args[0], Arrays.asList("streak", "spawn", "both", "kombi"), new ArrayList<>());
+            }
+            return Collections.emptyList();
+        }
+        if (cmdName.equals("resetstats") || cmdName.equals("resetboard")) {
+            return Collections.emptyList();
+        }
+
         if (args.length == 1) {
             return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "dauer", "limit", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode", "clearpfeile"), new ArrayList<>());
         }
