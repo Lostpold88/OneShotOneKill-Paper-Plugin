@@ -204,8 +204,6 @@ public class MatchManager {
                 wLoc.getWorld().spawnParticle(Particle.FIREWORK, wLoc.clone().add(0, 1, 0), 15, 0.5, 1.0, 0.5, 0.1);
 
                 if (ticks % 2 == 0) {
-                    wLoc.getWorld().strikeLightningEffect(wLoc);
-
                     Firework fw = (Firework) wLoc.getWorld().spawnEntity(wLoc.clone().add(0, 1, 0), EntityType.FIREWORK_ROCKET);
                     FireworkMeta fwm = fw.getFireworkMeta();
                     fwm.addEffect(FireworkEffect.builder()
