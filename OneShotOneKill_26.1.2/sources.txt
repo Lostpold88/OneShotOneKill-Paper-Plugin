@@ -7,7 +7,6 @@ src/main/java/de/oneshotonekill/command/StartCommand.java
 src/main/java/de/oneshotonekill/listener/CombatListener.java
 src/main/java/de/oneshotonekill/listener/PlayerConnectionListener.java
 src/main/java/de/oneshotonekill/listener/SpecialItemListener.java
-src/main/java/de/oneshotonekill/listener/SpecialItemListener.java
 src/main/java/de/oneshotonekill/manager/ArenaManager.java
 src/main/java/de/oneshotonekill/manager/EquipmentManager.java
 src/main/java/de/oneshotonekill/manager/KillEffectManager.java
