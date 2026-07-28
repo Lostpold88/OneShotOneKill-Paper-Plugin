@@ -173,7 +173,7 @@ public class MatchManager {
         Bukkit.broadcastMessage("§a§l=======================================");
         Bukkit.broadcastMessage("§e§l   🏆 MATCH BEENDET - MATCH GEWINNER!   ");
         Bukkit.broadcastMessage("§f  Gewinner: §e§l" + winner.getName() + " §7mit §a§l" + winnerKills + " Kills§7!");
-        Bukkit.broadcastMessage("§7  Starte das Match neu mit: §e/osok restart §7oder §e/start");
+        Bukkit.broadcastMessage("§7  Starte ein neues Match mit: §e/start");
         Bukkit.broadcastMessage("§a§l=======================================");
         Bukkit.broadcastMessage(" ");
 
