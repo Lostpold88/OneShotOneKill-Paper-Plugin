@@ -1,27 +1,32 @@
 {
   "stats": {
-    "minecraft:used": {
-      "minecraft:spruce_log": 1,
-      "minecraft:glass": 6,
-      "minecraft:light_blue_wool": 1,
-      "minecraft:bow": 18
+    "minecraft:custom": {
+      "minecraft:time_since_rest": 14718,
+      "minecraft:walk_one_cm": 8552,
+      "minecraft:leave_game": 18,
+      "minecraft:damage_taken": 10020,
+      "minecraft:play_time": 40269,
+      "minecraft:jump": 133,
+      "minecraft:time_since_death": 14695,
+      "minecraft:sprint_one_cm": 43683,
+      "minecraft:fall_one_cm": 950,
+      "minecraft:total_world_time": 40269,
+      "minecraft:fly_one_cm": 68703,
+      "minecraft:sneak_time": 10,
+      "minecraft:deaths": 4
     },
     "minecraft:killed_by": {
       "minecraft:player": 1
     },
-    "minecraft:custom": {
-      "minecraft:sprint_one_cm": 35358,
-      "minecraft:time_since_rest": 12088,
-      "minecraft:walk_one_cm": 7154,
-      "minecraft:total_world_time": 37639,
-      "minecraft:leave_game": 16,
-      "minecraft:fly_one_cm": 61173,
-      "minecraft:damage_taken": 10000,
-      "minecraft:sneak_time": 10,
-      "minecraft:play_time": 37639,
-      "minecraft:deaths": 4,
-      "minecraft:jump": 110,
-      "minecraft:time_since_death": 12065
+    "minecraft:used": {
+      "minecraft:spruce_log": 1,
+      "minecraft:glass": 6,
+      "minecraft:light_blue_wool": 1,
+      "minecraft:bow": 19,
+      "minecraft:iron_sword": 2
+    },
+    "minecraft:mined": {
+      "minecraft:glass": 2
     },
     "minecraft:picked_up": {
       "minecraft:lightning_rod": 1,
