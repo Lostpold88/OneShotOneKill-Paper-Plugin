@@ -9,7 +9,6 @@ import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
@@ -33,6 +32,11 @@ public class KillstreakManager {
     public static final String KEY_MAGNET = "arrow_magnet";
     public static final String KEY_CHAIN_LIGHTNING = "chain_lightning";
     public static final String KEY_ROCKET_JUMP = "rocket_jump";
+
+    public static final NamespacedKey KEY_GROUND_SPECIAL_PDC = new NamespacedKey("oneshotonekill", "ground_special");
+    public static final NamespacedKey KEY_TP_GRENADE_PDC = new NamespacedKey("oneshotonekill", "tp_grenade");
+    public static final NamespacedKey KEY_CHAIN_LIGHTNING_PDC = new NamespacedKey("oneshotonekill", "chain_lightning");
+    public static final NamespacedKey KEY_EXPLOSIVE_PDC = new NamespacedKey("oneshotonekill", "explosive");
 
     private final OneShotOneKill plugin;
     private final NamespacedKey specialItemKey;
@@ -171,7 +175,7 @@ public class KillstreakManager {
         dropped.setPickupDelay(5);
         dropped.setCanPlayerPickup(true);
         dropped.setCanMobPickup(false);
-        dropped.setMetadata("osok_ground_special", new FixedMetadataValue(plugin, true));
+        dropped.getPersistentDataContainer().set(KEY_GROUND_SPECIAL_PDC, PersistentDataType.BYTE, (byte) 1);
         dropped.setPickupDelay(0);
         activeGroundItems.add(dropped);
 
