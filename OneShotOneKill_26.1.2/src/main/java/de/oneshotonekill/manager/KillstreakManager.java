@@ -330,14 +330,12 @@ public class KillstreakManager {
                 Location pLoc = player.getLocation().add(0, 1, 0);
                 pLoc.getWorld().spawnParticle(Particle.END_ROD, pLoc, 8, 1.2, 1.2, 1.2, 0.05);
 
-                for (org.bukkit.entity.Entity entity : player.getWorld().getNearbyEntities(pLoc, 8.0, 8.0, 8.0)) {
-                    if (entity instanceof Arrow arrow) {
-                        if (arrow.getShooter() != null && !arrow.getShooter().equals(player)) {
-                            Vector pushAway = arrow.getLocation().toVector().subtract(pLoc.toVector()).normalize().multiply(1.8);
-                            if (Double.isNaN(pushAway.getX())) pushAway = new Vector(0, 0.5, 0);
-                            arrow.setVelocity(pushAway);
-                            pLoc.getWorld().spawnParticle(Particle.CRIT, arrow.getLocation(), 5);
-                        }
+                for (Arrow arrow : pLoc.getNearbyEntitiesByType(Arrow.class, 8.0)) {
+                    if (arrow.getShooter() != null && !arrow.getShooter().equals(player)) {
+                        Vector pushAway = arrow.getLocation().toVector().subtract(pLoc.toVector()).normalize().multiply(1.8);
+                        if (Double.isNaN(pushAway.getX())) pushAway = new Vector(0, 0.5, 0);
+                        arrow.setVelocity(pushAway);
+                        pLoc.getWorld().spawnParticle(Particle.CRIT, arrow.getLocation(), 5);
                     }
                 }
 
