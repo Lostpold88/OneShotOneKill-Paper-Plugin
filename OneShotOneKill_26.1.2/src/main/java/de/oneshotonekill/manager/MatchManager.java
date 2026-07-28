@@ -91,6 +91,23 @@ public class MatchManager {
         broadcast("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + minutes + " Minuten§7!");
     }
 
+    public void setTimeLimitSeconds(int seconds) {
+        if (seconds <= 0) {
+            resetLimits();
+            return;
+        }
+        stopTimer();
+        stopVictoryTasks();
+        this.killLimit = 0;
+        this.timeLimitSeconds = seconds;
+        this.remainingSeconds = this.timeLimitSeconds;
+        this.matchEnded = false;
+
+        startTimer();
+        plugin.getScoreboardManager().updateAllScoreboards();
+        broadcast("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + formatTime(seconds) + "§7 (" + seconds + " Sekunden)!");
+    }
+
     public void resetLimits() {
         stopTimer();
         stopVictoryTasks();

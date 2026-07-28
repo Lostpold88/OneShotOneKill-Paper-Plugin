@@ -175,6 +175,20 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (type.equals("sekunden") || type.equals("sec") || type.equals("sek") || type.equals("s")) {
+            if (args.length < 2) {
+                msg(player, "§c[OSOK] Bitte gib die Dauer in Sekunden an (z. B. /osok dauer sekunden 30).");
+                return true;
+            }
+            try {
+                int seconds = Integer.parseInt(args[1]);
+                plugin.getMatchManager().setTimeLimitSeconds(seconds);
+            } catch (NumberFormatException e) {
+                msg(player, "§c[OSOK] Ungültige Zahl: " + args[1]);
+            }
+            return true;
+        }
+
         if (type.endsWith("k")) {
             try {
                 int kills = Integer.parseInt(type.substring(0, type.length() - 1));
@@ -186,6 +200,13 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             try {
                 int minutes = Integer.parseInt(type.substring(0, type.length() - 1));
                 plugin.getMatchManager().setTimeLimitMinutes(minutes);
+                return true;
+            } catch (NumberFormatException ignored) {}
+        }
+        if (type.endsWith("s")) {
+            try {
+                int seconds = Integer.parseInt(type.substring(0, type.length() - 1));
+                plugin.getMatchManager().setTimeLimitSeconds(seconds);
                 return true;
             } catch (NumberFormatException ignored) {}
         }
@@ -253,7 +274,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "dauer", "limit", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode"), new ArrayList<>());
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit"))) {
-            return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "zeit", "off"), new ArrayList<>());
+            return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "zeit", "sekunden", "off"), new ArrayList<>());
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("itemmode")) {
             return StringUtil.copyPartialMatches(args[1], Arrays.asList("streak", "spawn", "both", "kombi"), new ArrayList<>());
