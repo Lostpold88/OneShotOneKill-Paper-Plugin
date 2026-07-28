@@ -2,6 +2,8 @@ package de.oneshotonekill.listener;
 
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.manager.KillstreakManager;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -56,9 +58,9 @@ public class CombatListener implements Listener {
                 plugin.getKillstreakManager().removeShield(target.getUniqueId());
                 event.setCancelled(true);
                 target.playSound(target.getLocation(), Sound.ITEM_SHIELD_BREAK, SoundCategory.MASTER, 1.0f, 1.0f);
-                target.sendMessage("§b[OSOK] [🛡] Dein Reflektor-Schild hat den tödlichen Treffer abgewehrt!");
+                target.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§b[OSOK] [🛡] Dein Reflektor-Schild hat den tödlichen Treffer abgewehrt!"));
                 damager.playSound(damager.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER, 1.0f, 0.8f);
-                damager.sendMessage("§c[OSOK] [🛡] Treffer abgeprallt! " + target.getName() + " hatte ein Reflektor-Schild!");
+                damager.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] [🛡] Treffer abgeprallt! " + target.getName() + " hatte ein Reflektor-Schild!"));
                 return;
             }
 
@@ -96,14 +98,15 @@ public class CombatListener implements Listener {
             plugin.getKillEffectManager().playKillEffect(killer, victim.getLocation());
 
             killer.playSound(killer.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER, 1.0f, 1.2f);
-            killer.sendMessage("§a[OSOK] Du hast §e" + victim.getName() + " §aeliminiert! §7(Streak: §e" + s + "§7)");
+            killer.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] Du hast §e" + victim.getName() + " §aeliminiert! §7(Streak: §e" + s + "§7)"));
 
             // Kopfgeld Belohnung: 2 Spezial-Items für den Killer!
             if (wasBounty) {
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
                 killer.playSound(killer.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.5f);
-                Bukkit.broadcastMessage("§a[OSOK] 💰 KOPFGELD KASSIERT! §f" + killer.getName() + " §7hat das Kopfgeld auf §e" + victim.getName() + " §7geholt und 2 Spezial-Items kassiert!");
+                Component bcMsg = LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 💰 KOPFGELD KASSIERT! §f" + killer.getName() + " §7hat das Kopfgeld auf §e" + victim.getName() + " §7geholt und 2 Spezial-Items kassiert!");
+                Bukkit.broadcast(bcMsg);
             }
 
             // Alle 3er Streaks zufälliges Spezial-Item verleihen (im STREAK- oder BOTH-Modus)
@@ -112,12 +115,12 @@ public class CombatListener implements Listener {
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, s);
             }
 
-            event.setDeathMessage("§c🎯 " + victim.getName() + " §7wurde von §e" + killer.getName() + " §7ausgeschaltet!");
+            event.deathMessage(LegacyComponentSerializer.legacySection().deserialize("§c🎯 " + victim.getName() + " §7wurde von §e" + killer.getName() + " §7ausgeschaltet!"));
 
             // Prüfen, ob dieser Kill den Match-Sieg auslöst
             plugin.getMatchManager().checkKillWinner(killer, k);
         } else {
-            event.setDeathMessage("§c☠ " + victim.getName() + " §7ist gestorben.");
+            event.deathMessage(LegacyComponentSerializer.legacySection().deserialize("§c☠ " + victim.getName() + " §7ist gestorben."));
         }
 
         // Live-Scoreboard und Tab-Liste für ALLE Online-Spieler aktualisieren
