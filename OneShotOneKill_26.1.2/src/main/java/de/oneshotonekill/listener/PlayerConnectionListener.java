@@ -42,7 +42,11 @@ public class PlayerConnectionListener implements Listener {
                 // Paper API: Asynchrones Teleportieren mit pre-loading
                 player.teleportAsync(loc).thenAccept(success -> {
                     if (success && player.isOnline()) {
-                        plugin.getEquipmentManager().giveOneShotEquipment(player);
+                        if (plugin.getMatchManager().isMatchStarted() && !plugin.getMatchManager().isMatchPaused()) {
+                            plugin.getEquipmentManager().giveOneShotEquipment(player);
+                        } else {
+                            plugin.getEquipmentManager().clearBaseEquipment(player);
+                        }
                         plugin.getScoreboardManager().updateAllScoreboards();
                         plugin.getLogger().info("Spieler " + player.getName() + " wurde auf OSOK Arena (223.5, 48.0, 55.5) teleportiert!");
                     }
@@ -72,7 +76,11 @@ public class PlayerConnectionListener implements Listener {
 
         Player player = event.getPlayer();
         player.getScheduler().runDelayed(plugin, task -> {
-            plugin.getEquipmentManager().giveOneShotEquipment(player);
+            if (plugin.getMatchManager().isMatchStarted() && !plugin.getMatchManager().isMatchPaused()) {
+                plugin.getEquipmentManager().giveOneShotEquipment(player);
+            } else {
+                plugin.getEquipmentManager().clearBaseEquipment(player);
+            }
             plugin.getScoreboardManager().updateAllScoreboards();
         }, null, 2L);
     }

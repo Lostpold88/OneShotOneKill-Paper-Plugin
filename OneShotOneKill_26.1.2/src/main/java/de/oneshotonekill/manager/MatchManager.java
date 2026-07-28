@@ -337,6 +337,7 @@ public class MatchManager {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.showTitle(pauseTitle);
                 p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, SoundCategory.MASTER, 1.0f, 0.8f);
+                plugin.getEquipmentManager().clearBaseEquipment(p);
                 p.teleportAsync(fallback);
             }
 
@@ -356,6 +357,7 @@ public class MatchManager {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.showTitle(resumeTitle);
                 p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.2f);
+                plugin.getEquipmentManager().giveOneShotEquipment(p);
                 Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
                 Location targetLoc = (randomLoc != null) ? randomLoc : fallback;
                 p.teleportAsync(targetLoc);

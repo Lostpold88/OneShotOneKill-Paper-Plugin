@@ -31,6 +31,20 @@ public class CombatListener implements Listener {
 
         if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchPaused() || plugin.getMatchManager().isMatchEnded()) {
             event.setCancelled(true);
+            Player damager = null;
+            if (event.getDamager() instanceof Player attacker) {
+                damager = attacker;
+            } else if (event.getDamager() instanceof Arrow arrow && arrow.getShooter() instanceof Player shooter) {
+                damager = shooter;
+            }
+            if (damager != null) {
+                if (plugin.getMatchManager().isMatchPaused()) {
+                    damager.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ⏸ Das Match ist aktuell pausiert! Kämpfen ist deaktiviert."));
+                } else if (!plugin.getMatchManager().isMatchStarted()) {
+                    damager.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Kämpfen ist deaktiviert. Warte auf /start."));
+                }
+                damager.playSound(damager.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
             return;
         }
 
