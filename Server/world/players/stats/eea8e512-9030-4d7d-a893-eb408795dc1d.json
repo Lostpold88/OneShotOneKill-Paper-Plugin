@@ -4,24 +4,24 @@
       "minecraft:spruce_log": 1,
       "minecraft:glass": 6,
       "minecraft:light_blue_wool": 1,
-      "minecraft:bow": 16
+      "minecraft:bow": 18
     },
     "minecraft:killed_by": {
       "minecraft:player": 1
     },
     "minecraft:custom": {
-      "minecraft:sprint_one_cm": 30742,
-      "minecraft:time_since_rest": 6938,
-      "minecraft:walk_one_cm": 6066,
-      "minecraft:total_world_time": 32489,
-      "minecraft:leave_game": 15,
-      "minecraft:fly_one_cm": 57651,
+      "minecraft:sprint_one_cm": 35358,
+      "minecraft:time_since_rest": 12088,
+      "minecraft:walk_one_cm": 7154,
+      "minecraft:total_world_time": 37639,
+      "minecraft:leave_game": 16,
+      "minecraft:fly_one_cm": 61173,
       "minecraft:damage_taken": 10000,
       "minecraft:sneak_time": 10,
-      "minecraft:play_time": 32489,
+      "minecraft:play_time": 37639,
       "minecraft:deaths": 4,
-      "minecraft:jump": 97,
-      "minecraft:time_since_death": 6915
+      "minecraft:jump": 110,
+      "minecraft:time_since_death": 12065
     },
     "minecraft:picked_up": {
       "minecraft:lightning_rod": 1,

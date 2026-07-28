@@ -62,7 +62,7 @@ public class ScoreboardManager {
         int scorePos = 15;
         addScoreLine(obj, "§7-------------------", scorePos--);
 
-        if (plugin != null && plugin.getMatchManager() != null) {
+        if (plugin != null && plugin.getMatchManager() != null && plugin.getMatchManager().isMatchStarted() && !plugin.getMatchManager().isMatchEnded()) {
             if (plugin.getMatchManager().hasKillLimit()) {
                 addScoreLine(obj, "§e§l🎯 MATCH ZIEL: §f" + plugin.getMatchManager().getKillLimit() + " Kills", scorePos--);
                 addScoreLine(obj, "§7------------------- ", scorePos--);
