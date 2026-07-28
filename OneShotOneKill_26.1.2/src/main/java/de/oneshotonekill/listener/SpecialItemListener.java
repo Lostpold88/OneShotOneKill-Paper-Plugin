@@ -151,9 +151,10 @@ public class SpecialItemListener implements Listener {
                 player.getWorld().spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
 
                 int count = 0;
-                for (Player enemy : Bukkit.getOnlinePlayers()) {
-                    if (!enemy.getUniqueId().equals(player.getUniqueId()) && enemy.getWorld().equals(player.getWorld())) {
-                        enemy.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 600, 0));
+                for (Player enemy : player.getLocation().getNearbyPlayers(200.0)) {
+                    if (!enemy.getUniqueId().equals(player.getUniqueId())) {
+                        // Paper API: particles=false, icon=false -> Das Opfer sieht WEDER Partikel NOCH ein Potion-Icon im HUD!
+                        enemy.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 600, 0, false, false, false));
                         count++;
                     }
                 }
