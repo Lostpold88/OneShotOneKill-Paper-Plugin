@@ -69,7 +69,9 @@ public class OneShotOneKill extends JavaPlugin {
             StartCommand startCommand = new StartCommand(this);
             ClearPfeileCommand clearPfeileCommand = new ClearPfeileCommand(this);
 
-            registerBasic(registrar, "oneshot", "OSOK Hauptbefehl", List.of("osok", "resetstats", "itemmode", "itemmodus", "mode"), osokCommand, osokCommand);
+            registerBasic(registrar, "oneshot", "OSOK Hauptbefehl", List.of("osok"), osokCommand, osokCommand);
+            registerBasic(registrar, "itemmode", "OSOK Item-Modus", List.of("itemmodus", "mode"), osokCommand, osokCommand);
+            registerBasic(registrar, "resetstats", "OSOK Statistiken zurücksetzen", List.of("resetboard"), osokCommand, osokCommand);
             registerBasic(registrar, "start", "OSOK Match starten", List.of(), startCommand, startCommand);
             registerBasic(registrar, "itemtest", "OSOK Spezial-Item Testmenü", List.of("testgui"), itemTestCommand, null);
             registerBasic(registrar, "clearpfeile", "OSOK Pfeile entfernen", List.of(), clearPfeileCommand, null);
@@ -100,15 +102,22 @@ public class OneShotOneKill extends JavaPlugin {
             @Override
             public Collection<String> suggest(CommandSourceStack stack, String[] args) {
                 if (completer != null) {
-                    List<String> list = completer.onTabComplete(stack.getSender(), new Command(name) {
+                    String[] effectiveArgs = (args == null || args.length == 0) ? new String[]{""} : args;
+                    Command dummyCmd = new Command(name) {
                         @Override
                         public boolean execute(CommandSender sender, String commandLabel, String[] args) {
                             return false;
                         }
-                    }, name, args);
+                    };
+                    List<String> list = completer.onTabComplete(stack.getSender(), dummyCmd, name, effectiveArgs);
                     return list != null ? list : List.of();
                 }
                 return List.of();
+            }
+
+            @Override
+            public boolean canUse(CommandSender sender) {
+                return true;
             }
         });
     }
