@@ -18,7 +18,6 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -86,7 +85,7 @@ public class SpecialItemListener implements Listener {
     public void onItemPickup(org.bukkit.event.entity.EntityPickupItemEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
         Item item = event.getItem();
-        if (item.hasMetadata("osok_ground_special")) {
+        if (item.getPersistentDataContainer().has(KillstreakManager.KEY_GROUND_SPECIAL_PDC, PersistentDataType.BYTE)) {
             ItemMeta meta = item.getItemStack().hasItemMeta() ? item.getItemStack().getItemMeta() : null;
             Component nameComp = meta != null && meta.hasDisplayName() ? meta.displayName() : Component.text("Spezial-Item");
             
@@ -232,7 +231,7 @@ public class SpecialItemListener implements Listener {
                 consumeItem(player, item);
 
                 EnderPearl pearl = player.launchProjectile(EnderPearl.class, player.getEyeLocation().getDirection().multiply(1.8));
-                pearl.setMetadata("osok_tp_grenade", new FixedMetadataValue(plugin, true));
+                pearl.getPersistentDataContainer().set(KillstreakManager.KEY_TP_GRENADE_PDC, PersistentDataType.BYTE, (byte) 1);
                 player.playSound(player.getLocation(), Sound.ENTITY_ENDER_PEARL_THROW, SoundCategory.MASTER, 1.0f, 1.0f);
                 player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🌀 Teleport-Granate geworfen!"));
                 return;
@@ -330,21 +329,21 @@ public class SpecialItemListener implements Listener {
         // Kettenblitz-Schuss
         if (plugin.getKillstreakManager().hasChainLightningShot(shooter.getUniqueId())) {
             plugin.getKillstreakManager().removeChainLightningShot(shooter.getUniqueId());
-            event.getProjectile().setMetadata("osok_chain_lightning", new FixedMetadataValue(plugin, true));
+            event.getProjectile().getPersistentDataContainer().set(KillstreakManager.KEY_CHAIN_LIGHTNING_PDC, PersistentDataType.BYTE, (byte) 1);
             return;
         }
 
         // Explosiv-Schuss
         if (plugin.getKillstreakManager().hasExplosiveShot(shooter.getUniqueId())) {
             plugin.getKillstreakManager().removeExplosiveShot(shooter.getUniqueId());
-            event.getProjectile().setMetadata("osok_explosive", new FixedMetadataValue(plugin, true));
+            event.getProjectile().getPersistentDataContainer().set(KillstreakManager.KEY_EXPLOSIVE_PDC, PersistentDataType.BYTE, (byte) 1);
         }
     }
 
     @EventHandler
     public void onProjectileHit(ProjectileHitEvent event) {
         // Teleport-Granate Einschlag
-        if (event.getEntity() instanceof EnderPearl pearl && pearl.hasMetadata("osok_tp_grenade")) {
+        if (event.getEntity() instanceof EnderPearl pearl && pearl.getPersistentDataContainer().has(KillstreakManager.KEY_TP_GRENADE_PDC, PersistentDataType.BYTE)) {
             Location loc = pearl.getLocation();
             loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 2);
             loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 1.0f, 1.5f);
@@ -362,7 +361,7 @@ public class SpecialItemListener implements Listener {
         }
 
         // Kettenblitz-Pfeil
-        if (event.getEntity() instanceof Arrow arrow && arrow.hasMetadata("osok_chain_lightning")) {
+        if (event.getEntity() instanceof Arrow arrow && arrow.getPersistentDataContainer().has(KillstreakManager.KEY_CHAIN_LIGHTNING_PDC, PersistentDataType.BYTE)) {
             Location loc = arrow.getLocation();
             loc.getWorld().strikeLightningEffect(loc);
 
@@ -382,7 +381,7 @@ public class SpecialItemListener implements Listener {
         }
 
         // Explosiv-Pfeil
-        if (event.getEntity() instanceof Arrow arrow && arrow.hasMetadata("osok_explosive")) {
+        if (event.getEntity() instanceof Arrow arrow && arrow.getPersistentDataContainer().has(KillstreakManager.KEY_EXPLOSIVE_PDC, PersistentDataType.BYTE)) {
             Location loc = arrow.getLocation();
             loc.getWorld().createExplosion(loc, 0.0f, false, false);
             loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 3);

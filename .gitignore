@@ -5,3 +5,5 @@ Server/logs/*
 Server/crash-reports/*
 Server/usercache.json
 Server/session.lock
+Server/world/session.lock
+Server/world/dimensions/minecraft/osok/session.lock
