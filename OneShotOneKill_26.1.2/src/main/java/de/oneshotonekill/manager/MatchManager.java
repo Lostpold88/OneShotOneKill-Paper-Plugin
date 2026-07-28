@@ -65,7 +65,7 @@ public class MatchManager {
     }
 
     public boolean hasTimeLimit() {
-        return timeLimitSeconds > 0 && timerTask != null;
+        return timeLimitSeconds > 0 && remainingSeconds > 0;
     }
 
     public void setKillLimit(int kills) {
@@ -81,7 +81,7 @@ public class MatchManager {
         this.matchEnded = false;
 
         plugin.getScoreboardManager().updateAllScoreboards();
-        broadcast("§e[OSOK] 🎯 Match-Ziel gesetzt: §a§l" + kills + " Kills§7!");
+        broadcast("§e[OSOK] 🎯 Match-Ziel gesetzt: §a§l" + kills + " Kills§7 (wird bei /start aktiv)!");
     }
 
     public void setTimeLimitMinutes(int minutes) {
@@ -96,9 +96,11 @@ public class MatchManager {
         this.remainingSeconds = this.timeLimitSeconds;
         this.matchEnded = false;
 
-        startTimer();
+        if (matchStarted) {
+            startTimer();
+        }
         plugin.getScoreboardManager().updateAllScoreboards();
-        broadcast("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + minutes + " Minuten§7!");
+        broadcast("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + minutes + " Minuten§7 (wird bei /start aktiv)!");
     }
 
     public void setTimeLimitSeconds(int seconds) {
@@ -113,9 +115,11 @@ public class MatchManager {
         this.remainingSeconds = this.timeLimitSeconds;
         this.matchEnded = false;
 
-        startTimer();
+        if (matchStarted) {
+            startTimer();
+        }
         plugin.getScoreboardManager().updateAllScoreboards();
-        broadcast("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + formatTime(seconds) + "§7 (" + seconds + " Sekunden)!");
+        broadcast("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + formatTime(seconds) + "§7 (" + seconds + "s) (wird bei /start aktiv)!");
     }
 
     public void resetLimits() {
