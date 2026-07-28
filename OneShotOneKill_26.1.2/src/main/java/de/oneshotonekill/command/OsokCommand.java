@@ -39,7 +39,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 0) {
             player.sendMessage("§e§l=======================================");
-            player.sendMessage("§a§l🎯 ONESHOT-ONEKILL SYSTEM");
+            player.sendMessage("§a§l🎯 OSOK SYSTEM");
             player.sendMessage("§e§l=======================================");
             player.sendMessage("§7/start §8- §fMatch starten & alle zufällig in die Arena spawnen");
             player.sendMessage("§7/osok dauer [kills|zeit|off] [Anzahl] §8- §fMatch-Dauer/Ziel festlegen");
@@ -88,7 +88,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             plugin.getWorldManager().setSpawnLocation(player.getLocation());
-            player.sendMessage("§a[OneShot] Neuer Arena-Spawnpunkt gesetzt!");
+            player.sendMessage("§a[OSOK] Neuer Arena-Spawnpunkt gesetzt!");
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 2.0f);
             return true;
         }
@@ -99,7 +99,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             plugin.getScoreboardManager().resetAllStats();
-            Bukkit.broadcastMessage("§e[OneShot] 🔄 Die Statistiken und das Scoreboard wurden zurückgesetzt!");
+            Bukkit.broadcastMessage("§e[OSOK] 🔄 Die Statistiken und das Scoreboard wurden zurückgesetzt!");
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
             }
@@ -111,9 +111,9 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
                 player.sendMessage("§cDazu hast du keine Rechte.");
                 return true;
             }
-            Bukkit.broadcastMessage("§e[OneShot] Die Arena-Map wird zurückgesetzt! Server startet neu...");
+            Bukkit.broadcastMessage("§e[OSOK] Die Arena-Map wird zurückgesetzt! Server startet neu...");
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.kickPlayer("§a[OneShot] Arena-Map wird zurückgesetzt!\n§7Der Server startet jetzt neu...");
+                p.kickPlayer("§a[OSOK] Arena-Map wird zurückgesetzt!\n§7Der Server startet jetzt neu...");
             }
             Bukkit.shutdown();
             return true;
@@ -129,7 +129,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            player.sendMessage("§e[OneShot] Verwende: §f/osok dauer [kills|zeit|off] [Wert]");
+            player.sendMessage("§e[OSOK] Verwende: §f/osok dauer [kills|zeit|off] [Wert]");
             player.sendMessage("§7Beispiel: §f/osok dauer kills 20 §7(Ziel: 20 Kills)");
             player.sendMessage("§7Beispiel: §f/osok dauer zeit 10 §7(Ziel: 10 Minuten)");
             player.sendMessage("§7Beispiel: §f/osok dauer off §7(Limits zurücksetzen)");
@@ -144,28 +144,28 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
 
         if (type.equals("kills") || type.equals("kill") || type.equals("k")) {
             if (args.length < 2) {
-                player.sendMessage("§c[OneShot] Bitte gib die Anzahl der Kills an (z. B. /osok dauer kills 20).");
+                player.sendMessage("§c[OSOK] Bitte gib die Anzahl der Kills an (z. B. /osok dauer kills 20).");
                 return true;
             }
             try {
                 int kills = Integer.parseInt(args[1]);
                 plugin.getMatchManager().setKillLimit(kills);
             } catch (NumberFormatException e) {
-                player.sendMessage("§c[OneShot] Ungültige Zahl: " + args[1]);
+                player.sendMessage("§c[OSOK] Ungültige Zahl: " + args[1]);
             }
             return true;
         }
 
         if (type.equals("zeit") || type.equals("time") || type.equals("minuten") || type.equals("m")) {
             if (args.length < 2) {
-                player.sendMessage("§c[OneShot] Bitte gib die Dauer in Minuten an (z. B. /osok dauer zeit 10).");
+                player.sendMessage("§c[OSOK] Bitte gib die Dauer in Minuten an (z. B. /osok dauer zeit 10).");
                 return true;
             }
             try {
                 int minutes = Integer.parseInt(args[1]);
                 plugin.getMatchManager().setTimeLimitMinutes(minutes);
             } catch (NumberFormatException e) {
-                player.sendMessage("§c[OneShot] Ungültige Zahl: " + args[1]);
+                player.sendMessage("§c[OSOK] Ungültige Zahl: " + args[1]);
             }
             return true;
         }
@@ -191,7 +191,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             return true;
         } catch (NumberFormatException ignored) {}
 
-        player.sendMessage("§c[OneShot] Ungültiger Parameter. Verwende: /osok dauer [kills|zeit|off] [Wert]");
+        player.sendMessage("§c[OSOK] Ungültiger Parameter. Verwende: /osok dauer [kills|zeit|off] [Wert]");
         return true;
     }
 
@@ -205,25 +205,25 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             String modeArg = args[0].toLowerCase();
             if (modeArg.equals("spawn") || modeArg.equals("map") || modeArg.equals("ground")) {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.SPAWN);
-                Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lMAP-SPAWN §7(Items spawnen alle 30s als Mario Kart Boxen!)");
+                Bukkit.broadcastMessage("§e[OSOK] ⚙ Spezial-Item Modus gewechselt zu: §a§lMAP-SPAWN §7(Items spawnen alle 30s als Mario Kart Boxen!)");
             } else if (modeArg.equals("both") || modeArg.equals("kombi") || modeArg.equals("all")) {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.BOTH);
-                Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lKOMBI-MODUS §7(Streaks + 30s Map-Spawns gleichzeitig!)");
+                Bukkit.broadcastMessage("§e[OSOK] ⚙ Spezial-Item Modus gewechselt zu: §a§lKOMBI-MODUS §7(Streaks + 30s Map-Spawns gleichzeitig!)");
             } else {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.STREAK);
-                Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lKILLSTREAK §7(Items nur alle 3 Kills!)");
+                Bukkit.broadcastMessage("§e[OSOK] ⚙ Spezial-Item Modus gewechselt zu: §a§lKILLSTREAK §7(Items nur alle 3 Kills!)");
             }
         } else {
             KillstreakManager.ItemMode current = plugin.getKillstreakManager().getItemMode();
             if (current == KillstreakManager.ItemMode.STREAK) {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.SPAWN);
-                Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lMAP-SPAWN §7(Items spawnen alle 30s als Mario Kart Boxen!)");
+                Bukkit.broadcastMessage("§e[OSOK] ⚙ Spezial-Item Modus gewechselt zu: §a§lMAP-SPAWN §7(Items spawnen alle 30s als Mario Kart Boxen!)");
             } else if (current == KillstreakManager.ItemMode.SPAWN) {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.BOTH);
-                Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lKOMBI-MODUS §7(Streaks + 30s Map-Spawns gleichzeitig!)");
+                Bukkit.broadcastMessage("§e[OSOK] ⚙ Spezial-Item Modus gewechselt zu: §a§lKOMBI-MODUS §7(Streaks + 30s Map-Spawns gleichzeitig!)");
             } else {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.STREAK);
-                Bukkit.broadcastMessage("§e[OneShot] ⚙ Spezial-Item Modus gewechselt zu: §a§lKILLSTREAK §7(Items nur alle 3 Kills!)");
+                Bukkit.broadcastMessage("§e[OSOK] ⚙ Spezial-Item Modus gewechselt zu: §a§lKILLSTREAK §7(Items nur alle 3 Kills!)");
             }
         }
         for (Player p : Bukkit.getOnlinePlayers()) {

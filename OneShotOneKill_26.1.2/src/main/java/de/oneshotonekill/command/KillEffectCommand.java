@@ -95,7 +95,7 @@ public class KillEffectCommand implements CommandExecutor, Listener, TabComplete
                 if (chosen != null) {
                     plugin.getKillEffectManager().setSelectedEffect(player.getUniqueId(), chosen);
                     player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1.0f, 1.5f);
-                    player.sendMessage("§a[OneShot] 💥 Kill-Effekt geändert zu: " + chosen.getDisplayName());
+                    player.sendMessage("§a[OSOK] 💥 Kill-Effekt geändert zu: " + chosen.getDisplayName());
                     openEffectGui(player);
                 }
             }

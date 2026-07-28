@@ -49,7 +49,7 @@ public class ScoreboardManager {
         if (mgr == null) return;
 
         Scoreboard board = mgr.getNewScoreboard();
-        Objective obj = board.registerNewObjective("oneshot", "dummy", "§e§l🎯 ONESHOT ONEKILL");
+        Objective obj = board.registerNewObjective("oneshot", "dummy", "§e§l🎯 OSOK");
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
         hideRedNumbers(obj);
 
@@ -124,7 +124,7 @@ public class ScoreboardManager {
     }
 
     public void updateTabList(Player player) {
-        String header = "\n§e§l🎯 ONESHOT ONEKILL §7| §cMATCH STATS\n";
+        String header = "\n§e§l🎯 OSOK §7| §cMATCH STATS\n";
         String footer = "\n§7Scoreboard & Leaderboard\n";
         
         player.setPlayerListHeaderFooter(header, footer);
@@ -186,7 +186,7 @@ public class ScoreboardManager {
             bountyTargets.add(uuid);
             Player p = Bukkit.getPlayer(uuid);
             String pName = p != null ? p.getName() : "Ein Spieler";
-            Bukkit.broadcastMessage("§e[OneShot] 👑 KOPFGELD AUSGESETZT! §f" + pName + " §7hat eine §l5er Killstreak §7erreicht! Eliminiere ihn für 2 Spezial-Items!");
+            Bukkit.broadcastMessage("§e[OSOK] 👑 KOPFGELD AUSGESETZT! §f" + pName + " §7hat eine §l5er Killstreak §7erreicht! Eliminiere ihn für 2 Spezial-Items!");
             for (Player online : Bukkit.getOnlinePlayers()) {
                 online.playSound(online.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 0.6f, 1.8f);
             }

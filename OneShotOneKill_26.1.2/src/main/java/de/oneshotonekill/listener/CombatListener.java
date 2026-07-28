@@ -56,9 +56,9 @@ public class CombatListener implements Listener {
                 plugin.getKillstreakManager().removeShield(target.getUniqueId());
                 event.setCancelled(true);
                 target.playSound(target.getLocation(), Sound.ITEM_SHIELD_BREAK, SoundCategory.MASTER, 1.0f, 1.0f);
-                target.sendMessage("§b[OneShot] [🛡] Dein Reflektor-Schild hat den tödlichen Treffer abgewehrt!");
+                target.sendMessage("§b[OSOK] [🛡] Dein Reflektor-Schild hat den tödlichen Treffer abgewehrt!");
                 damager.playSound(damager.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER, 1.0f, 0.8f);
-                damager.sendMessage("§c[OneShot] [🛡] Treffer abgeprallt! " + target.getName() + " hatte ein Reflektor-Schild!");
+                damager.sendMessage("§c[OSOK] [🛡] Treffer abgeprallt! " + target.getName() + " hatte ein Reflektor-Schild!");
                 return;
             }
 
@@ -96,14 +96,14 @@ public class CombatListener implements Listener {
             plugin.getKillEffectManager().playKillEffect(killer, victim.getLocation());
 
             killer.playSound(killer.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER, 1.0f, 1.2f);
-            killer.sendMessage("§a[OneShot] Du hast §e" + victim.getName() + " §aeliminiert! §7(Streak: §e" + s + "§7)");
+            killer.sendMessage("§a[OSOK] Du hast §e" + victim.getName() + " §aeliminiert! §7(Streak: §e" + s + "§7)");
 
             // Kopfgeld Belohnung: 2 Spezial-Items für den Killer!
             if (wasBounty) {
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
                 killer.playSound(killer.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.5f);
-                Bukkit.broadcastMessage("§a[OneShot] 💰 KOPFGELD KASSIERT! §f" + killer.getName() + " §7hat das Kopfgeld auf §e" + victim.getName() + " §7geholt und 2 Spezial-Items kassiert!");
+                Bukkit.broadcastMessage("§a[OSOK] 💰 KOPFGELD KASSIERT! §f" + killer.getName() + " §7hat das Kopfgeld auf §e" + victim.getName() + " §7geholt und 2 Spezial-Items kassiert!");
             }
 
             // Alle 3er Streaks zufälliges Spezial-Item verleihen (im STREAK- oder BOTH-Modus)
