@@ -127,7 +127,7 @@ public class SpecialItemListener implements Listener {
                 player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❄ Du bist in eine Frost-Trap getreten und für 7s eingefroren!"));
 
                 // Nach 7 Sekunden (140 Ticks) verschwindet die Druckplatte
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
                     if (block.getType() == Material.HEAVY_WEIGHTED_PRESSURE_PLATE || block.getType().name().contains("PRESSURE_PLATE")) {
                         block.setType(Material.AIR);
                         block.getWorld().spawnParticle(Particle.SNOWFLAKE, block.getLocation().add(0.5, 0.2, 0.5), 15, 0.2, 0.2, 0.2, 0.05);
@@ -254,7 +254,7 @@ public class SpecialItemListener implements Listener {
                 player.playSound(player.getLocation(), Sound.ENTITY_PHANTOM_FLAP, SoundCategory.MASTER, 1.0f, 1.5f);
                 player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] ✦ Unsichtbarkeits-Mantel aktiviert! Du bist für 15s komplett unsichtbar (Vanish)."));
 
-                Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                player.getScheduler().runDelayed(plugin, task -> {
                     if (vanishedPlayers.remove(player.getUniqueId())) {
                         if (player.isOnline()) {
                             for (Player other : Bukkit.getOnlinePlayers()) {
@@ -263,7 +263,7 @@ public class SpecialItemListener implements Listener {
                             player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ✦ Unsichtbarkeits-Mantel abgelaufen."));
                         }
                     }
-                }, 300L); // 15 Sekunden
+                }, null, 300L); // 15 Sekunden
                 return;
             }
 
@@ -299,7 +299,7 @@ public class SpecialItemListener implements Listener {
                 player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] ★ Raketen-Sprung! Du hast 20 Sekunden Air-Sprint & Fallschutz."));
 
                 noFallPlayers.add(player.getUniqueId());
-                Bukkit.getScheduler().runTaskLater(plugin, () -> noFallPlayers.remove(player.getUniqueId()), 400L); // 20 Sekunden
+                player.getScheduler().runDelayed(plugin, task -> noFallPlayers.remove(player.getUniqueId()), null, 400L); // 20 Sekunden
                 return;
             }
         }

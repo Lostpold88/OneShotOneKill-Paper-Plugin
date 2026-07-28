@@ -33,7 +33,7 @@ public class PlayerConnectionListener implements Listener {
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.0f, 1.5f);
         }
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        player.getScheduler().runDelayed(plugin, task -> {
             World targetWorld = plugin.getWorldManager().getOsokWorld();
             if (targetWorld != null && player.isOnline()) {
                 Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
@@ -48,7 +48,7 @@ public class PlayerConnectionListener implements Listener {
                     }
                 });
             }
-        }, 5L);
+        }, null, 5L);
     }
 
     @EventHandler
@@ -56,7 +56,7 @@ public class PlayerConnectionListener implements Listener {
         Player player = event.getPlayer();
         event.quitMessage(LegacyComponentSerializer.legacySection().deserialize("§c[❌] §f" + player.getName() + " §7hat §e§lOSOK §7verlassen."));
 
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
             plugin.getScoreboardManager().updateAllScoreboards();
         }, 2L);
     }
@@ -71,10 +71,10 @@ public class PlayerConnectionListener implements Listener {
         }
 
         Player player = event.getPlayer();
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        player.getScheduler().runDelayed(plugin, task -> {
             plugin.getEquipmentManager().giveOneShotEquipment(player);
             plugin.getScoreboardManager().updateAllScoreboards();
-        }, 2L);
+        }, null, 2L);
     }
 
     @EventHandler
