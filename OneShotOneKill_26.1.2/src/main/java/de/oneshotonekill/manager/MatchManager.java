@@ -264,7 +264,7 @@ public class MatchManager {
 
                 step++;
             }
-        }.runTaskTimer(plugin, 0L, 2L); // 2 Ticks pro Note = Schnelles Megalovania Tempo!
+        }.runTaskTimer(plugin, 0L, 3L); // 3 Ticks pro Note = Angenehmes, etwas langsameres Megalovania Tempo!
     }
 
     public void restartMatch(Player sender) {
