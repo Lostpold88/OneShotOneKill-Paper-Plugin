@@ -44,6 +44,7 @@ if (!(Test-Path "e:\OneShotOneKill\Server\plugins")) {
     New-Item -ItemType Directory -Path "e:\OneShotOneKill\Server\plugins" | Out-Null
 }
 Copy-Item -Path $jarTarget -Destination $pluginTarget -Force
+Set-Location -Path "e:\OneShotOneKill"
 
 Write-Host "==============================================="
 Write-Host " BUILD & PACKAGING SUCCESSFUL! "
