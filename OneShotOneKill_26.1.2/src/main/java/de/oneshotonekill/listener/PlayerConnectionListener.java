@@ -1,6 +1,7 @@
 package de.oneshotonekill.listener;
 
 import de.oneshotonekill.OneShotOneKill;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -26,7 +27,7 @@ public class PlayerConnectionListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        event.setJoinMessage("§a[✦] §f" + player.getName() + " §7hat §e§lOSOK §7betreten!");
+        event.joinMessage(LegacyComponentSerializer.legacySection().deserialize("§a[✦] §f" + player.getName() + " §7hat §e§lOSOK §7betreten!"));
 
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.0f, 1.5f);
@@ -37,10 +38,15 @@ public class PlayerConnectionListener implements Listener {
             if (targetWorld != null && player.isOnline()) {
                 Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
                 Location loc = (spawnLoc != null) ? spawnLoc : new Location(targetWorld, 223.5, 48.0, 55.5);
-                player.teleport(loc);
-                plugin.getEquipmentManager().giveOneShotEquipment(player);
-                plugin.getScoreboardManager().updateAllScoreboards();
-                plugin.getLogger().info("Spieler " + player.getName() + " wurde auf OSOK Arena (223.5, 48.0, 55.5) teleportiert!");
+                
+                // Paper API: Asynchrones Teleportieren mit pre-loading
+                player.teleportAsync(loc).thenAccept(success -> {
+                    if (success && player.isOnline()) {
+                        plugin.getEquipmentManager().giveOneShotEquipment(player);
+                        plugin.getScoreboardManager().updateAllScoreboards();
+                        plugin.getLogger().info("Spieler " + player.getName() + " wurde auf OSOK Arena (223.5, 48.0, 55.5) teleportiert!");
+                    }
+                });
             }
         }, 5L);
     }
@@ -48,7 +54,7 @@ public class PlayerConnectionListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        event.setQuitMessage("§c[❌] §f" + player.getName() + " §7hat §e§lOSOK §7verlassen.");
+        event.quitMessage(LegacyComponentSerializer.legacySection().deserialize("§c[❌] §f" + player.getName() + " §7hat §e§lOSOK §7verlassen."));
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             plugin.getScoreboardManager().updateAllScoreboards();
@@ -77,19 +83,23 @@ public class PlayerConnectionListener implements Listener {
         Player player = event.getPlayer();
 
         if (plugin.getArenaManager().isInArenaArea(player.getLocation())) {
-            player.sendMessage("§c[OSOK] ❌ Du bist bereits im Bereich der Arena! Random-TP ist während des Kampfs deaktiviert.");
+            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Du bist bereits im Bereich der Arena! Random-TP ist während des Kampfs deaktiviert."));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
 
         Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
         if (randomLoc != null) {
-            player.teleport(randomLoc);
-            plugin.getEquipmentManager().giveOneShotEquipment(player);
-            plugin.getScoreboardManager().updateAllScoreboards();
-            player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.MASTER, 1.0f, 1.2f);
+            // Paper API: Asynchrones Teleportieren ohne Main-Thread Lags
+            player.teleportAsync(randomLoc).thenAccept(success -> {
+                if (success && player.isOnline()) {
+                    plugin.getEquipmentManager().giveOneShotEquipment(player);
+                    plugin.getScoreboardManager().updateAllScoreboards();
+                    player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.MASTER, 1.0f, 1.2f);
+                }
+            });
         } else {
-            player.sendMessage("§c[OSOK] Arena-Welt ist aktuell nicht geladen.");
+            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] Arena-Welt ist aktuell nicht geladen."));
         }
     }
 }

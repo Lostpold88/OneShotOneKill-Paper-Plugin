@@ -1,6 +1,10 @@
 package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.title.Title;
+import net.kyori.adventure.util.Ticks;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
@@ -55,6 +59,10 @@ public class MatchManager {
     }
 
     public void setKillLimit(int kills) {
+        if (kills <= 0) {
+            resetLimits();
+            return;
+        }
         stopTimer();
         stopVictoryTasks();
         this.killLimit = kills;
@@ -63,10 +71,14 @@ public class MatchManager {
         this.matchEnded = false;
 
         plugin.getScoreboardManager().updateAllScoreboards();
-        Bukkit.broadcastMessage("§e[OSOK] 🎯 Match-Ziel gesetzt: §a§l" + kills + " Kills§7!");
+        broadcast("§e[OSOK] 🎯 Match-Ziel gesetzt: §a§l" + kills + " Kills§7!");
     }
 
     public void setTimeLimitMinutes(int minutes) {
+        if (minutes <= 0) {
+            resetLimits();
+            return;
+        }
         stopTimer();
         stopVictoryTasks();
         this.killLimit = 0;
@@ -76,7 +88,7 @@ public class MatchManager {
 
         startTimer();
         plugin.getScoreboardManager().updateAllScoreboards();
-        Bukkit.broadcastMessage("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + minutes + " Minuten§7!");
+        broadcast("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + minutes + " Minuten§7!");
     }
 
     public void resetLimits() {
@@ -88,7 +100,7 @@ public class MatchManager {
         this.matchEnded = false;
 
         plugin.getScoreboardManager().updateAllScoreboards();
-        Bukkit.broadcastMessage("§e[OSOK] 🔄 Match-Limits (Kills & Zeit) wurden deaktiviert.");
+        broadcast("§e[OSOK] 🔄 Match-Limits (Kills & Zeit) wurden deaktiviert.");
     }
 
     private void startTimer() {
@@ -107,7 +119,7 @@ public class MatchManager {
                     cancel();
                     triggerTimeLimitWinner();
                 } else if (remainingSeconds == 60 || remainingSeconds == 30 || remainingSeconds == 10 || remainingSeconds <= 5) {
-                    Bukkit.broadcastMessage("§c[OSOK] ⏱ Noch §e" + formatTime(remainingSeconds) + " §cVerbleibend!");
+                    broadcast("§c[OSOK] ⏱ Noch §e" + formatTime(remainingSeconds) + " §cVerbleibend!");
                     for (Player p : Bukkit.getOnlinePlayers()) {
                         p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
                     }
@@ -152,7 +164,7 @@ public class MatchManager {
         if (winner != null) {
             celebrateWinner(winner);
         } else {
-            Bukkit.broadcastMessage("§c[OSOK] ⏱ Die Zeit ist abgelaufen! Keines Match-Ergebnis.");
+            broadcast("§c[OSOK] ⏱ Die Zeit ist abgelaufen! Keines Match-Ergebnis.");
         }
     }
 
@@ -162,20 +174,25 @@ public class MatchManager {
 
         int winnerKills = plugin.getScoreboardManager().getKills(winner.getUniqueId());
 
+        Component mainTitle = LegacyComponentSerializer.legacySection().deserialize("§e§l🏆 GEWINNER!");
+        Component subTitle = LegacyComponentSerializer.legacySection().deserialize("§f" + winner.getName() + " §7hat gewonnen! (§a" + winnerKills + " Kills§7)");
+        Title.Times times = Title.Times.times(Ticks.duration(10), Ticks.duration(200), Ticks.duration(20));
+        Title winnerTitle = Title.title(mainTitle, subTitle, times);
+
         // Bildschirm-Banner für ALLE Spieler
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.sendTitle("§e§l🏆 GEWINNER!", "§f" + winner.getName() + " §7hat gewonnen! (§a" + winnerKills + " Kills§7)", 10, 200, 20);
+            p.showTitle(winnerTitle);
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 1.0f, 1.0f);
         }
 
         // Chat Ankündigung & Rangliste
-        Bukkit.broadcastMessage(" ");
-        Bukkit.broadcastMessage("§a§l=======================================");
-        Bukkit.broadcastMessage("§e§l   🏆 MATCH BEENDET - MATCH GEWINNER!   ");
-        Bukkit.broadcastMessage("§f  Gewinner: §e§l" + winner.getName() + " §7mit §a§l" + winnerKills + " Kills§7!");
-        Bukkit.broadcastMessage("§7  Starte ein neues Match mit: §e/start");
-        Bukkit.broadcastMessage("§a§l=======================================");
-        Bukkit.broadcastMessage(" ");
+        broadcast(" ");
+        broadcast("§a§l=======================================");
+        broadcast("§e§l   🏆 MATCH BEENDET - MATCH GEWINNER!   ");
+        broadcast("§f  Gewinner: §e§l" + winner.getName() + " §7mit §a§l" + winnerKills + " Kills§7!");
+        broadcast("§7  Starte ein neues Match mit: §e/start");
+        broadcast("§a§l=======================================");
+        broadcast(" ");
 
         // Gewinner Effekte
         winner.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 7200, 0));
@@ -222,9 +239,7 @@ public class MatchManager {
     }
 
     private void playMegalovaniaSong() {
-        // Megalovania Noteblock-Töne laut Noten-Diagramm
-        // Tempo: 2.5 Game-Ticks (125ms) pro Redstone-Stufe – der perfekte Mittelweg!
-        int[] startClicks = new int[]{ 6, 4, 3, 2 }; // 1. D,D | 2. C,C | 3. H,H | 4. B,B
+        int[] startClicks = new int[]{ 6, 4, 3, 2 };
         int[] noteClicks = new int[170];
         java.util.Arrays.fill(noteClicks, -1);
 
@@ -274,14 +289,24 @@ public class MatchManager {
         Location spawn = plugin.getWorldManager().getSpawnLocation();
         int count = 0;
 
+        Title.Times times = Title.Times.times(Ticks.duration(10), Ticks.duration(40), Ticks.duration(10));
+        Title newMatchTitle = Title.title(
+                LegacyComponentSerializer.legacySection().deserialize("§a§lNEUES MATCH!"),
+                LegacyComponentSerializer.legacySection().deserialize("§7OneShotOneKill gestartet"),
+                times
+        );
+
         for (Player p : Bukkit.getOnlinePlayers()) {
             Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
             Location targetLoc = (randomLoc != null) ? randomLoc : spawn;
             if (targetLoc != null) {
-                p.teleport(targetLoc);
-                plugin.getEquipmentManager().giveOneShotEquipment(p);
-                p.sendTitle("§a§lNEUES MATCH!", "§7OneShotOneKill gestartet", 10, 40, 10);
-                p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 0.5f, 1.5f);
+                p.teleportAsync(targetLoc).thenAccept(success -> {
+                    if (success && p.isOnline()) {
+                        plugin.getEquipmentManager().giveOneShotEquipment(p);
+                        p.showTitle(newMatchTitle);
+                        p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 0.7f, 1.2f);
+                    }
+                });
                 count++;
             }
         }
@@ -293,16 +318,20 @@ public class MatchManager {
 
         plugin.getScoreboardManager().updateAllScoreboards();
 
-        Bukkit.broadcastMessage(" ");
-        Bukkit.broadcastMessage("§a§l=======================================");
-        Bukkit.broadcastMessage("§e§l   🚀 MATCH NEU GESTARTET!   ");
-        Bukkit.broadcastMessage("§7" + count + " Spieler wurden zufällig in der Arena platziert!");
-        Bukkit.broadcastMessage("§a§l=======================================");
+        broadcast(" ");
+        broadcast("§a§l=======================================");
+        broadcast("§e§l   🚀 MATCH NEU GESTARTET!   ");
+        broadcast("§7" + count + " Spieler wurden zufällig in der Arena platziert!");
+        broadcast("§a§l=======================================");
     }
 
     public String formatTime(int totalSeconds) {
         int mins = totalSeconds / 60;
         int secs = totalSeconds % 60;
         return String.format("%02d:%02d", mins, secs);
+    }
+
+    private void broadcast(String message) {
+        Bukkit.broadcast(LegacyComponentSerializer.legacySection().deserialize(message));
     }
 }

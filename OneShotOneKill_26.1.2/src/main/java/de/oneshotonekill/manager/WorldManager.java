@@ -29,11 +29,15 @@ public class WorldManager {
     public void setupWorld() {
         File containerDir = Bukkit.getWorldContainer();
         File mapFolder = new File(containerDir, "OSOK");
+        File migratedFolder = new File(containerDir, "world/dimensions/minecraft/osok");
 
         plugin.getLogger().info("Entpacke saubere OSOK Map aus der JAR...");
         try {
             if (mapFolder.exists()) {
                 deleteDirectory(mapFolder);
+            }
+            if (migratedFolder.exists()) {
+                deleteDirectory(migratedFolder);
             }
             extractEmbeddedMap(mapFolder);
             plugin.getLogger().info("OSOK Map erfolgreich entpackt!");
@@ -47,16 +51,9 @@ public class WorldManager {
 
         if (osokWorld != null) {
             osokWorld.setGameRule(GameRule.KEEP_INVENTORY, true);
-            try {
-                GameRule ruleMob = GameRule.getByName("doMobSpawning");
-                if (ruleMob != null) osokWorld.setGameRule(ruleMob, false);
-                GameRule rulePatrol = GameRule.getByName("doPatrolSpawning");
-                if (rulePatrol != null) osokWorld.setGameRule(rulePatrol, false);
-                GameRule ruleTrader = GameRule.getByName("doTraderSpawning");
-                if (ruleTrader != null) osokWorld.setGameRule(ruleTrader, false);
-                GameRule ruleLocator = GameRule.getByName("locator_bar");
-                if (ruleLocator != null) osokWorld.setGameRule(ruleLocator, false);
-            } catch (Exception ignored) {}
+            osokWorld.setGameRule(GameRule.DO_MOB_SPAWNING, false);
+            osokWorld.setGameRule(GameRule.DO_PATROL_SPAWNING, false);
+            osokWorld.setGameRule(GameRule.DO_TRADER_SPAWNING, false);
 
             osokWorld.setTime(6000); // Mittag
 
@@ -101,18 +98,23 @@ public class WorldManager {
             ZipEntry entry;
             byte[] buffer = new byte[8192];
             while ((entry = zis.getNextEntry()) != null) {
-                File file = new File(targetDir, entry.getName());
-                if (entry.isDirectory()) {
+                String name = entry.getName();
+                File file = new File(targetDir, name);
+                if (entry.isDirectory() || name.endsWith("/") || name.endsWith("\\")) {
                     file.mkdirs();
                 } else {
                     File parent = file.getParentFile();
                     if (parent != null && !parent.exists()) {
                         parent.mkdirs();
                     }
-                    try (FileOutputStream fos = new FileOutputStream(file)) {
-                        int len;
-                        while ((len = zis.read(buffer)) > 0) {
-                            fos.write(buffer, 0, len);
+                    if (entry.getSize() == 0 && !name.contains(".")) {
+                        file.mkdirs();
+                    } else {
+                        try (FileOutputStream fos = new FileOutputStream(file)) {
+                            int len;
+                            while ((len = zis.read(buffer)) > 0) {
+                                fos.write(buffer, 0, len);
+                            }
                         }
                     }
                 }
