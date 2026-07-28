@@ -8,6 +8,10 @@ import org.bukkit.inventory.meta.ItemMeta;
 public class EquipmentManager {
 
     public void giveOneShotEquipment(Player player) {
+        // Alle aktiven Trankeffekte & Einfrierung aufheben
+        new java.util.ArrayList<>(player.getActivePotionEffects()).forEach(effect -> player.removePotionEffect(effect.getType()));
+        player.setFreezeTicks(0);
+
         // OneShot Bogen (Unendlich Pfeil)
         ItemStack bow = new ItemStack(Material.BOW);
         ItemMeta bowMeta = bow.getItemMeta();
