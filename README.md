@@ -10,10 +10,18 @@ Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin
   - Jeder Treffer mit dem **OneShot-Dolch** (Eisenschwert) oder einem **Bogenpfeil** eliminiert den Gegner sofort.
   - Nahkampftreffer mit anderen Gegenständen (Fäuste, Wolle, Bogen-Nahkampf) verursachen normalen Vanilla-Schaden.
   - Treffer mit dem Bogen füllen automatisch 1 Pfeil im Inventar auf.
+  - **Waffen-Vergabe erst ab `/start`**: Vor dem Match-Start oder während einer Pause besitzen Spieler keine Waffen. Bei `/pause` werden Dolch, Bogen und Pfeile entfernt – **Spezial-Items bleiben im Inventar erhalten**.
+  - **Kampfsperre & Chat-Meldungen**: Vor `/start` und während `/pause` ist Schaden deaktiviert. Bei einem Angriff erscheint eine Chat-Nachricht inklusive Sound.
+- **⏸️ Pause-System (`/osok pause` oder `/pause`)**:
+  - Pausiert/Fortsetzt das laufende Match.
+  - Teleportiert bei Pausierung **alle Spieler umgehend zur Lobby** (`223.5, 48.0, 55.5`).
+  - Der Match-Timer friert ein.
+  - Das Betreten des Arena-Bereichs wird während der Pause blockiert (Spieler werden zur Lobby zurückteleportiert).
+  - Beim Fortsetzen werden alle Spieler wieder **zufällig verteilt in die Arena** teleportiert.
 - **🛡️ Reflektor-Schild**:
   - Wehrt den nächsten tödlichen Treffer ab und löst Schildbruch-Sound- und Partikeleffekte aus.
 - **🎁 11 Spezial-Items (Powerups)**:
-  1. 👁️ **Radar-Puls** *(Enderauge)*: Lässt alle Feinde in der Arena für 30s aufleuchten (Glowing).
+  1. 👁️ **Radar-Puls** *(Enderauge)*: Lässt alle Feinde in der Arena für 30s aufleuchten (Glowing). **Geheim**: Opfer sehen *weder* Partikel *noch* ein Potion-Icon im HUD!
   2. 💣 **Explosiv-Schuss** *(TNT)*: Nächster Pfeil erzeugt eine Explosion am Einschlagort.
   3. 🛡️ **Reflektor-Schild** *(Netherstern)*: Wehrt den nächsten tödlichen Treffer ab.
   4. 💨 **Rauchbombe** *(Schneeball)*: Erzeugt dichten Lagerfeuer-Rauch und teleportiert zufällig in die Arena.
@@ -26,17 +34,19 @@ Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin
   11. 🚀 **Raketen-Sprung** *(Feuerwerksrakete)*: Katapultiert den Spieler 15 Blöcke hoch (inkl. 20s Fallschutz & Air-Sprint).
 - **📦 Item-Modi (`/osok itemmode <streak|spawn|both>`)**:
   - `STREAK`: Spezial-Item alle 3 Kills.
-  - `SPAWN`: 30s-Map-Spawns mit Mario-Kart-Partikelboxen.
+  - `SPAWN`: 30s-Map-Spawns mit Mario-Kart-Partikelboxen (aktiv erst nach `/start`).
   - `BOTH`: Kombinationsmodus (Standard).
 - **👑 Kopfgeld-System**:
   - Ab einer 5er Killstreak erhält der Spieler ein Kopfgeld `[👑]` mit Blitzschlag-Ankündigung.
   - Wer das Kopfgeld holt, erhält 2 zufällige Spezial-Items als Belohnung.
 - **📊 Native Paper Scoreboard & Tabliste**:
   - Live Leaderboard mit Kills, K/D Ratio, Streak, Highscore und Kopfgeld-Marker.
-  - Ausblendung der roten Sidebar-Zahlen native über `Objective#numberFormat(NumberFormat.blank())` (0% NMS-Reflection).
+  - Ausblendung der roten Sidebar-Zahlen nativ über `Objective#numberFormat(NumberFormat.blank())` (0% NMS-Reflection).
   - Ausblendung der Spieler-Nametags über Köpfen per Scoreboard-Team.
-- **🏆 Match-Manager**:
-  - Konfigurierbare Kill- und Zeit-Limits (`/osok limit kills <n>` / `/osok limit zeit <n>`).
+- **🏆 Match-Manager & Dauer-Einstellung**:
+  - Konfigurierbare Kills-, Minuten- und Sekunden-Limits (`/osok dauer kills <n>`, `/osok dauer minuten <n>`, `/osok dauer sekunden <n>`, `/osok dauer off`).
+  - Kurzformen: `/osok dauer 20k`, `/osok dauer 10m`, `/osok dauer 45s`.
+  - **Verzögerter Start**: Festgelegte Limits werden gespeichert und erst beim Ausführen von `/start` im Scoreboard sichtbar & als Timer gestartet!
   - Gewinner-Titel, Siegeshymne (Notenblock-Song) & Feuerwerksspektakel.
 - **🎆 Kill-Effekte GUI (`/killeffect`)**:
   - Auswahl persönlicher Kill-Animationen: *Lightning, Firework, Blood, Ender, Totem, None*.
@@ -90,8 +100,11 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 | :--- | :--- | :--- |
 | `/oneshot` / `/osok` | Hauptbefehl / Hilfemenü | Jeder |
 | `/start` | Teleportiert alle Spieler zufällig in die Arena & startet ein neues Match | Operator |
-| `/osok limit kills <n>` | Setzt ein Kill-Ziel | Operator |
-| `/osok limit zeit <min>` | Setzt ein Zeit-Limit in Minuten | Operator |
+| `/pause` / `/osok pause` | Pausiert / Fortsetzt das aktuelle Match & teleportiert zur Lobby | Operator |
+| `/osok dauer kills <n>` | Setzt ein Kill-Ziel (aktiv ab `/start`) | Operator |
+| `/osok dauer minuten <n>` | Setzt ein Zeit-Limit in Minuten (aktiv ab `/start`) | Operator |
+| `/osok dauer sekunden <n>` | Setzt ein Zeit-Limit in Sekunden (aktiv ab `/start`) | Operator |
+| `/osok dauer off` | Deaktiviert Match-Limits | Operator |
 | `/osok itemmode <mode>` | Wechselt zwischen `STREAK`, `SPAWN` und `BOTH` | Operator |
 | `/killeffect` / `/effects` | Öffnet das GUI für Kill-Animationen | Jeder |
 | `/resetstats` | Setzt Kills & Tode zurück | Operator |
