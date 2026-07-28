@@ -70,7 +70,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         }
 
         if (sub.equals("start")) {
-            return plugin.getCommand("start").getExecutor().onCommand(sender, command, label, args);
+            return new StartCommand(plugin).onCommand(sender, command, label, args);
         }
 
         if (sub.equals("itemmode") || sub.equals("itemmodus") || sub.equals("mode")) {
@@ -88,7 +88,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         }
 
         if (sub.equals("clearpfeile")) {
-            return plugin.getCommand("clearpfeile").getExecutor().onCommand(sender, command, label, args);
+            return new ClearPfeileCommand(plugin).onCommand(sender, command, label, args);
         }
 
         if (sub.equals("setspawn")) {
