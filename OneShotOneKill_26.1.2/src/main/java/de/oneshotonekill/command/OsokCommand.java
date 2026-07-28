@@ -134,10 +134,12 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 0) {
-            msg(player, "§e[OSOK] Verwende: §f/osok dauer [kills|zeit|off] [Wert]");
-            msg(player, "§7Beispiel: §f/osok dauer kills 20 §7(Ziel: 20 Kills)");
-            msg(player, "§7Beispiel: §f/osok dauer zeit 10 §7(Ziel: 10 Minuten)");
-            msg(player, "§7Beispiel: §f/osok dauer off §7(Limits zurücksetzen)");
+            msg(player, "§e[OSOK] Verwende:");
+            msg(player, "§f  /osok dauer kills [Anzahl] §7(z. B. 20 Kills)");
+            msg(player, "§f  /osok dauer minuten [Anzahl] §7(z. B. 10 Minuten)");
+            msg(player, "§f  /osok dauer sekunden [Anzahl] §7(z. B. 45 Sekunden)");
+            msg(player, "§f  /osok dauer off §7(Limits zurücksetzen)");
+            msg(player, "§7Kurzformen: §f/osok dauer 20k §7| §f5m §7| §f45s");
             return true;
         }
 
@@ -161,9 +163,9 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (type.equals("zeit") || type.equals("time") || type.equals("minuten") || type.equals("m")) {
+        if (type.equals("minuten") || type.equals("min") || type.equals("m") || type.equals("zeit") || type.equals("time")) {
             if (args.length < 2) {
-                msg(player, "§c[OSOK] Bitte gib die Dauer in Minuten an (z. B. /osok dauer zeit 10).");
+                msg(player, "§c[OSOK] Bitte gib die Dauer in Minuten an (z. B. /osok dauer minuten 10).");
                 return true;
             }
             try {
@@ -177,7 +179,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
 
         if (type.equals("sekunden") || type.equals("sec") || type.equals("sek") || type.equals("s")) {
             if (args.length < 2) {
-                msg(player, "§c[OSOK] Bitte gib die Dauer in Sekunden an (z. B. /osok dauer sekunden 30).");
+                msg(player, "§c[OSOK] Bitte gib die Dauer in Sekunden an (z. B. /osok dauer sekunden 45).");
                 return true;
             }
             try {
@@ -216,7 +218,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             return true;
         } catch (NumberFormatException ignored) {}
 
-        msg(player, "§c[OSOK] Ungültiger Parameter. Verwende: /osok dauer [kills|zeit|off] [Wert]");
+        msg(player, "§c[OSOK] Ungültiger Parameter. Verwende: /osok dauer [kills|minuten|sekunden|off]");
         return true;
     }
 
@@ -274,7 +276,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "dauer", "limit", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode"), new ArrayList<>());
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit"))) {
-            return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "zeit", "sekunden", "off"), new ArrayList<>());
+            return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "minuten", "sekunden", "off"), new ArrayList<>());
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("itemmode")) {
             return StringUtil.copyPartialMatches(args[1], Arrays.asList("streak", "spawn", "both", "kombi"), new ArrayList<>());
