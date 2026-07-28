@@ -165,6 +165,9 @@ public class MatchManager {
         winner.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 120, 0));
         winner.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 120, 2));
 
+        // Noteblock Sieges-Melodie (Fanfare) abspielen!
+        playVictorySong();
+
         // Feuerwerk & Spektakel Task über 5 Sekunden
         new BukkitRunnable() {
             int ticks = 0;
@@ -205,6 +208,42 @@ public class MatchManager {
                 ticks++;
             }
         }.runTaskTimer(plugin, 0L, 10L);
+    }
+
+    private void playVictorySong() {
+        // Multi-Instrument Noteblock Fanfare
+        new BukkitRunnable() {
+            int step = 0;
+
+            @Override
+            public void run() {
+                if (step > 20) {
+                    cancel();
+                    return;
+                }
+
+                switch (step) {
+                    case 0 -> playNoteChord(0.71f, 0.89f, 1.06f); // C4 Major
+                    case 3 -> playNoteChord(0.89f, 1.06f, 1.41f); // E4 Major
+                    case 6 -> playNoteChord(1.06f, 1.41f, 1.78f); // G4 Major
+                    case 9 -> playNoteChord(1.41f, 1.78f, 2.00f); // High C5 Triumph
+                    case 12 -> playNoteChord(1.78f, 2.00f, 1.41f); // E5 High Peak
+                    case 15 -> playNoteChord(2.00f, 2.00f, 2.00f); // Ausklang Glanz
+                }
+
+                step++;
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+    }
+
+    private void playNoteChord(float p1, float p2, float p3) {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            Location loc = player.getLocation();
+            player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_HARP, SoundCategory.MASTER, 1.0f, p1);
+            player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BELL, SoundCategory.MASTER, 0.8f, p2);
+            player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 0.9f, p3);
+            player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 0.7f, p1);
+        }
     }
 
     public String formatTime(int totalSeconds) {
