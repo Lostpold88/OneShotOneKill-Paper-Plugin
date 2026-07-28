@@ -26,6 +26,7 @@ public class WorldManager {
         this.plugin = plugin;
     }
 
+    @SuppressWarnings({"deprecation", "removal"})
     public void setupWorld() {
         File containerDir = Bukkit.getWorldContainer();
         File mapFolder = new File(containerDir, "OSOK");
