@@ -224,24 +224,25 @@ public class MatchManager {
     }
 
     private void playMegalovaniaSong() {
-        // MEGALOVANIA (Undertale Soundtrack) Noteblock-Riff Loop
-        // Tonhöhen für Lead: D4, C4, B3, A#3, D5, A4, G#4, G4, F4
-        float D4 = 0.80f, C4 = 0.71f, B3 = 0.67f, Bb3 = 0.63f;
-        float D5 = 1.59f, A4 = 1.19f, Ab4 = 1.12f, G4 = 1.06f, F4 = 0.94f;
+        // Exakte Megalovania Noteblock-Töne & Redstone Delays laut Noten-Diagramm
+        int[] startClicks = new int[]{ 6, 4, 3, 2 }; // 1. D,D | 2. C,C | 3. H,H | 4. B,B
+        int[] noteClicks = new int[68];
+        java.util.Arrays.fill(noteClicks, -1);
 
-        float[] leadNotes = new float[] {
-            // Riff 1 (D4 D4)
-            D4, D4, D5, -1f, A4, -1f, Ab4, -1f, G4, -1f, F4, -1f, D4, F4, G4, -1f,
-            // Riff 2 (C4 C4)
-            C4, C4, D5, -1f, A4, -1f, Ab4, -1f, G4, -1f, F4, -1f, D4, F4, G4, -1f,
-            // Riff 3 (B3 B3)
-            B3, B3, D5, -1f, A4, -1f, Ab4, -1f, G4, -1f, F4, -1f, D4, F4, G4, -1f,
-            // Riff 4 (A#3 A#3)
-            Bb3, Bb3, D5, -1f, A4, -1f, Ab4, -1f, G4, -1f, F4, -1f, D4, F4, G4, -1f
-        };
+        int[] offsets = new int[]{ 0, 1, 2, 4, 7, 9, 11, 13, 14, 15 };
+        int[] restClicks = new int[]{ -1, -1, 18, 13, 12, 11, 9, 6, 9, 11 };
+
+        for (int pass = 0; pass < 4; pass++) {
+            int baseTick = pass * 17;
+            for (int i = 0; i < offsets.length; i++) {
+                int tick = baseTick + offsets[i];
+                int clicks = (i < 2) ? startClicks[pass] : restClicks[i];
+                noteClicks[tick] = clicks;
+            }
+        }
 
         victoryMusicTask = new BukkitRunnable() {
-            int step = 0;
+            int currentTick = 0;
 
             @Override
             public void run() {
@@ -250,10 +251,9 @@ public class MatchManager {
                     return;
                 }
 
-                int index = step % leadNotes.length;
-                float pitch = leadNotes[index];
-
-                if (pitch > 0) {
+                int clicks = noteClicks[currentTick % 68];
+                if (clicks >= 0) {
+                    float pitch = (float) Math.pow(2.0, (clicks - 12.0) / 12.0);
                     for (Player player : Bukkit.getOnlinePlayers()) {
                         Location loc = player.getLocation();
                         player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BIT, SoundCategory.MASTER, 1.0f, pitch);
@@ -262,9 +262,9 @@ public class MatchManager {
                     }
                 }
 
-                step++;
+                currentTick++;
             }
-        }.runTaskTimer(plugin, 0L, 3L); // 3 Ticks pro Note = Angenehmes, etwas langsameres Megalovania Tempo!
+        }.runTaskTimer(plugin, 0L, 1L); // Präziser 1-Tick Redstone-Takt!
     }
 
     public void restartMatch(Player sender) {
