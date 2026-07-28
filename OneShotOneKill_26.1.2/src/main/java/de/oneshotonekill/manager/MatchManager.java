@@ -325,17 +325,8 @@ public class MatchManager {
         Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
         Location fallback = (spawnLoc != null) ? spawnLoc : new Location(plugin.getWorldManager().getOsokWorld(), 223.5, 48.0, 55.5);
 
-        Title.Times times = Title.Times.times(Ticks.duration(10), Ticks.duration(100), Ticks.duration(20));
-
         if (matchPaused) {
-            Title pauseTitle = Title.title(
-                    LegacyComponentSerializer.legacySection().deserialize("§c§lPAUSE!"),
-                    LegacyComponentSerializer.legacySection().deserialize("§7Das Spiel wurde pausiert."),
-                    times
-            );
-
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.showTitle(pauseTitle);
                 p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, SoundCategory.MASTER, 1.0f, 0.8f);
                 plugin.getEquipmentManager().clearBaseEquipment(p);
                 p.teleportAsync(fallback);
@@ -348,14 +339,7 @@ public class MatchManager {
             broadcast("§c§l=======================================");
             broadcast(" ");
         } else {
-            Title resumeTitle = Title.title(
-                    LegacyComponentSerializer.legacySection().deserialize("§a§lWEITER GEHT'S!"),
-                    LegacyComponentSerializer.legacySection().deserialize("§7Zurück in die Arena!"),
-                    times
-            );
-
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.showTitle(resumeTitle);
                 p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.2f);
                 plugin.getEquipmentManager().giveOneShotEquipment(p);
                 Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
