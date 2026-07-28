@@ -1,30 +1,30 @@
 {
   "stats": {
-    "minecraft:picked_up": {
-      "minecraft:lightning_rod": 1,
-      "minecraft:nether_star": 1
+    "minecraft:used": {
+      "minecraft:glass": 5,
+      "minecraft:light_blue_wool": 1,
+      "minecraft:bow": 6
     },
     "minecraft:killed_by": {
       "minecraft:player": 1
     },
     "minecraft:custom": {
-      "minecraft:sprint_one_cm": 14785,
-      "minecraft:time_since_rest": 5041,
-      "minecraft:walk_one_cm": 3585,
-      "minecraft:total_world_time": 9628,
-      "minecraft:leave_game": 5,
-      "minecraft:fly_one_cm": 42706,
+      "minecraft:sprint_one_cm": 16323,
+      "minecraft:time_since_rest": 10307,
+      "minecraft:walk_one_cm": 3755,
+      "minecraft:total_world_time": 14894,
+      "minecraft:leave_game": 7,
+      "minecraft:fly_one_cm": 45611,
       "minecraft:damage_taken": 10000,
-      "minecraft:sneak_time": 9,
-      "minecraft:play_time": 9628,
+      "minecraft:sneak_time": 10,
+      "minecraft:play_time": 14894,
       "minecraft:deaths": 3,
-      "minecraft:jump": 52,
-      "minecraft:time_since_death": 4980
+      "minecraft:jump": 57,
+      "minecraft:time_since_death": 10246
     },
-    "minecraft:used": {
-      "minecraft:glass": 1,
-      "minecraft:light_blue_wool": 1,
-      "minecraft:bow": 6
+    "minecraft:picked_up": {
+      "minecraft:lightning_rod": 1,
+      "minecraft:nether_star": 1
     }
   },
   "DataVersion": 4790
