@@ -78,12 +78,32 @@ public class PlayerConnectionListener implements Listener {
     }
 
     @EventHandler
+    public void onPlayerMove(org.bukkit.event.player.PlayerMoveEvent event) {
+        if (plugin.getMatchManager().isMatchPaused()) {
+            Player player = event.getPlayer();
+            if (plugin.getArenaManager().isInArenaArea(event.getTo())) {
+                Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
+                Location fallback = (spawnLoc != null) ? spawnLoc : new Location(plugin.getWorldManager().getOsokWorld(), 223.5, 48.0, 55.5);
+                player.teleportAsync(fallback);
+                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ⏸ Das Match ist pausiert! Du kannst die Arena aktuell nicht betreten."));
+                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+        }
+    }
+
+    @EventHandler
     public void onPlayerSwapHandItems(PlayerSwapHandItemsEvent event) {
         event.setCancelled(true);
         Player player = event.getPlayer();
 
         if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
             player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Warte auf /start."));
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            return;
+        }
+
+        if (plugin.getMatchManager().isMatchPaused()) {
+            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ⏸ Das Match ist aktuell pausiert!"));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }

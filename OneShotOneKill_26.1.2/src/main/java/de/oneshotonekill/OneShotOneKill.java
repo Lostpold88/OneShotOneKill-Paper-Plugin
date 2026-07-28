@@ -70,6 +70,7 @@ public class OneShotOneKill extends JavaPlugin {
             ClearPfeileCommand clearPfeileCommand = new ClearPfeileCommand(this);
 
             registerBasic(registrar, "oneshot", "OSOK Hauptbefehl", List.of("osok"), osokCommand, osokCommand);
+            registerBasic(registrar, "pause", "OSOK Match pausieren/fortsetzen", List.of(), osokCommand, osokCommand);
             registerBasic(registrar, "itemmode", "OSOK Item-Modus", List.of("itemmodus", "mode"), osokCommand, osokCommand);
             registerBasic(registrar, "resetstats", "OSOK Statistiken zurücksetzen", List.of("resetboard"), osokCommand, osokCommand);
             registerBasic(registrar, "start", "OSOK Match starten", List.of(), startCommand, startCommand);
