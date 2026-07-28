@@ -87,10 +87,6 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (sub.equals("clearpfeile")) {
-            return new ClearPfeileCommand(plugin).onCommand(sender, command, label, args);
-        }
-
         if (sub.equals("setspawn")) {
             if (!player.isOp()) {
                 msg(player, "§cDazu hast du keine Rechte.");
@@ -254,7 +250,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "dauer", "limit", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode", "clearpfeile"), new ArrayList<>());
+            return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "dauer", "limit", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode"), new ArrayList<>());
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit"))) {
             return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "zeit", "off"), new ArrayList<>());
