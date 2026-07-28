@@ -43,4 +43,10 @@ public class EquipmentManager {
         player.setLevel(0);
         player.setExp(0.0f);
     }
+
+    public void clearBaseEquipment(Player player) {
+        player.getInventory().remove(Material.IRON_SWORD);
+        player.getInventory().remove(Material.BOW);
+        player.getInventory().remove(Material.ARROW);
+    }
 }
