@@ -194,7 +194,7 @@ public class MatchManager {
                 Firework fw = (Firework) wLoc.getWorld().spawnEntity(wLoc.clone().add(0, 1, 0), EntityType.FIREWORK_ROCKET);
                 FireworkMeta fwm = fw.getFireworkMeta();
                 fwm.addEffect(FireworkEffect.builder()
-                        .withColor(Color.YELLOW, Color.GOLD, Color.GREEN)
+                        .withColor(Color.YELLOW, Color.ORANGE, Color.GREEN)
                         .withFade(Color.WHITE)
                         .with(FireworkEffect.Type.BALL_LARGE)
                         .withFlicker()
