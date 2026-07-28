@@ -1,6 +1,7 @@
 package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -27,15 +28,13 @@ public class ClearPfeileCommand implements CommandExecutor {
 
         int removed = 0;
         for (World world : Bukkit.getWorlds()) {
-            for (Entity entity : world.getEntities()) {
-                if (entity instanceof Arrow || entity instanceof AbstractArrow) {
-                    entity.remove();
-                    removed++;
-                }
+            for (AbstractArrow arrow : world.getEntitiesByClass(AbstractArrow.class)) {
+                arrow.remove();
+                removed++;
             }
         }
 
-        sender.sendMessage("§a[OSOK] 🧹 Es wurden §e" + removed + " §aPfeile aus der Welt gelöscht!");
+        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🧹 Es wurden §e" + removed + " §aPfeile aus der Welt gelöscht!"));
         return true;
     }
 }
