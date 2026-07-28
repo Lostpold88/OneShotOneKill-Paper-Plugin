@@ -15,9 +15,18 @@ import de.oneshotonekill.manager.KillstreakManager;
 import de.oneshotonekill.manager.MatchManager;
 import de.oneshotonekill.manager.ScoreboardManager;
 import de.oneshotonekill.manager.WorldManager;
+import io.papermc.paper.command.brigadier.BasicCommand;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import io.papermc.paper.command.brigadier.Commands;
+import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
+import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.Collection;
+import java.util.List;
 
 public class OneShotOneKill extends JavaPlugin {
 
@@ -53,36 +62,55 @@ public class OneShotOneKill extends JavaPlugin {
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
         getServer().getPluginManager().registerEvents(killEffectCommand, this);
 
-        // 4. Befehle registrieren
-        OsokCommand osokCommand = new OsokCommand(this);
-        registerCommand("oneshot", osokCommand, osokCommand);
-        registerCommand("osok", osokCommand, osokCommand);
-        registerCommand("start", new StartCommand(this), new StartCommand(this));
-        registerCommand("resetstats", osokCommand, osokCommand);
-        registerCommand("itemmode", osokCommand, osokCommand);
-        registerCommand("itemmodus", osokCommand, osokCommand);
-        registerCommand("mode", osokCommand, osokCommand);
-        registerCommand("itemtest", itemTestCommand, null);
-        registerCommand("testgui", itemTestCommand, null);
-        registerCommand("clearpfeile", new ClearPfeileCommand(this), null);
-        registerCommand("killeffect", killEffectCommand, killEffectCommand);
-        registerCommand("effects", killEffectCommand, killEffectCommand);
+        // 4. Paper Dynamic Lifecycle Command Registration (paper-plugin.yml)
+        this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
+            Commands registrar = event.registrar();
+            OsokCommand osokCommand = new OsokCommand(this);
+            StartCommand startCommand = new StartCommand(this);
+            ClearPfeileCommand clearPfeileCommand = new ClearPfeileCommand(this);
+
+            registerBasic(registrar, "oneshot", "OSOK Hauptbefehl", List.of("osok", "resetstats", "itemmode", "itemmodus", "mode"), osokCommand, osokCommand);
+            registerBasic(registrar, "start", "OSOK Match starten", List.of(), startCommand, startCommand);
+            registerBasic(registrar, "itemtest", "OSOK Spezial-Item Testmenü", List.of("testgui"), itemTestCommand, null);
+            registerBasic(registrar, "clearpfeile", "OSOK Pfeile entfernen", List.of(), clearPfeileCommand, null);
+            registerBasic(registrar, "killeffect", "OSOK Killeffekte Menü", List.of("effects"), killEffectCommand, killEffectCommand);
+        });
 
         // 5. Scoreboards für alle bereits verbundenen Spieler aktualisieren
         this.scoreboardManager.updateAllScoreboards();
 
         getLogger().info("=========================================");
-        getLogger().info("  ONESHOT-ONEKILL PLUGIN EMBEDDED MAP    ");
+        getLogger().info("  ONESHOT-ONEKILL NATIVE PAPER PLUGIN    ");
         getLogger().info("=========================================");
     }
 
-    private void registerCommand(String cmdName, CommandExecutor executor, TabCompleter completer) {
-        if (getCommand(cmdName) != null) {
-            getCommand(cmdName).setExecutor(executor);
-            if (completer != null) {
-                getCommand(cmdName).setTabCompleter(completer);
+    private void registerBasic(Commands registrar, String name, String desc, List<String> aliases, CommandExecutor executor, TabCompleter completer) {
+        registrar.register(name, desc, aliases, new BasicCommand() {
+            @Override
+            public void execute(CommandSourceStack stack, String[] args) {
+                Command dummyCmd = new Command(name) {
+                    @Override
+                    public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+                        return false;
+                    }
+                };
+                executor.onCommand(stack.getSender(), dummyCmd, name, args);
             }
-        }
+
+            @Override
+            public Collection<String> suggest(CommandSourceStack stack, String[] args) {
+                if (completer != null) {
+                    List<String> list = completer.onTabComplete(stack.getSender(), new Command(name) {
+                        @Override
+                        public boolean execute(CommandSender sender, String commandLabel, String[] args) {
+                            return false;
+                        }
+                    }, name, args);
+                    return list != null ? list : List.of();
+                }
+                return List.of();
+            }
+        });
     }
 
     @Override
