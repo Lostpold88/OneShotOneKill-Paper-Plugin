@@ -224,17 +224,17 @@ public class MatchManager {
     }
 
     private void playMegalovaniaSong() {
-        // Exakte Megalovania Noteblock-Töne & Redstone Delays laut Noten-Diagramm
-        // Hinweismeldung: 1 Redstone-Repeater-Tick = 2 Game-Ticks (100ms)
+        // Megalovania Noteblock-Töne laut Noten-Diagramm
+        // Tempo: 3 Game-Ticks (150ms) pro Redstone-Stufe für ein entspanntes, perfektes Lied-Tempo
         int[] startClicks = new int[]{ 6, 4, 3, 2 }; // 1. D,D | 2. C,C | 3. H,H | 4. B,B
-        int[] noteClicks = new int[136];
+        int[] noteClicks = new int[204];
         java.util.Arrays.fill(noteClicks, -1);
 
-        int[] offsets = new int[]{ 0, 2, 4, 8, 14, 18, 22, 26, 28, 30 };
+        int[] offsets = new int[]{ 0, 3, 6, 12, 21, 27, 33, 39, 42, 45 };
         int[] restClicks = new int[]{ -1, -1, 18, 13, 12, 11, 9, 6, 9, 11 };
 
         for (int pass = 0; pass < 4; pass++) {
-            int baseTick = pass * 34;
+            int baseTick = pass * 51;
             for (int i = 0; i < offsets.length; i++) {
                 int tick = baseTick + offsets[i];
                 int clicks = (i < 2) ? startClicks[pass] : restClicks[i];
@@ -252,7 +252,7 @@ public class MatchManager {
                     return;
                 }
 
-                int clicks = noteClicks[currentTick % 136];
+                int clicks = noteClicks[currentTick % 204];
                 if (clicks >= 0) {
                     float pitch = (float) Math.pow(2.0, (clicks - 12.0) / 12.0);
                     for (Player player : Bukkit.getOnlinePlayers()) {
@@ -265,7 +265,7 @@ public class MatchManager {
 
                 currentTick++;
             }
-        }.runTaskTimer(plugin, 0L, 1L); // 1-Tick Präzision mit echter Redstone-Repeater Verzögerung!
+        }.runTaskTimer(plugin, 0L, 1L);
     }
 
     public void restartMatch(Player sender) {
