@@ -33,6 +33,7 @@ public class MatchManager {
     private BukkitTask victoryMusicTask = null;
     private BukkitTask victoryEffectsTask = null;
     private boolean matchStarted = false;
+    private boolean matchPaused = false;
     private boolean matchEnded = false;
 
     public MatchManager(OneShotOneKill plugin) {
@@ -41,6 +42,10 @@ public class MatchManager {
 
     public boolean isMatchStarted() {
         return matchStarted;
+    }
+
+    public boolean isMatchPaused() {
+        return matchPaused;
     }
 
     public boolean isMatchEnded() {
@@ -131,6 +136,10 @@ public class MatchManager {
             public void run() {
                 if (matchEnded) {
                     cancel();
+                    return;
+                }
+
+                if (matchPaused) {
                     return;
                 }
 
@@ -303,10 +312,71 @@ public class MatchManager {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
+    public void togglePause(Player sender) {
+        if (!matchStarted || matchEnded) {
+            if (sender != null) {
+                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Es läuft aktuell kein aktives Match, das pausiert werden kann!"));
+            }
+            return;
+        }
+
+        matchPaused = !matchPaused;
+
+        Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
+        Location fallback = (spawnLoc != null) ? spawnLoc : new Location(plugin.getWorldManager().getOsokWorld(), 223.5, 48.0, 55.5);
+
+        Title.Times times = Title.Times.times(Ticks.duration(10), Ticks.duration(100), Ticks.duration(20));
+
+        if (matchPaused) {
+            Title pauseTitle = Title.title(
+                    LegacyComponentSerializer.legacySection().deserialize("§c§lPAUSE!"),
+                    LegacyComponentSerializer.legacySection().deserialize("§7Das Spiel wurde pausiert."),
+                    times
+            );
+
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                p.showTitle(pauseTitle);
+                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, SoundCategory.MASTER, 1.0f, 0.8f);
+                p.teleportAsync(fallback);
+            }
+
+            broadcast(" ");
+            broadcast("§c§l=======================================");
+            broadcast("§c§l   ⏸ MATCH BEI 223 48 55 PAUSIERT!   ");
+            broadcast("§7  Spieler wurden in die Lobby teleportiert.");
+            broadcast("§c§l=======================================");
+            broadcast(" ");
+        } else {
+            Title resumeTitle = Title.title(
+                    LegacyComponentSerializer.legacySection().deserialize("§a§lWEITER GEHT'S!"),
+                    LegacyComponentSerializer.legacySection().deserialize("§7Zurück in die Arena!"),
+                    times
+            );
+
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                p.showTitle(resumeTitle);
+                p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.2f);
+                Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
+                Location targetLoc = (randomLoc != null) ? randomLoc : fallback;
+                p.teleportAsync(targetLoc);
+            }
+
+            broadcast(" ");
+            broadcast("§a§l=======================================");
+            broadcast("§a§l   ▶ MATCH FORTGESETZT!   ");
+            broadcast("§7  Spieler wurden in die Arena teleportiert!");
+            broadcast("§a§l=======================================");
+            broadcast(" ");
+        }
+
+        plugin.getScoreboardManager().updateAllScoreboards();
+    }
+
     public void restartMatch(Player sender) {
         stopVictoryTasks();
         stopTimer();
         this.matchStarted = true;
+        this.matchPaused = false;
         this.matchEnded = false;
 
         Location spawn = plugin.getWorldManager().getSpawnLocation();

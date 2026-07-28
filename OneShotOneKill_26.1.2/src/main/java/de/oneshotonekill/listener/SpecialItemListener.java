@@ -142,9 +142,13 @@ public class SpecialItemListener implements Listener {
         if (typeId == null) return;
 
         if (event.getAction() == Action.RIGHT_CLICK_AIR || event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
+            if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchPaused() || plugin.getMatchManager().isMatchEnded()) {
                 event.setCancelled(true);
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Warte auf /start."));
+                if (plugin.getMatchManager().isMatchPaused()) {
+                    player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ⏸ Das Match ist aktuell pausiert!"));
+                } else {
+                    player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Warte auf /start."));
+                }
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                 return;
             }

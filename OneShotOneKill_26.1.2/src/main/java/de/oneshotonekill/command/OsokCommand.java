@@ -42,6 +42,15 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         }
 
         String cmdName = command.getName().toLowerCase();
+        if (cmdName.equals("pause")) {
+            if (!player.isOp()) {
+                msg(player, "§cDazu hast du keine Rechte.");
+                return true;
+            }
+            plugin.getMatchManager().togglePause(player);
+            return true;
+        }
+
         if (cmdName.equals("itemmode") || cmdName.equals("itemmodus") || cmdName.equals("mode")) {
             return handleItemModeCommand(player, args);
         }
@@ -51,7 +60,8 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             msg(player, "§a§l🎯 OSOK SYSTEM");
             msg(player, "§e§l=======================================");
             msg(player, "§7/start §8- §fMatch starten & alle zufällig in die Arena spawnen");
-            msg(player, "§7/osok dauer [kills|zeit|off] [Anzahl] §8- §fMatch-Dauer/Ziel festlegen");
+            msg(player, "§7/osok pause §8- §fMatch pausieren / fortsetzen (Admin)");
+            msg(player, "§7/osok dauer [kills|minuten|sekunden|off] [Anzahl] §8- §fMatch-Dauer/Ziel festlegen");
             msg(player, "§7/itemmode [streak|spawn] §8- §fItem-Modus umschalten (Streak vs 30s Map-Spawn)");
             msg(player, "§7/itemtest §8- §fSpezial-Item Testmenü öffnen (Admin)");
             msg(player, "§7/clearpfeile §8- §fAlle Pfeile aus der Welt löschen (Admin)");
@@ -63,6 +73,15 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         }
 
         String sub = args[0].toLowerCase();
+
+        if (sub.equals("pause")) {
+            if (!player.isOp()) {
+                msg(player, "§cDazu hast du keine Rechte.");
+                return true;
+            }
+            plugin.getMatchManager().togglePause(player);
+            return true;
+        }
 
         if (sub.equals("dauer") || sub.equals("limit") || sub.equals("timer")) {
             String[] subArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
@@ -273,7 +292,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "dauer", "limit", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode"), new ArrayList<>());
+            return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "pause", "dauer", "limit", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode"), new ArrayList<>());
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit"))) {
             return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "minuten", "sekunden", "off"), new ArrayList<>());
