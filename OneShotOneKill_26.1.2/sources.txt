@@ -1,10 +1,17 @@
-E:\Minecraft Plugin\OneShotOneKill\src\main\java\de\oneshotonekill\OneShotOneKill.java
-E:\Minecraft Plugin\OneShotOneKill\src\main\java\de\oneshotonekill\command\OsokCommand.java
-E:\Minecraft Plugin\OneShotOneKill\src\main\java\de\oneshotonekill\command\StartCommand.java
-E:\Minecraft Plugin\OneShotOneKill\src\main\java\de\oneshotonekill\command\TestSpawnCommand.java
-E:\Minecraft Plugin\OneShotOneKill\src\main\java\de\oneshotonekill\listener\CombatListener.java
-E:\Minecraft Plugin\OneShotOneKill\src\main\java\de\oneshotonekill\listener\PlayerJoinRespawnListener.java
-E:\Minecraft Plugin\OneShotOneKill\src\main\java\de\oneshotonekill\manager\ArenaManager.java
-E:\Minecraft Plugin\OneShotOneKill\src\main\java\de\oneshotonekill\manager\EquipmentManager.java
-E:\Minecraft Plugin\OneShotOneKill\src\main\java\de\oneshotonekill\manager\ScoreboardManager.java
-E:\Minecraft Plugin\OneShotOneKill\src\main\java\de\oneshotonekill\manager\WorldManager.java
+src/main/java/de/oneshotonekill/OneShotOneKill.java
+src/main/java/de/oneshotonekill/command/ClearPfeileCommand.java
+src/main/java/de/oneshotonekill/command/ItemTestCommand.java
+src/main/java/de/oneshotonekill/command/KillEffectCommand.java
+src/main/java/de/oneshotonekill/command/OsokCommand.java
+src/main/java/de/oneshotonekill/command/StartCommand.java
+src/main/java/de/oneshotonekill/listener/CombatListener.java
+src/main/java/de/oneshotonekill/listener/PlayerConnectionListener.java
+src/main/java/de/oneshotonekill/listener/SpecialItemListener.java
+src/main/java/de/oneshotonekill/listener/SpecialItemListener.java
+src/main/java/de/oneshotonekill/manager/ArenaManager.java
+src/main/java/de/oneshotonekill/manager/EquipmentManager.java
+src/main/java/de/oneshotonekill/manager/KillEffectManager.java
+src/main/java/de/oneshotonekill/manager/KillstreakManager.java
+src/main/java/de/oneshotonekill/manager/MatchManager.java
+src/main/java/de/oneshotonekill/manager/ScoreboardManager.java
+src/main/java/de/oneshotonekill/manager/WorldManager.java
