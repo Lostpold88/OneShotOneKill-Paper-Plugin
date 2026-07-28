@@ -27,7 +27,7 @@ New-Item -ItemType Directory -Path $binDir | Out-Null
 Write-Host "1. Compiling Java source files..."
 javac -cp $cp -d $binDir $sources
 
-Write-Host "2. Copying resources (paper-plugin.yml, plugin.yml, map.zip)..."
+Write-Host "2. Copying resources (paper-plugin.yml, map.zip)..."
 if (Test-Path $resDir) {
     Copy-Item -Path "$resDir\*" -Destination $binDir -Recurse -Force
 }
