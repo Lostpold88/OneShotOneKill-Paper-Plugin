@@ -15,7 +15,6 @@ import org.bukkit.scoreboard.Scoreboard;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@SuppressWarnings({"deprecation", "removal"})
 public class ScoreboardManager {
 
     private final OneShotOneKill plugin;
