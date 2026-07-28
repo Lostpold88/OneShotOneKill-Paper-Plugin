@@ -26,7 +26,7 @@ public class PlayerConnectionListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        event.setJoinMessage("§a[✦] §f" + player.getName() + " §7hat §e§lOneShotOneKill §7betreten!");
+        event.setJoinMessage("§a[✦] §f" + player.getName() + " §7hat §e§lOSOK §7betreten!");
 
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.0f, 1.5f);
@@ -48,7 +48,7 @@ public class PlayerConnectionListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        event.setQuitMessage("§c[❌] §f" + player.getName() + " §7hat §e§lOneShotOneKill §7verlassen.");
+        event.setQuitMessage("§c[❌] §f" + player.getName() + " §7hat §e§lOSOK §7verlassen.");
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             plugin.getScoreboardManager().updateAllScoreboards();
@@ -77,7 +77,7 @@ public class PlayerConnectionListener implements Listener {
         Player player = event.getPlayer();
 
         if (plugin.getArenaManager().isInArenaArea(player.getLocation())) {
-            player.sendMessage("§c[OneShot] ❌ Du bist bereits im Bereich der Arena! Random-TP ist während des Kampfs deaktiviert.");
+            player.sendMessage("§c[OSOK] ❌ Du bist bereits im Bereich der Arena! Random-TP ist während des Kampfs deaktiviert.");
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
@@ -89,7 +89,7 @@ public class PlayerConnectionListener implements Listener {
             plugin.getScoreboardManager().updateAllScoreboards();
             player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.MASTER, 1.0f, 1.2f);
         } else {
-            player.sendMessage("§c[OneShot] Arena-Welt ist aktuell nicht geladen.");
+            player.sendMessage("§c[OSOK] Arena-Welt ist aktuell nicht geladen.");
         }
     }
 }

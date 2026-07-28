@@ -63,7 +63,7 @@ public class MatchManager {
         this.matchEnded = false;
 
         plugin.getScoreboardManager().updateAllScoreboards();
-        Bukkit.broadcastMessage("§e[OneShot] 🎯 Match-Ziel gesetzt: §a§l" + kills + " Kills§7!");
+        Bukkit.broadcastMessage("§e[OSOK] 🎯 Match-Ziel gesetzt: §a§l" + kills + " Kills§7!");
     }
 
     public void setTimeLimitMinutes(int minutes) {
@@ -76,7 +76,7 @@ public class MatchManager {
 
         startTimer();
         plugin.getScoreboardManager().updateAllScoreboards();
-        Bukkit.broadcastMessage("§e[OneShot] ⏱ Match-Zeit gesetzt: §a§l" + minutes + " Minuten§7!");
+        Bukkit.broadcastMessage("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + minutes + " Minuten§7!");
     }
 
     public void resetLimits() {
@@ -88,7 +88,7 @@ public class MatchManager {
         this.matchEnded = false;
 
         plugin.getScoreboardManager().updateAllScoreboards();
-        Bukkit.broadcastMessage("§e[OneShot] 🔄 Match-Limits (Kills & Zeit) wurden deaktiviert.");
+        Bukkit.broadcastMessage("§e[OSOK] 🔄 Match-Limits (Kills & Zeit) wurden deaktiviert.");
     }
 
     private void startTimer() {
@@ -107,7 +107,7 @@ public class MatchManager {
                     cancel();
                     triggerTimeLimitWinner();
                 } else if (remainingSeconds == 60 || remainingSeconds == 30 || remainingSeconds == 10 || remainingSeconds <= 5) {
-                    Bukkit.broadcastMessage("§c[OneShot] ⏱ Noch §e" + formatTime(remainingSeconds) + " §cVerbleibend!");
+                    Bukkit.broadcastMessage("§c[OSOK] ⏱ Noch §e" + formatTime(remainingSeconds) + " §cVerbleibend!");
                     for (Player p : Bukkit.getOnlinePlayers()) {
                         p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
                     }
@@ -152,7 +152,7 @@ public class MatchManager {
         if (winner != null) {
             celebrateWinner(winner);
         } else {
-            Bukkit.broadcastMessage("§c[OneShot] ⏱ Die Zeit ist abgelaufen! Keines Match-Ergebnis.");
+            Bukkit.broadcastMessage("§c[OSOK] ⏱ Die Zeit ist abgelaufen! Keines Match-Ergebnis.");
         }
     }
 

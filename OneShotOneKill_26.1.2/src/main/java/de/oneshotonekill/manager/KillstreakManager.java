@@ -193,10 +193,10 @@ public class KillstreakManager {
         player.getInventory().addItem(item);
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
         if (streak > 0) {
-            player.sendMessage("§a[OneShot] 🎁 §l" + streak + "er Killstreak! §7Du hast den Spezial-Item erhalten: " + itemName);
-            Bukkit.broadcastMessage("§e[OneShot] 🔥 §f" + player.getName() + " §ehat eine §l" + streak + "er Killstreak §eerreicht!");
+            player.sendMessage("§a[OSOK] 🎁 §l" + streak + "er Killstreak! §7Du hast den Spezial-Item erhalten: " + itemName);
+            Bukkit.broadcastMessage("§e[OSOK] 🔥 §f" + player.getName() + " §ehat eine §l" + streak + "er Killstreak §eerreicht!");
         } else {
-            player.sendMessage("§a[OneShot] 🧪 Itemtest: " + itemName + " §aerhalten!");
+            player.sendMessage("§a[OSOK] 🧪 Itemtest: " + itemName + " §aerhalten!");
         }
     }
 
@@ -213,12 +213,12 @@ public class KillstreakManager {
 
     public void activateMinigun(Player player) {
         if (activeMiniguns.contains(player.getUniqueId())) {
-            player.sendMessage("§c[OneShot] 🔥 Minigun ist bereits aktiv!");
+            player.sendMessage("§c[OSOK] 🔥 Minigun ist bereits aktiv!");
             return;
         }
 
         activeMiniguns.add(player.getUniqueId());
-        player.sendMessage("§a[OneShot] 🔥 §lMINIGUN AKTIVIERT! §78 Sekunden Dauerfeuer!");
+        player.sendMessage("§a[OSOK] 🔥 §lMINIGUN AKTIVIERT! §78 Sekunden Dauerfeuer!");
         player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 0.8f, 1.5f);
 
         List<Arrow> minigunArrows = new ArrayList<>();
@@ -240,7 +240,7 @@ public class KillstreakManager {
                     minigunArrows.clear();
 
                     if (player.isOnline()) {
-                        player.sendMessage("§c[OneShot] 🔥 Minigun abgelaufen. Pfeile wurden entfernt!");
+                        player.sendMessage("§c[OSOK] 🔥 Minigun abgelaufen. Pfeile wurden entfernt!");
                         player.playSound(player.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, SoundCategory.MASTER, 1.0f, 1.0f);
                     }
                     return;
@@ -262,7 +262,7 @@ public class KillstreakManager {
     public void activateArrowMagnet(Player player) {
         if (arrowMagnets.contains(player.getUniqueId())) return;
         arrowMagnets.add(player.getUniqueId());
-        player.sendMessage("§a[OneShot] ⚓ Pfeil-Magnetfeld für 15 Sekunden aktiv!");
+        player.sendMessage("§a[OSOK] ⚓ Pfeil-Magnetfeld für 15 Sekunden aktiv!");
         player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, SoundCategory.MASTER, 1.0f, 1.5f);
 
         new BukkitRunnable() {
@@ -274,7 +274,7 @@ public class KillstreakManager {
                     arrowMagnets.remove(player.getUniqueId());
                     cancel();
                     if (player.isOnline()) {
-                        player.sendMessage("§c[OneShot] ⚓ Pfeil-Magnetfeld abgelaufen.");
+                        player.sendMessage("§c[OSOK] ⚓ Pfeil-Magnetfeld abgelaufen.");
                         player.playSound(player.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, SoundCategory.MASTER, 1.0f, 1.0f);
                     }
                     return;

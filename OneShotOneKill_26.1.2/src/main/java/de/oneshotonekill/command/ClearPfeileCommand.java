@@ -35,7 +35,7 @@ public class ClearPfeileCommand implements CommandExecutor {
             }
         }
 
-        sender.sendMessage("§a[OneShot] 🧹 Es wurden §e" + removed + " §aPfeile aus der Welt gelöscht!");
+        sender.sendMessage("§a[OSOK] 🧹 Es wurden §e" + removed + " §aPfeile aus der Welt gelöscht!");
         return true;
     }
 }
