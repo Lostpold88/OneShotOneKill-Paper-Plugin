@@ -1,6 +1,6 @@
-# 🎯 OneShotOneKill (OSOK) - Minecraft Paper 26.1.2 Plugin & Server
+# 🎯 OneShotOneKill (OSOK) - Native Paper 26.1.2 Plugin & Server
 
-Ein hochperformantes, vollfunktionales **1-Hit Kill PvP Minigame Plugin** für Minecraft Paper 26.1.2 (1.21.x), entwickelt mit nativer Paper-API, Kyori Adventure Components und High-Performance Asynchronitäts-Features.
+Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin.yml`, Paper Lifecycle Commands API, Kyori Adventure Components und High-Performance Asynchronitäts-Features.
 
 ---
 
@@ -45,12 +45,16 @@ Ein hochperformantes, vollfunktionales **1-Hit Kill PvP Minigame Plugin** für M
 
 ---
 
-## 🚀 Paper 26.1.2 Performance-Highlights
+## 🚀 Native Paper 26.1.2 Highlights
 
-1. **Persistent Data Container (PDC)**: Typsichere Identifizierung aller Spezial-Items via `NamespacedKey("oneshotonekill", "special_item_type")`.
-2. **Asynchrone Teleportation (`player.teleportAsync`)**: Hintergrund-Preloading von Ziel-Chunks für lagfreie Teleporte (Join, Respawn, Taste F, `/start`).
-3. **Paper Plugin Chunk Tickets (`addPluginChunkTicket`)**: Garantiert, dass gespawnte Powerup-Kisten am Boden niemals durch Paper-Chunk-Entladungen einfrieren, und gibt Speicher nach dem Einsammeln automatisch frei.
-4. **Kyori Adventure & Component API**: Performance-optimiertes Rendering aller Texte, Titles, Tablisten und Emojis.
+1. **Native Paper Plugin Architecture**: Erstellt mit `paper-plugin.yml` (`api-version: '1.21'`) für direkte Einordnung unter **Paper Plugins** bei `/pl`.
+2. **Paper Lifecycle Commands API**: Dynamische Befehlsregistrierung über `LifecycleEvents.COMMANDS` und `BasicCommand`.
+3. **Paper Persistent Data Container (PDC)**: Typsichere Identifizierung aller Spezial-Items und Entitäten via `NamespacedKey("oneshotonekill", "special_item_type")`.
+4. **Paper Entity & Region Schedulers**: Thread-safe Aufgabenverwaltung via `player.getScheduler()` und `GlobalRegionScheduler`.
+5. **Paper Spatial Entity Index Engine**: Blitzschnelle räumliche Suchen per `loc.getNearbyPlayers()` und `getNearbyEntitiesByType()`.
+6. **Asynchrone Teleportation (`player.teleportAsync`)**: Hintergrund-Preloading von Ziel-Chunks für lagfreie Teleporte.
+7. **Paper Plugin Chunk Tickets (`addPluginChunkTicket`)**: Verhindert das Einfrieren von Kisten am Boden bei Chunk-Entladungen.
+8. **Kyori Adventure & Component API**: Performance-optimiertes Rendering aller Texte, Titles, Tablisten und Emojis.
 
 ---
 
@@ -74,7 +78,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 **Was das Skript macht:**
 1. Kompiliert den Java-Quellcode mit `javac` gegen die Paper 26.1.2 API.
-2. Kopiert `plugin.yml` und die gepatchte `map.zip`.
+2. Kopiert `paper-plugin.yml` und die gepatchte `map.zip`.
 3. Verpackt das Plugin in `OneShotOneKill_26.1.2/OneShotOneKill_26.1.2.jar`.
 4. Kopiert das Artefakt automatisch in den Server-Ordner `Server/plugins/OneShotOneKill_26.1.2.jar`.
 
@@ -97,4 +101,4 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 ---
 
 ## 📄 Lizenz & Credits
-Entwickelt & optimiert für Paper 26.1.2.
+Entwickelt als 100% natives Paper 26.1.2 Plugin.
