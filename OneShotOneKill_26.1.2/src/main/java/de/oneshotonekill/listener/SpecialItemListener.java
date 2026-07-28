@@ -132,13 +132,11 @@ public class SpecialItemListener implements Listener {
                 int count = 0;
                 for (Player enemy : Bukkit.getOnlinePlayers()) {
                     if (!enemy.getUniqueId().equals(player.getUniqueId()) && enemy.getWorld().equals(player.getWorld())) {
-                        if (enemy.getLocation().distance(player.getLocation()) <= 30.0) {
-                            enemy.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 100, 0));
-                            count++;
-                        }
+                        enemy.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 600, 0));
+                        count++;
                     }
                 }
-                player.sendMessage("§a[OneShot] ✦ Radar-Puls ausgeführt! §e" + count + " §aGegner geortet!");
+                player.sendMessage("§a[OneShot] ✦ Radar-Puls ausgeführt! §e" + count + " §aGegner in der Arena für 30s enthüllt!");
                 return;
             }
 

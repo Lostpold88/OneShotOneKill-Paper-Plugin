@@ -172,7 +172,7 @@ public class KillstreakManager {
 
     public ItemStack createSpecificSpecialItem(int itemType) {
         return switch (itemType) {
-            case 0 -> createSpecialItem(Material.ENDER_EYE, "§e§l[✦] Radar-Puls (Rechtsklick)", "§7Enthüllt alle Gegner für 5 Sekunden!");
+            case 0 -> createSpecialItem(Material.ENDER_EYE, "§e§l[✦] Radar-Puls (Rechtsklick)", "§7Enthüllt alle Gegner in der Arena für 30 Sekunden!");
             case 1 -> createSpecialItem(Material.TNT, "§c§l[★] Explosiv-Schuss (Rechtsklick)", "§7Dein nächster Pfeil erzeugt eine Explosion!");
             case 2 -> createSpecialItem(Material.NETHER_STAR, "§b§l[🛡] Reflektor-Schild (Rechtsklick)", "§7Blockiert den nächsten tödlichen Treffer!");
             case 3 -> createSpecialItem(Material.SNOWBALL, "§f§l[☁] Rauchbombe (Werfen)", "§7Erzeugt eine dichte Rauchwolke!");

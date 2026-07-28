@@ -12,6 +12,7 @@ import de.oneshotonekill.manager.ArenaManager;
 import de.oneshotonekill.manager.EquipmentManager;
 import de.oneshotonekill.manager.KillEffectManager;
 import de.oneshotonekill.manager.KillstreakManager;
+import de.oneshotonekill.manager.MatchManager;
 import de.oneshotonekill.manager.ScoreboardManager;
 import de.oneshotonekill.manager.WorldManager;
 import org.bukkit.command.CommandExecutor;
@@ -26,6 +27,7 @@ public class OneShotOneKill extends JavaPlugin {
     private ScoreboardManager scoreboardManager;
     private KillstreakManager killstreakManager;
     private KillEffectManager killEffectManager;
+    private MatchManager matchManager;
 
     @Override
     public void onEnable() {
@@ -33,9 +35,10 @@ public class OneShotOneKill extends JavaPlugin {
         this.worldManager = new WorldManager(this);
         this.arenaManager = new ArenaManager(this);
         this.equipmentManager = new EquipmentManager();
-        this.scoreboardManager = new ScoreboardManager();
+        this.scoreboardManager = new ScoreboardManager(this);
         this.killstreakManager = new KillstreakManager(this);
         this.killEffectManager = new KillEffectManager();
+        this.matchManager = new MatchManager(this);
 
         // 2. Map & Welt laden
         this.worldManager.setupWorld();
@@ -112,5 +115,9 @@ public class OneShotOneKill extends JavaPlugin {
 
     public KillEffectManager getKillEffectManager() {
         return killEffectManager;
+    }
+
+    public MatchManager getMatchManager() {
+        return matchManager;
     }
 }

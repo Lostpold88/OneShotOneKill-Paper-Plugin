@@ -27,6 +27,11 @@ public class CombatListener implements Listener {
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player target)) return;
 
+        if (plugin.getMatchManager().isMatchEnded()) {
+            event.setCancelled(true);
+            return;
+        }
+
         Player damager = null;
         boolean isMelee = false;
 
@@ -38,11 +43,11 @@ public class CombatListener implements Listener {
         }
 
         if (damager != null) {
-            // Prüfung: Nahkampfschlag mit leerer Hand oder Bogen -> KEIN One-Shot 1000.0 Schaden! (Dafür ist der Dolch da)
+            // Prüfung: Nahkampfschlag -> NUR mit dem Eisenschwert (OneShot Dolch)! Andere Items (Wolle, Bogen, Fäuste etc.) verursachen normalen Schaden.
             if (isMelee) {
                 ItemStack mainHand = damager.getInventory().getItemInMainHand();
-                if (mainHand == null || mainHand.getType() == Material.AIR || mainHand.getType() == Material.BOW) {
-                    return; // Normaler Faust-/Bogenschlagschaden
+                if (mainHand == null || mainHand.getType() != Material.IRON_SWORD) {
+                    return; // Normaler Faust-, Blöcke- oder Bogenschlagschaden
                 }
             }
 
@@ -108,6 +113,9 @@ public class CombatListener implements Listener {
             }
 
             event.setDeathMessage("§c🎯 " + victim.getName() + " §7wurde von §e" + killer.getName() + " §7ausgeschaltet!");
+
+            // Prüfen, ob dieser Kill den Match-Sieg auslöst
+            plugin.getMatchManager().checkKillWinner(killer, k);
         } else {
             event.setDeathMessage("§c☠ " + victim.getName() + " §7ist gestorben.");
         }

@@ -42,6 +42,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("§a§l🎯 ONESHOT-ONEKILL SYSTEM");
             player.sendMessage("§e§l=======================================");
             player.sendMessage("§7/start §8- §fMatch starten & alle zufällig in die Arena spawnen");
+            player.sendMessage("§7/osok dauer [kills|zeit|off] [Anzahl] §8- §fMatch-Dauer/Ziel festlegen");
             player.sendMessage("§7/itemmode [streak|spawn] §8- §fItem-Modus umschalten (Streak vs 30s Map-Spawn)");
             player.sendMessage("§7/itemtest §8- §fSpezial-Item Testmenü öffnen (Admin)");
             player.sendMessage("§7/clearpfeile §8- §fAlle Pfeile aus der Welt löschen (Admin)");
@@ -53,6 +54,11 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         }
 
         String sub = args[0].toLowerCase();
+
+        if (sub.equals("dauer") || sub.equals("limit") || sub.equals("timer")) {
+            String[] subArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
+            return handleDauerCommand(player, subArgs);
+        }
 
         if (sub.equals("start")) {
             return plugin.getCommand("start").getExecutor().onCommand(sender, command, label, args);
@@ -116,6 +122,79 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         return false;
     }
 
+    private boolean handleDauerCommand(Player player, String[] args) {
+        if (!player.isOp()) {
+            player.sendMessage("§cDazu hast du keine Rechte.");
+            return true;
+        }
+
+        if (args.length == 0) {
+            player.sendMessage("§e[OneShot] Verwende: §f/osok dauer [kills|zeit|off] [Wert]");
+            player.sendMessage("§7Beispiel: §f/osok dauer kills 20 §7(Ziel: 20 Kills)");
+            player.sendMessage("§7Beispiel: §f/osok dauer zeit 10 §7(Ziel: 10 Minuten)");
+            player.sendMessage("§7Beispiel: §f/osok dauer off §7(Limits zurücksetzen)");
+            return true;
+        }
+
+        String type = args[0].toLowerCase();
+        if (type.equals("off") || type.equals("reset") || type.equals("aus") || type.equals("none")) {
+            plugin.getMatchManager().resetLimits();
+            return true;
+        }
+
+        if (type.equals("kills") || type.equals("kill") || type.equals("k")) {
+            if (args.length < 2) {
+                player.sendMessage("§c[OneShot] Bitte gib die Anzahl der Kills an (z. B. /osok dauer kills 20).");
+                return true;
+            }
+            try {
+                int kills = Integer.parseInt(args[1]);
+                plugin.getMatchManager().setKillLimit(kills);
+            } catch (NumberFormatException e) {
+                player.sendMessage("§c[OneShot] Ungültige Zahl: " + args[1]);
+            }
+            return true;
+        }
+
+        if (type.equals("zeit") || type.equals("time") || type.equals("minuten") || type.equals("m")) {
+            if (args.length < 2) {
+                player.sendMessage("§c[OneShot] Bitte gib die Dauer in Minuten an (z. B. /osok dauer zeit 10).");
+                return true;
+            }
+            try {
+                int minutes = Integer.parseInt(args[1]);
+                plugin.getMatchManager().setTimeLimitMinutes(minutes);
+            } catch (NumberFormatException e) {
+                player.sendMessage("§c[OneShot] Ungültige Zahl: " + args[1]);
+            }
+            return true;
+        }
+
+        // Direkte Kurzform-Prüfung: e.g. "20k", "10m" oder reine Zahl "20"
+        if (type.endsWith("k")) {
+            try {
+                int kills = Integer.parseInt(type.substring(0, type.length() - 1));
+                plugin.getMatchManager().setKillLimit(kills);
+                return true;
+            } catch (NumberFormatException ignored) {}
+        }
+        if (type.endsWith("m")) {
+            try {
+                int minutes = Integer.parseInt(type.substring(0, type.length() - 1));
+                plugin.getMatchManager().setTimeLimitMinutes(minutes);
+                return true;
+            } catch (NumberFormatException ignored) {}
+        }
+        try {
+            int val = Integer.parseInt(type);
+            plugin.getMatchManager().setKillLimit(val);
+            return true;
+        } catch (NumberFormatException ignored) {}
+
+        player.sendMessage("§c[OneShot] Ungültiger Parameter. Verwende: /osok dauer [kills|zeit|off] [Wert]");
+        return true;
+    }
+
     private boolean handleItemModeCommand(Player player, String[] args) {
         if (!player.isOp()) {
             player.sendMessage("§cDazu hast du keine Rechte.");
@@ -156,7 +235,10 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode", "clearpfeile"), new ArrayList<>());
+            return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "dauer", "limit", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode", "clearpfeile"), new ArrayList<>());
+        }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit"))) {
+            return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "zeit", "off"), new ArrayList<>());
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("itemmode")) {
             return StringUtil.copyPartialMatches(args[1], Arrays.asList("streak", "spawn", "both", "kombi"), new ArrayList<>());
