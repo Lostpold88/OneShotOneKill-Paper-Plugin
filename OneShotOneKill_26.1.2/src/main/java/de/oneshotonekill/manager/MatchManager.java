@@ -225,16 +225,16 @@ public class MatchManager {
 
     private void playMegalovaniaSong() {
         // Megalovania Noteblock-Töne laut Noten-Diagramm
-        // Tempo: 3 Game-Ticks (150ms) pro Redstone-Stufe für ein entspanntes, perfektes Lied-Tempo
+        // Tempo: 2.5 Game-Ticks (125ms) pro Redstone-Stufe – der perfekte Mittelweg!
         int[] startClicks = new int[]{ 6, 4, 3, 2 }; // 1. D,D | 2. C,C | 3. H,H | 4. B,B
-        int[] noteClicks = new int[204];
+        int[] noteClicks = new int[170];
         java.util.Arrays.fill(noteClicks, -1);
 
-        int[] offsets = new int[]{ 0, 3, 6, 12, 21, 27, 33, 39, 42, 45 };
+        int[] offsets = new int[]{ 0, 2, 5, 10, 17, 22, 27, 32, 35, 37 };
         int[] restClicks = new int[]{ -1, -1, 18, 13, 12, 11, 9, 6, 9, 11 };
 
         for (int pass = 0; pass < 4; pass++) {
-            int baseTick = pass * 51;
+            int baseTick = pass * 42;
             for (int i = 0; i < offsets.length; i++) {
                 int tick = baseTick + offsets[i];
                 int clicks = (i < 2) ? startClicks[pass] : restClicks[i];
@@ -252,7 +252,7 @@ public class MatchManager {
                     return;
                 }
 
-                int clicks = noteClicks[currentTick % 204];
+                int clicks = noteClicks[currentTick % 170];
                 if (clicks >= 0) {
                     float pitch = (float) Math.pow(2.0, (clicks - 12.0) / 12.0);
                     for (Player player : Bukkit.getOnlinePlayers()) {
