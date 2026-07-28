@@ -42,6 +42,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             player.sendMessage("§a§l🎯 ONESHOT-ONEKILL SYSTEM");
             player.sendMessage("§e§l=======================================");
             player.sendMessage("§7/start §8- §fMatch starten & alle zufällig in die Arena spawnen");
+            player.sendMessage("§7/osok restart §8- §fMatch neu starten (stoppt Siegesmusik & Effekte)");
             player.sendMessage("§7/osok dauer [kills|zeit|off] [Anzahl] §8- §fMatch-Dauer/Ziel festlegen");
             player.sendMessage("§7/itemmode [streak|spawn] §8- §fItem-Modus umschalten (Streak vs 30s Map-Spawn)");
             player.sendMessage("§7/itemtest §8- §fSpezial-Item Testmenü öffnen (Admin)");
@@ -54,6 +55,15 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         }
 
         String sub = args[0].toLowerCase();
+
+        if (sub.equals("restart") || sub.equals("re-start") || sub.equals("neustart")) {
+            if (!player.isOp()) {
+                player.sendMessage("§cDazu hast du keine Rechte.");
+                return true;
+            }
+            plugin.getMatchManager().restartMatch(player);
+            return true;
+        }
 
         if (sub.equals("dauer") || sub.equals("limit") || sub.equals("timer")) {
             String[] subArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
@@ -235,7 +245,7 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "dauer", "limit", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode", "clearpfeile"), new ArrayList<>());
+            return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "restart", "dauer", "limit", "setspawn", "resetmap", "resetstats", "itemtest", "itemmode", "clearpfeile"), new ArrayList<>());
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit"))) {
             return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "zeit", "off"), new ArrayList<>());

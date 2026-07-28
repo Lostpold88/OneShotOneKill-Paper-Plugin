@@ -34,25 +34,9 @@ public class StartCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        int count = 0;
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
-            if (randomLoc != null) {
-                p.teleport(randomLoc);
-                plugin.getEquipmentManager().giveOneShotEquipment(p);
-                p.sendTitle("§a§lLOS GEHT'S!", "§7OneShotOneKill Match gestartet", 10, 40, 10);
-                p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 0.5f, 1.5f);
-                count++;
-            }
+        if (plugin.getMatchManager() != null) {
+            plugin.getMatchManager().restartMatch(player);
         }
-
-        plugin.getScoreboardManager().updateAllScoreboards();
-
-        Bukkit.broadcastMessage(" ");
-        Bukkit.broadcastMessage("§a§l=======================================");
-        Bukkit.broadcastMessage("§e§l   🚀 MATCH GESTARTET!   ");
-        Bukkit.broadcastMessage("§7" + count + " Spieler wurden zufällig in der Arena platziert!");
-        Bukkit.broadcastMessage("§a§l=======================================");
         return true;
     }
 

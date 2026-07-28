@@ -26,6 +26,8 @@ public class MatchManager {
     private int timeLimitSeconds = 0;
     private int remainingSeconds = 0;
     private BukkitTask timerTask = null;
+    private BukkitTask victoryMusicTask = null;
+    private BukkitTask victoryEffectsTask = null;
     private boolean matchEnded = false;
 
     public MatchManager(OneShotOneKill plugin) {
@@ -54,6 +56,7 @@ public class MatchManager {
 
     public void setKillLimit(int kills) {
         stopTimer();
+        stopVictoryTasks();
         this.killLimit = kills;
         this.timeLimitSeconds = 0;
         this.remainingSeconds = 0;
@@ -65,6 +68,7 @@ public class MatchManager {
 
     public void setTimeLimitMinutes(int minutes) {
         stopTimer();
+        stopVictoryTasks();
         this.killLimit = 0;
         this.timeLimitSeconds = minutes * 60;
         this.remainingSeconds = this.timeLimitSeconds;
@@ -77,6 +81,7 @@ public class MatchManager {
 
     public void resetLimits() {
         stopTimer();
+        stopVictoryTasks();
         this.killLimit = 0;
         this.timeLimitSeconds = 0;
         this.remainingSeconds = 0;
@@ -118,6 +123,17 @@ public class MatchManager {
         }
     }
 
+    public void stopVictoryTasks() {
+        if (victoryMusicTask != null) {
+            victoryMusicTask.cancel();
+            victoryMusicTask = null;
+        }
+        if (victoryEffectsTask != null) {
+            victoryEffectsTask.cancel();
+            victoryEffectsTask = null;
+        }
+    }
+
     public void checkKillWinner(Player killer, int currentKills) {
         if (matchEnded || killLimit <= 0) return;
 
@@ -148,9 +164,8 @@ public class MatchManager {
 
         // Bildschirm-Banner für ALLE Spieler
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.sendTitle("§e§l🏆 GEWINNER!", "§f" + winner.getName() + " §7hat gewonnen! (§a" + winnerKills + " Kills§7)", 10, 100, 20);
+            p.sendTitle("§e§l🏆 GEWINNER!", "§f" + winner.getName() + " §7hat gewonnen! (§a" + winnerKills + " Kills§7)", 10, 200, 20);
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 1.0f, 1.0f);
-            p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.2f);
         }
 
         // Chat Ankündigung & Rangliste
@@ -158,92 +173,132 @@ public class MatchManager {
         Bukkit.broadcastMessage("§a§l=======================================");
         Bukkit.broadcastMessage("§e§l   🏆 MATCH BEENDET - MATCH GEWINNER!   ");
         Bukkit.broadcastMessage("§f  Gewinner: §e§l" + winner.getName() + " §7mit §a§l" + winnerKills + " Kills§7!");
+        Bukkit.broadcastMessage("§7  Starte das Match neu mit: §e/osok restart §7oder §e/start");
         Bukkit.broadcastMessage("§a§l=======================================");
         Bukkit.broadcastMessage(" ");
 
         // Gewinner Effekte
-        winner.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 120, 0));
-        winner.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 120, 2));
+        winner.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 7200, 0));
+        winner.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 7200, 2));
 
-        // Noteblock Sieges-Melodie (Fanfare) abspielen!
-        playVictorySong();
+        // Megalovania Endlosschleife & Sieger-Spektakel starten!
+        playWinnerCelebrationLoop(winner);
+    }
 
-        // Feuerwerk & Spektakel Task über 5 Sekunden
-        new BukkitRunnable() {
+    private void playWinnerCelebrationLoop(Player winner) {
+        stopVictoryTasks();
+        playMegalovaniaSong();
+
+        victoryEffectsTask = new BukkitRunnable() {
             int ticks = 0;
 
             @Override
             public void run() {
-                if (ticks >= 10 || !winner.isOnline()) {
+                if (!matchEnded || winner == null || !winner.isOnline()) {
                     cancel();
-
-                    // Nach 5s Teleport zurück zum Spawn und Vorbereitung der nächsten Runde
-                    Location spawn = plugin.getWorldManager().getSpawnLocation();
-                    for (Player p : Bukkit.getOnlinePlayers()) {
-                        if (spawn != null) p.teleport(spawn);
-                        plugin.getEquipmentManager().giveOneShotEquipment(p);
-                    }
-                    matchEnded = false;
-                    plugin.getScoreboardManager().updateAllScoreboards();
                     return;
                 }
 
                 Location wLoc = winner.getLocation();
-                wLoc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, wLoc.clone().add(0, 1, 0), 40, 0.5, 1.0, 0.5, 0.2);
-                wLoc.getWorld().spawnParticle(Particle.FIREWORK, wLoc.clone().add(0, 1, 0), 30, 0.5, 1.0, 0.5, 0.1);
-                wLoc.getWorld().strikeLightningEffect(wLoc);
+                wLoc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, wLoc.clone().add(0, 1, 0), 20, 0.5, 1.0, 0.5, 0.2);
+                wLoc.getWorld().spawnParticle(Particle.FIREWORK, wLoc.clone().add(0, 1, 0), 15, 0.5, 1.0, 0.5, 0.1);
 
-                // Feuerwerk zünden
-                Firework fw = (Firework) wLoc.getWorld().spawnEntity(wLoc.clone().add(0, 1, 0), EntityType.FIREWORK_ROCKET);
-                FireworkMeta fwm = fw.getFireworkMeta();
-                fwm.addEffect(FireworkEffect.builder()
-                        .withColor(Color.YELLOW, Color.ORANGE, Color.GREEN)
-                        .withFade(Color.WHITE)
-                        .with(FireworkEffect.Type.BALL_LARGE)
-                        .withFlicker()
-                        .build());
-                fwm.setPower(1);
-                fw.setFireworkMeta(fwm);
+                if (ticks % 2 == 0) {
+                    wLoc.getWorld().strikeLightningEffect(wLoc);
+
+                    Firework fw = (Firework) wLoc.getWorld().spawnEntity(wLoc.clone().add(0, 1, 0), EntityType.FIREWORK_ROCKET);
+                    FireworkMeta fwm = fw.getFireworkMeta();
+                    fwm.addEffect(FireworkEffect.builder()
+                            .withColor(Color.YELLOW, Color.ORANGE, Color.PURPLE)
+                            .withFade(Color.WHITE)
+                            .with(FireworkEffect.Type.BALL_LARGE)
+                            .withFlicker()
+                            .build());
+                    fwm.setPower(1);
+                    fw.setFireworkMeta(fwm);
+                }
 
                 ticks++;
             }
         }.runTaskTimer(plugin, 0L, 10L);
     }
 
-    private void playVictorySong() {
-        // Multi-Instrument Noteblock Fanfare
-        new BukkitRunnable() {
+    private void playMegalovaniaSong() {
+        // MEGALOVANIA (Undertale Soundtrack) Noteblock-Riff Loop
+        // Tonhöhen für Lead: D4, C4, B3, A#3, D5, A4, G#4, G4, F4
+        float D4 = 0.80f, C4 = 0.71f, B3 = 0.67f, Bb3 = 0.63f;
+        float D5 = 1.59f, A4 = 1.19f, Ab4 = 1.12f, G4 = 1.06f, F4 = 0.94f;
+
+        float[] leadNotes = new float[] {
+            // Riff 1 (D4 D4)
+            D4, D4, D5, -1f, A4, -1f, Ab4, -1f, G4, -1f, F4, -1f, D4, F4, G4, -1f,
+            // Riff 2 (C4 C4)
+            C4, C4, D5, -1f, A4, -1f, Ab4, -1f, G4, -1f, F4, -1f, D4, F4, G4, -1f,
+            // Riff 3 (B3 B3)
+            B3, B3, D5, -1f, A4, -1f, Ab4, -1f, G4, -1f, F4, -1f, D4, F4, G4, -1f,
+            // Riff 4 (A#3 A#3)
+            Bb3, Bb3, D5, -1f, A4, -1f, Ab4, -1f, G4, -1f, F4, -1f, D4, F4, G4, -1f
+        };
+
+        victoryMusicTask = new BukkitRunnable() {
             int step = 0;
 
             @Override
             public void run() {
-                if (step > 20) {
+                if (!matchEnded) {
                     cancel();
                     return;
                 }
 
-                switch (step) {
-                    case 0 -> playNoteChord(0.71f, 0.89f, 1.06f); // C4 Major
-                    case 3 -> playNoteChord(0.89f, 1.06f, 1.41f); // E4 Major
-                    case 6 -> playNoteChord(1.06f, 1.41f, 1.78f); // G4 Major
-                    case 9 -> playNoteChord(1.41f, 1.78f, 2.00f); // High C5 Triumph
-                    case 12 -> playNoteChord(1.78f, 2.00f, 1.41f); // E5 High Peak
-                    case 15 -> playNoteChord(2.00f, 2.00f, 2.00f); // Ausklang Glanz
+                int index = step % leadNotes.length;
+                float pitch = leadNotes[index];
+
+                if (pitch > 0) {
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        Location loc = player.getLocation();
+                        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BIT, SoundCategory.MASTER, 1.0f, pitch);
+                        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 0.8f, pitch);
+                        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.MASTER, 1.0f, pitch * 0.5f);
+                    }
                 }
 
                 step++;
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }.runTaskTimer(plugin, 0L, 2L); // 2 Ticks pro Note = Schnelles Megalovania Tempo!
     }
 
-    private void playNoteChord(float p1, float p2, float p3) {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            Location loc = player.getLocation();
-            player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_HARP, SoundCategory.MASTER, 1.0f, p1);
-            player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BELL, SoundCategory.MASTER, 0.8f, p2);
-            player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 0.9f, p3);
-            player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 0.7f, p1);
+    public void restartMatch(Player sender) {
+        stopVictoryTasks();
+        stopTimer();
+        this.matchEnded = false;
+
+        Location spawn = plugin.getWorldManager().getSpawnLocation();
+        int count = 0;
+
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
+            Location targetLoc = (randomLoc != null) ? randomLoc : spawn;
+            if (targetLoc != null) {
+                p.teleport(targetLoc);
+                plugin.getEquipmentManager().giveOneShotEquipment(p);
+                p.sendTitle("§a§lNEUES MATCH!", "§7OneShotOneKill gestartet", 10, 40, 10);
+                p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 0.5f, 1.5f);
+                count++;
+            }
         }
+
+        if (timeLimitSeconds > 0) {
+            remainingSeconds = timeLimitSeconds;
+            startTimer();
+        }
+
+        plugin.getScoreboardManager().updateAllScoreboards();
+
+        Bukkit.broadcastMessage(" ");
+        Bukkit.broadcastMessage("§a§l=======================================");
+        Bukkit.broadcastMessage("§e§l   🚀 MATCH NEU GESTARTET!   ");
+        Bukkit.broadcastMessage("§7" + count + " Spieler wurden zufällig in der Arena platziert!");
+        Bukkit.broadcastMessage("§a§l=======================================");
     }
 
     public String formatTime(int totalSeconds) {
