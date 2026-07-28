@@ -1,6 +1,9 @@
 package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
+import io.papermc.paper.scoreboard.numbers.NumberFormat;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -49,9 +52,12 @@ public class ScoreboardManager {
         if (mgr == null) return;
 
         Scoreboard board = mgr.getNewScoreboard();
-        Objective obj = board.registerNewObjective("oneshot", "dummy", "§e§l🎯 OSOK");
+        Component titleComponent = LegacyComponentSerializer.legacySection().deserialize("§e§l🎯 OSOK");
+        Objective obj = board.registerNewObjective("oneshot", "dummy", titleComponent);
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
-        hideRedNumbers(obj);
+
+        // Paper 26.1.2 Scoreboard API: Native numberFormat(blank()) without any NMS reflection!
+        obj.numberFormat(NumberFormat.blank());
 
         int scorePos = 15;
         addScoreLine(obj, "§7-------------------", scorePos--);
@@ -111,7 +117,7 @@ public class ScoreboardManager {
     private void addScoreLine(Objective obj, String text, int scoreVal) {
         org.bukkit.scoreboard.Score score = obj.getScore(text);
         score.setScore(scoreVal);
-        hideScoreNumber(score);
+        score.numberFormat(NumberFormat.blank());
     }
 
     public void resetAllStats() {
@@ -124,10 +130,10 @@ public class ScoreboardManager {
     }
 
     public void updateTabList(Player player) {
-        String header = "\n§e§l🎯 OSOK §7| §cMATCH STATS\n";
-        String footer = "\n§7Scoreboard & Leaderboard\n";
+        Component header = LegacyComponentSerializer.legacySection().deserialize("\n§e§l🎯 OSOK §7| §cMATCH STATS\n");
+        Component footer = LegacyComponentSerializer.legacySection().deserialize("\n§7Scoreboard & Leaderboard\n");
         
-        player.setPlayerListHeaderFooter(header, footer);
+        player.sendPlayerListHeaderAndFooter(header, footer);
 
         List<Player> sortedPlayers = Bukkit.getOnlinePlayers().stream()
                 .sorted((p1, p2) -> Integer.compare(getKills(p2.getUniqueId()), getKills(p1.getUniqueId())))
@@ -146,7 +152,8 @@ public class ScoreboardManager {
             String nameText = "§f" + p.getName();
             String statsText = " §7| §aK: " + k + " §7| §cD: " + d + " §7| §bK/D: " + kd + " §7| §e⚡" + s + " §6(★" + hs + ")";
 
-            p.setPlayerListName(rankPrefix + bountyTag + nameText + statsText);
+            Component listName = LegacyComponentSerializer.legacySection().deserialize(rankPrefix + bountyTag + nameText + statsText);
+            p.playerListName(listName);
         }
     }
 
@@ -186,7 +193,8 @@ public class ScoreboardManager {
             bountyTargets.add(uuid);
             Player p = Bukkit.getPlayer(uuid);
             String pName = p != null ? p.getName() : "Ein Spieler";
-            Bukkit.broadcastMessage("§e[OSOK] 👑 KOPFGELD AUSGESETZT! §f" + pName + " §7hat eine §l5er Killstreak §7erreicht! Eliminiere ihn für 2 Spezial-Items!");
+            Component msg = LegacyComponentSerializer.legacySection().deserialize("§e[OSOK] 👑 KOPFGELD AUSGESETZT! §f" + pName + " §7hat eine §l5er Killstreak §7erreicht! Eliminiere ihn für 2 Spezial-Items!");
+            Bukkit.broadcast(msg);
             for (Player online : Bukkit.getOnlinePlayers()) {
                 online.playSound(online.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 0.6f, 1.8f);
             }
@@ -214,52 +222,5 @@ public class ScoreboardManager {
 
     public int getHighestStreak(UUID uuid) {
         return highestStreakMap.getOrDefault(uuid, 0);
-    }
-
-    private void hideRedNumbers(Objective objective) {
-        try {
-            java.lang.reflect.Method getHandleMethod = objective.getClass().getDeclaredMethod("getHandle");
-            getHandleMethod.setAccessible(true);
-            Object handle = getHandleMethod.invoke(objective);
-
-            Class<?> blankFormatClass = Class.forName("net.minecraft.network.chat.numbers.BlankFormat");
-            Object blankInstance = blankFormatClass.getField("INSTANCE").get(null);
-
-            Class<?> numberFormatClass = Class.forName("net.minecraft.network.chat.numbers.NumberFormat");
-            java.lang.reflect.Method setNumberFormatMethod = handle.getClass().getMethod("setNumberFormat", numberFormatClass);
-            setNumberFormatMethod.setAccessible(true);
-            setNumberFormatMethod.invoke(handle, blankInstance);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void hideScoreNumber(org.bukkit.scoreboard.Score score) {
-        try {
-            org.bukkit.scoreboard.Objective obj = score.getObjective();
-            java.lang.reflect.Method getHandleMethod = obj.getClass().getDeclaredMethod("getHandle");
-            getHandleMethod.setAccessible(true);
-            Object nmsObjective = getHandleMethod.invoke(obj);
-
-            Object nmsScoreboard = nmsObjective.getClass().getMethod("getScoreboard").invoke(nmsObjective);
-
-            Class<?> scoreHolderClass = Class.forName("net.minecraft.world.scores.ScoreHolder");
-            java.lang.reflect.Method forNameOnlyMethod = scoreHolderClass.getMethod("forNameOnly", String.class);
-            Object scoreHolder = forNameOnlyMethod.invoke(null, score.getEntry());
-
-            Class<?> objectiveClass = Class.forName("net.minecraft.world.scores.Objective");
-            java.lang.reflect.Method getOrCreatePlayerScoreMethod = nmsScoreboard.getClass().getMethod("getOrCreatePlayerScore", scoreHolderClass, objectiveClass);
-            Object scoreAccess = getOrCreatePlayerScoreMethod.invoke(nmsScoreboard, scoreHolder, nmsObjective);
-
-            Class<?> blankFormatClass = Class.forName("net.minecraft.network.chat.numbers.BlankFormat");
-            Object blankInstance = blankFormatClass.getField("INSTANCE").get(null);
-
-            Class<?> numberFormatClass = Class.forName("net.minecraft.network.chat.numbers.NumberFormat");
-            java.lang.reflect.Method numberFormatOverrideMethod = scoreAccess.getClass().getMethod("numberFormatOverride", numberFormatClass);
-            numberFormatOverrideMethod.setAccessible(true);
-            numberFormatOverrideMethod.invoke(scoreAccess, blankInstance);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }
