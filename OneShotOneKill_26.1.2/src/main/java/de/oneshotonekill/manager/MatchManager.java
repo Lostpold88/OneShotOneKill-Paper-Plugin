@@ -32,10 +32,15 @@ public class MatchManager {
     private BukkitTask timerTask = null;
     private BukkitTask victoryMusicTask = null;
     private BukkitTask victoryEffectsTask = null;
+    private boolean matchStarted = false;
     private boolean matchEnded = false;
 
     public MatchManager(OneShotOneKill plugin) {
         this.plugin = plugin;
+    }
+
+    public boolean isMatchStarted() {
+        return matchStarted;
     }
 
     public boolean isMatchEnded() {
@@ -301,6 +306,7 @@ public class MatchManager {
     public void restartMatch(Player sender) {
         stopVictoryTasks();
         stopTimer();
+        this.matchStarted = true;
         this.matchEnded = false;
 
         Location spawn = plugin.getWorldManager().getSpawnLocation();

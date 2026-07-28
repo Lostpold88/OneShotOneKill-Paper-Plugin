@@ -82,8 +82,14 @@ public class PlayerConnectionListener implements Listener {
         event.setCancelled(true);
         Player player = event.getPlayer();
 
+        if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
+            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Warte auf /start."));
+            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            return;
+        }
+
         if (plugin.getArenaManager().isInArenaArea(player.getLocation())) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Du bist bereits im Bereich der Arena! Random-TP ist während des Kampfs deaktiviert."));
+            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Du bist bereits in der Arena!"));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }

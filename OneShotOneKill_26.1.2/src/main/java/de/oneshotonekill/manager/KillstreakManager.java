@@ -86,6 +86,9 @@ public class KillstreakManager {
         new BukkitRunnable() {
             @Override
             public void run() {
+                if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
+                    return;
+                }
                 if (currentItemMode == ItemMode.SPAWN || currentItemMode == ItemMode.BOTH) {
                     spawnGroundSpecialItem();
                 }

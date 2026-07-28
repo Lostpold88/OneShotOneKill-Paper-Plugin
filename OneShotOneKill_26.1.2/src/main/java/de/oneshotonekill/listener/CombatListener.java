@@ -29,7 +29,7 @@ public class CombatListener implements Listener {
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player target)) return;
 
-        if (plugin.getMatchManager().isMatchEnded()) {
+        if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
             event.setCancelled(true);
             return;
         }
