@@ -2,6 +2,7 @@ package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
 import io.papermc.paper.scoreboard.numbers.NumberFormat;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -11,8 +12,6 @@ import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,7 +26,7 @@ public class ScoreboardManager {
     private final Set<UUID> bountyTargets = new HashSet<>();
 
     private int currentPhase = 0;
-    private BukkitTask animTask = null;
+    private ScheduledTask animTask = null;
 
     public ScoreboardManager() {
         this.plugin = null;
@@ -41,25 +40,22 @@ public class ScoreboardManager {
     public void startSlowTitleAnimation() {
         if (plugin == null || animTask != null) return;
 
-        // Läuft alle 5 Ticks (0,25 Sekunden) -> Langsamer, entspannter und flüssiger Regenbogen-Farbverlauf!
-        animTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                currentPhase++;
-                Component titleComp = MiniMessage.miniMessage().deserialize("<rainbow:" + currentPhase + "><b>🎯 OSOK</b></rainbow>");
-                Component headerComp = MiniMessage.miniMessage().deserialize("\n<rainbow:" + currentPhase + "><b>🎯 OSOK</b></rainbow> <gray>|</gray> <red>MATCH STATS</red>\n");
-                Component footerComp = MiniMessage.miniMessage().deserialize("\n<gray>Scoreboard & Leaderboard</gray>\n");
+        // Paper Native Global Region Scheduler: Läuft alle 5 Ticks (0,25 Sekunden)
+        animTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
+            currentPhase++;
+            Component titleComp = MiniMessage.miniMessage().deserialize("<rainbow:" + currentPhase + "><b>🎯 OSOK</b></rainbow>");
+            Component headerComp = MiniMessage.miniMessage().deserialize("\n<rainbow:" + currentPhase + "><b>🎯 OSOK</b></rainbow> <gray>|</gray> <red>MATCH STATS</red>\n");
+            Component footerComp = MiniMessage.miniMessage().deserialize("\n<gray>Scoreboard & Leaderboard</gray>\n");
 
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    Scoreboard board = p.getScoreboard();
-                    Objective obj = board.getObjective("oneshot");
-                    if (obj != null) {
-                        obj.displayName(titleComp);
-                    }
-                    p.sendPlayerListHeaderAndFooter(headerComp, footerComp);
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                Scoreboard board = p.getScoreboard();
+                Objective obj = board.getObjective("oneshot");
+                if (obj != null) {
+                    obj.displayName(titleComp);
                 }
+                p.sendPlayerListHeaderAndFooter(headerComp, footerComp);
             }
-        }.runTaskTimer(plugin, 0L, 5L);
+        }, 1L, 5L);
     }
 
     public void updateAllScoreboards() {

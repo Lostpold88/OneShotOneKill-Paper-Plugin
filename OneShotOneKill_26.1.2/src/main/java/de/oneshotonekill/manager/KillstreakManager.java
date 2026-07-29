@@ -1,9 +1,9 @@
 package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Item;
@@ -11,10 +11,10 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 public class KillstreakManager {
 
@@ -34,31 +34,28 @@ public class KillstreakManager {
     public static final String KEY_CHAIN_LIGHTNING = "chain_lightning";
     public static final String KEY_ROCKET_JUMP = "rocket_jump";
 
-    public static final NamespacedKey KEY_GROUND_SPECIAL_PDC = new NamespacedKey("oneshotonekill", "ground_special");
+    public static final NamespacedKey KEY_EXPLOSIVE_PDC = new NamespacedKey("oneshotonekill", "explosive_arrow");
+    public static final NamespacedKey KEY_CHAIN_LIGHTNING_PDC = new NamespacedKey("oneshotonekill", "chain_lightning_arrow");
     public static final NamespacedKey KEY_TP_GRENADE_PDC = new NamespacedKey("oneshotonekill", "tp_grenade");
-    public static final NamespacedKey KEY_CHAIN_LIGHTNING_PDC = new NamespacedKey("oneshotonekill", "chain_lightning");
-    public static final NamespacedKey KEY_EXPLOSIVE_PDC = new NamespacedKey("oneshotonekill", "explosive");
+    public static final NamespacedKey KEY_GROUND_SPECIAL_PDC = new NamespacedKey("oneshotonekill", "ground_special");
 
     private final OneShotOneKill plugin;
     private final NamespacedKey specialItemKey;
-    private ItemMode currentItemMode = ItemMode.BOTH;
-
     private final Set<UUID> activeShields = new HashSet<>();
     private final Set<UUID> explosiveShots = new HashSet<>();
     private final Set<UUID> chainLightningShots = new HashSet<>();
-    private final Set<UUID> arrowMagnets = new HashSet<>();
     private final Set<UUID> activeMiniguns = new HashSet<>();
+    private final Set<UUID> arrowMagnets = new HashSet<>();
+
     private final Set<Item> activeGroundItems = new HashSet<>();
+    private ItemMode currentItemMode = ItemMode.BOTH;
 
     public KillstreakManager(OneShotOneKill plugin) {
         this.plugin = plugin;
         this.specialItemKey = new NamespacedKey(plugin, "special_item_type");
+
         startGroundSpawnTask();
         startMarioKartParticleAnimation();
-    }
-
-    public NamespacedKey getSpecialItemKey() {
-        return specialItemKey;
     }
 
     public ItemMode getItemMode() {
@@ -67,16 +64,18 @@ public class KillstreakManager {
 
     public void setItemMode(ItemMode mode) {
         this.currentItemMode = mode;
-        if (mode == ItemMode.STREAK) {
-            clearAllGroundItems();
-        } else if (mode == ItemMode.SPAWN || mode == ItemMode.BOTH) {
-            spawnGroundSpecialItem();
-        }
+    }
+
+    public NamespacedKey getSpecialItemKey() {
+        return specialItemKey;
     }
 
     public void clearAllGroundItems() {
         for (Item item : activeGroundItems) {
             if (item != null && item.isValid()) {
+                if (item.getLocation() != null && item.getWorld() != null) {
+                    item.getWorld().removePluginChunkTicket(item.getLocation().getBlockX() >> 4, item.getLocation().getBlockZ() >> 4, plugin);
+                }
                 item.remove();
             }
         }
@@ -84,25 +83,24 @@ public class KillstreakManager {
     }
 
     private void startGroundSpawnTask() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
-                    return;
-                }
-                if (currentItemMode == ItemMode.SPAWN || currentItemMode == ItemMode.BOTH) {
-                    spawnGroundSpecialItem();
-                }
+        // Paper Native Global Region Scheduler: Spawnt alle 30 Sekunden Mario-Kart-Boxen
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
+            if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
+                return;
             }
-        }.runTaskTimer(plugin, 600L, 600L); // Alle 30 Sekunden
+            if (currentItemMode == ItemMode.SPAWN || currentItemMode == ItemMode.BOTH) {
+                spawnGroundSpecialItem();
+            }
+        }, 600L, 600L);
     }
 
     private void startMarioKartParticleAnimation() {
-        new BukkitRunnable() {
+        // Paper Native Global Region Scheduler: Läuft alle 2 Ticks für Partikel-Ringe
+        Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
             double angle = 0;
 
             @Override
-            public void run() {
+            public void accept(ScheduledTask task) {
                 if (activeGroundItems.isEmpty()) return;
 
                 angle += 0.2;
@@ -119,85 +117,48 @@ public class KillstreakManager {
                         continue;
                     }
 
-                    Location loc = item.getLocation();
+                    Location loc = item.getLocation().add(0, 0.5, 0);
                     World world = loc.getWorld();
-                    if (world == null) continue;
+
+                    world.spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 2, 0.1, 0.1, 0.1, 0.02);
 
                     double x = Math.cos(angle) * 0.6;
                     double z = Math.sin(angle) * 0.6;
-                    Location particleLoc = loc.clone().add(x, 0.2, z);
-
-                    world.spawnParticle(Particle.END_ROD, particleLoc, 1, 0, 0, 0, 0);
-                    world.spawnParticle(Particle.TOTEM_OF_UNDYING, loc.clone().add(0, 0.4, 0), 2, 0.2, 0.2, 0.2, 0.05);
+                    Location ringLoc = loc.clone().add(x, 0, z);
+                    world.spawnParticle(Particle.END_ROD, ringLoc, 1, 0, 0, 0, 0);
                 }
             }
-        }.runTaskTimer(plugin, 0L, 3L);
+        }, 1L, 2L);
     }
 
     public void spawnGroundSpecialItem() {
-        World osokWorld = plugin.getWorldManager().getOsokWorld();
-        if (osokWorld == null) return;
-
-        activeGroundItems.removeIf(item -> item == null || !item.isValid());
-
-        Location spawnLoc = null;
-        for (int attempts = 0; attempts < 50; attempts++) {
-            Location candidate = plugin.getArenaManager().getRandomArenaLocation();
-            if (candidate == null) continue;
-
-            boolean tooclose = false;
-            for (Item groundItem : activeGroundItems) {
-                if (groundItem != null && groundItem.isValid()) {
-                    if (groundItem.getWorld().equals(candidate.getWorld()) && groundItem.getLocation().distance(candidate) < 10.0) {
-                        tooclose = true;
-                        break;
-                    }
-                }
-            }
-
-            if (!tooclose) {
-                spawnLoc = candidate;
-                break;
-            }
-        }
-
-        if (spawnLoc == null) {
-            spawnLoc = plugin.getArenaManager().getRandomArenaLocation();
-        }
-
-        if (spawnLoc == null) return;
-
-        int chunkX = spawnLoc.getBlockX() >> 4;
-        int chunkZ = spawnLoc.getBlockZ() >> 4;
-        spawnLoc.getWorld().addPluginChunkTicket(chunkX, chunkZ, plugin);
+        Location spawnLoc = plugin.getArenaManager().getRandomArenaLocation();
+        if (spawnLoc == null || spawnLoc.getWorld() == null) return;
 
         Random random = new Random();
         int itemType = random.nextInt(11);
-        ItemStack specialItem = createSpecificSpecialItem(itemType);
+        ItemStack itemStack = createSpecificSpecialItem(itemType);
 
-        Item dropped = spawnLoc.getWorld().dropItem(spawnLoc, specialItem);
-        dropped.setPickupDelay(5);
-        dropped.setCanPlayerPickup(true);
+        spawnLoc.getWorld().addPluginChunkTicket(spawnLoc.getBlockX() >> 4, spawnLoc.getBlockZ() >> 4, plugin);
+
+        Item dropped = spawnLoc.getWorld().dropItem(spawnLoc, itemStack);
         dropped.setCanMobPickup(false);
+        dropped.setGravity(false);
         dropped.getPersistentDataContainer().set(KEY_GROUND_SPECIAL_PDC, PersistentDataType.BYTE, (byte) 1);
-        dropped.setPickupDelay(0);
         activeGroundItems.add(dropped);
 
         spawnLoc.getWorld().spawnParticle(Particle.FIREWORK, spawnLoc.clone().add(0, 0.5, 0), 30, 0.4, 0.4, 0.4, 0.05);
         spawnLoc.getWorld().spawnParticle(Particle.END_ROD, spawnLoc.clone().add(0, 0.5, 0), 20, 0.3, 0.3, 0.3, 0.1);
         spawnLoc.getWorld().playSound(spawnLoc, Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.5f);
 
-        // Nach 60 Sekunden (1 Minute) automatisch despawnen
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (dropped.isValid()) {
-                    dropped.getWorld().spawnParticle(Particle.SMOKE, dropped.getLocation(), 15, 0.2, 0.2, 0.2, 0.05);
-                    dropped.remove();
-                    activeGroundItems.remove(dropped);
-                }
+        // Paper Native Global Region Scheduler: Nach 60 Sekunden automatisch despawnen
+        Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
+            if (dropped.isValid()) {
+                dropped.getWorld().spawnParticle(Particle.SMOKE, dropped.getLocation(), 15, 0.2, 0.2, 0.2, 0.05);
+                dropped.remove();
+                activeGroundItems.remove(dropped);
             }
-        }.runTaskLater(plugin, 1200L); // 60 Sekunden
+        }, 1200L);
     }
 
     public void awardRandomKillstreakItem(Player player, int streak) {
@@ -274,14 +235,15 @@ public class KillstreakManager {
 
         List<Arrow> minigunArrows = new ArrayList<>();
 
-        new BukkitRunnable() {
+        // Paper Native Entity Scheduler: Feuert alle 2 Ticks gebunden an den Player-Tick
+        player.getScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
             int ticksLeft = 160;
 
             @Override
-            public void run() {
+            public void accept(ScheduledTask task) {
                 if (!player.isOnline() || player.isDead() || ticksLeft <= 0) {
                     activeMiniguns.remove(player.getUniqueId());
-                    cancel();
+                    task.cancel();
 
                     for (Arrow arrow : minigunArrows) {
                         if (arrow.isValid()) {
@@ -307,7 +269,7 @@ public class KillstreakManager {
 
                 ticksLeft -= 2;
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }, null, 1L, 2L);
     }
 
     public void activateArrowMagnet(Player player) {
@@ -316,14 +278,15 @@ public class KillstreakManager {
         player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ⚓ Pfeil-Magnetfeld für 15 Sekunden aktiv!</green>"));
         player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, SoundCategory.MASTER, 1.0f, 1.5f);
 
-        new BukkitRunnable() {
+        // Paper Native Entity Scheduler: Lenkt Pfeile ab gebunden an den Player-Tick
+        player.getScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
             int ticksLeft = 300;
 
             @Override
-            public void run() {
+            public void accept(ScheduledTask task) {
                 if (!player.isOnline() || player.isDead() || ticksLeft <= 0) {
                     arrowMagnets.remove(player.getUniqueId());
-                    cancel();
+                    task.cancel();
                     if (player.isOnline()) {
                         player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⚓ Pfeil-Magnetfeld abgelaufen.</red>"));
                         player.playSound(player.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, SoundCategory.MASTER, 1.0f, 1.0f);
@@ -345,7 +308,7 @@ public class KillstreakManager {
 
                 ticksLeft -= 2;
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }, null, 1L, 2L);
     }
 
     public boolean isMinigunActive(UUID uuid) {

@@ -1,6 +1,7 @@
 package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
@@ -18,10 +19,9 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.meta.FireworkMeta;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.util.Comparator;
+import java.util.function.Consumer;
 
 public class MatchManager {
 
@@ -29,10 +29,10 @@ public class MatchManager {
     private int killLimit = 0;
     private int timeLimitSeconds = 0;
     private int remainingSeconds = 0;
-    private BukkitTask timerTask = null;
-    private BukkitTask victoryMusicTask = null;
-    private BukkitTask victoryEffectsTask = null;
-    private BukkitTask victoryTitleTask = null;
+    private ScheduledTask timerTask = null;
+    private ScheduledTask victoryMusicTask = null;
+    private ScheduledTask victoryEffectsTask = null;
+    private ScheduledTask victoryTitleTask = null;
     private boolean matchStarted = false;
     private boolean matchPaused = false;
     private boolean matchEnded = false;
@@ -140,32 +140,32 @@ public class MatchManager {
     }
 
     private void startTimer() {
-        timerTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (matchEnded) {
-                    cancel();
-                    return;
-                }
+        stopTimer();
+        timerTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
+            if (matchEnded) {
+                task.cancel();
+                timerTask = null;
+                return;
+            }
 
-                if (matchPaused) {
-                    return;
-                }
+            if (matchPaused) {
+                return;
+            }
 
-                remainingSeconds--;
-                plugin.getScoreboardManager().updateAllScoreboards();
+            remainingSeconds--;
+            plugin.getScoreboardManager().updateAllScoreboards();
 
-                if (remainingSeconds <= 0) {
-                    cancel();
-                    triggerTimeLimitWinner();
-                } else if (remainingSeconds == 60 || remainingSeconds == 30 || remainingSeconds == 10 || remainingSeconds <= 5) {
-                    broadcast("<red>[OSOK] ⏱ Noch <yellow>" + formatTime(remainingSeconds) + "</yellow> Verbleibend!</red>");
-                    for (Player p : Bukkit.getOnlinePlayers()) {
-                        p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
-                    }
+            if (remainingSeconds <= 0) {
+                task.cancel();
+                timerTask = null;
+                triggerTimeLimitWinner();
+            } else if (remainingSeconds == 60 || remainingSeconds == 30 || remainingSeconds == 10 || remainingSeconds <= 5) {
+                broadcast("<red>[OSOK] ⏱ Noch <yellow>" + formatTime(remainingSeconds) + "</yellow> Verbleibend!</red>");
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
                 }
             }
-        }.runTaskTimer(plugin, 20L, 20L);
+        }, 20L, 20L);
     }
 
     private void stopTimer() {
@@ -245,21 +245,19 @@ public class MatchManager {
 
         String winnerNameClean = winner != null ? winner.getName().replaceAll("§[0-9a-fk-orA-FK-OR]", "") : "Spieler";
 
-        // 1. Animierter Regenbogen-Titel auf dem Bildschirm!
-        victoryTitleTask = new BukkitRunnable() {
+        // 1. Paper Native Global Region Scheduler: Animierter Regenbogen-Titel auf dem Bildschirm!
+        victoryTitleTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
             int titleTicks = 0;
 
             @Override
-            public void run() {
+            public void accept(ScheduledTask task) {
                 if (!matchEnded) {
-                    cancel();
+                    task.cancel();
+                    victoryTitleTask = null;
                     return;
                 }
 
-                // MiniMessage Syntax: <rainbow:phase> benötigt ein Integer (z. B. 0, 2, 4, 6...)
                 int rainbowPhase = titleTicks * 3;
-
-                // MiniMessage Syntax: <gradient:colors:phase> benötigt einen Float Wert strictly zwischen -1.0 und 1.0!
                 float gradPhase = (float) Math.sin(titleTicks * 0.15);
                 String gradPhaseStr = String.format(java.util.Locale.US, "%.2f", gradPhase);
 
@@ -279,19 +277,20 @@ public class MatchManager {
 
                 titleTicks++;
             }
-        }.runTaskTimer(plugin, 0L, 2L);
+        }, 1L, 2L);
 
-        // 2. Musik-Song (Undertale Megalovania)
+        // 2. Paper Native Global Region Scheduler: Musik-Song (Undertale Megalovania)
         playMegalovaniaSong();
 
-        // 3. Feuerwerk & Partikel-Spektakel
-        victoryEffectsTask = new BukkitRunnable() {
+        // 3. Paper Native Global Region Scheduler: Feuerwerk & Partikel-Spektakel
+        victoryEffectsTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
             int ticks = 0;
 
             @Override
-            public void run() {
+            public void accept(ScheduledTask task) {
                 if (!matchEnded || winner == null || !winner.isOnline()) {
-                    cancel();
+                    task.cancel();
+                    victoryEffectsTask = null;
                     return;
                 }
 
@@ -314,7 +313,7 @@ public class MatchManager {
 
                 ticks++;
             }
-        }.runTaskTimer(plugin, 0L, 10L);
+        }, 1L, 10L);
     }
 
     private void playMegalovaniaSong() {
@@ -334,13 +333,14 @@ public class MatchManager {
             }
         }
 
-        victoryMusicTask = new BukkitRunnable() {
+        victoryMusicTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
             int currentTick = 0;
 
             @Override
-            public void run() {
+            public void accept(ScheduledTask task) {
                 if (!matchEnded) {
-                    cancel();
+                    task.cancel();
+                    victoryMusicTask = null;
                     return;
                 }
 
@@ -357,7 +357,7 @@ public class MatchManager {
 
                 currentTick++;
             }
-        }.runTaskTimer(plugin, 0L, 1L);
+        }, 1L, 1L);
     }
 
     public void togglePause(Player sender) {
