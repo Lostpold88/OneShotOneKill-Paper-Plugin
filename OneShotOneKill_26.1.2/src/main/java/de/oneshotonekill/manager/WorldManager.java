@@ -45,12 +45,12 @@ public class WorldManager {
         );
         availableMaps.put("standard", standardMap);
 
-        // DustPvP Map (OSOK_DustPvP) - Platzhalter-Koordinaten bis exakte Werte angegeben werden
+        // DustPvP Map (OSOK_DustPvP)
         MapConfig dustPvPMap = new MapConfig(
                 "DustPvP",
                 "DustPvP.zip",
-                new Location(null, 223.5, 48.0, 55.5),
-                150.0, 350.0, 40.0, 130.0, -200.0, 0.0
+                new Location(null, 0.5, 90.0, 0.5),
+                -100.0, 100.0, 40.0, 130.0, -100.0, 100.0
         );
         availableMaps.put("dustpvp", dustPvPMap);
 

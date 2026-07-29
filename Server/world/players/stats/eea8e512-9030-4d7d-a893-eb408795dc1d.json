@@ -1,16 +1,21 @@
 {
   "stats": {
+    "minecraft:used": {
+      "minecraft:sandstone_stairs": 1
+    },
     "minecraft:custom": {
-      "minecraft:sprint_one_cm": 258,
-      "minecraft:time_since_rest": 834,
+      "minecraft:sprint_one_cm": 3897,
+      "minecraft:open_chest": 3,
+      "minecraft:time_since_rest": 4600,
       "minecraft:fall_one_cm": 74245,
-      "minecraft:walk_one_cm": 78,
-      "minecraft:total_world_time": 834,
-      "minecraft:leave_game": 1,
-      "minecraft:fly_one_cm": 448,
-      "minecraft:play_time": 834,
-      "minecraft:jump": 6,
-      "minecraft:time_since_death": 834
+      "minecraft:walk_one_cm": 1001,
+      "minecraft:total_world_time": 4600,
+      "minecraft:leave_game": 2,
+      "minecraft:fly_one_cm": 166661,
+      "minecraft:sneak_time": 106,
+      "minecraft:play_time": 4600,
+      "minecraft:jump": 15,
+      "minecraft:time_since_death": 4600
     }
   },
   "DataVersion": 4790
