@@ -6,8 +6,7 @@ import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
@@ -73,7 +72,7 @@ public class OsokCommand implements BasicCommand {
         String sub = args[0].toLowerCase();
 
         if (sub.equals("start")) {
-            new StartCommand(plugin).onCommand(player, null, "start", args);
+            new StartCommand(plugin).start(player);
             return;
         }
 
@@ -131,7 +130,7 @@ public class OsokCommand implements BasicCommand {
                 msg(player, "<red>Dazu hast du keine Rechte.</red>");
                 return;
             }
-            new ClearPfeileCommand(plugin).onCommand(player, null, "clearpfeile", args);
+            new ClearPfeileCommand().clearArrows(player);
             return;
         }
 
@@ -142,7 +141,7 @@ public class OsokCommand implements BasicCommand {
             }
             plugin.getWorldManager().setSpawnLocation(player.getLocation());
             msg(player, "<green>[OSOK] Neuer Arena-Spawnpunkt gesetzt!</green>");
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 2.0f);
+            player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 2.0f));
             return;
         }
 
@@ -154,7 +153,7 @@ public class OsokCommand implements BasicCommand {
             plugin.getScoreboardManager().resetAllStats();
             broadcast("<yellow>[OSOK] 🔄 Die Statistiken und das Scoreboard wurden zurückgesetzt!</yellow>");
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
+                p.playSound(Sound.sound(org.bukkit.Sound.UI_BUTTON_CLICK, Sound.Source.MASTER, 1.0f, 1.0f));
             }
             return;
         }
@@ -254,7 +253,7 @@ public class OsokCommand implements BasicCommand {
             }
         }
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.5f);
+            p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f));
         }
     }
 

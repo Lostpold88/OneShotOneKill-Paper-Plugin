@@ -9,8 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -40,7 +39,7 @@ public class PlayerConnectionListener implements Listener {
         event.joinMessage(MiniMessage.miniMessage().deserialize("<green>[✦] <white>" + player.getName() + "</white> <gray>hat <yellow><b>OSOK</b></yellow> betreten!</gray></green>"));
 
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.0f, 1.5f);
+            p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_CHIME, Sound.Source.MASTER, 1.0f, 1.5f));
         }
 
         player.getScheduler().runDelayed(plugin, task -> {
@@ -104,7 +103,7 @@ public class PlayerConnectionListener implements Listener {
                 Location fallback = (spawnLoc != null) ? spawnLoc : new Location(plugin.getWorldManager().getOsokWorld(), 223.5, 48.0, 55.5);
                 player.teleportAsync(fallback);
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⏸ Das Match ist pausiert! Du kannst die Arena aktuell nicht betreten.</red>"));
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
             }
         }
     }
@@ -116,19 +115,19 @@ public class PlayerConnectionListener implements Listener {
 
         if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
             player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Warte auf /start.</red>"));
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
             return;
         }
 
         if (plugin.getMatchManager().isMatchPaused()) {
             player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⏸ Das Match ist aktuell pausiert!</red>"));
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
             return;
         }
 
         if (plugin.getArenaManager().isInArenaArea(player.getLocation())) {
             player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Du bist bereits in der Arena!</red>"));
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
             return;
         }
 
@@ -139,7 +138,7 @@ public class PlayerConnectionListener implements Listener {
                 if (success && player.isOnline()) {
                     plugin.getEquipmentManager().giveOneShotEquipment(player);
                     plugin.getScoreboardManager().updateAllScoreboards();
-                    player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.MASTER, 1.0f, 1.2f);
+                    player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, Sound.Source.MASTER, 1.0f, 1.2f));
                 }
             });
         } else {

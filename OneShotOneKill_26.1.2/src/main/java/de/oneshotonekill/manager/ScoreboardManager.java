@@ -2,15 +2,17 @@ package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
 import io.papermc.paper.scoreboard.numbers.NumberFormat;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
 import org.bukkit.entity.Player;
+import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scoreboard.Team;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,9 +26,7 @@ public class ScoreboardManager {
     private final Map<UUID, Integer> highestStreakMap = new HashMap<>();
     private final Set<UUID> bountyTargets = new HashSet<>();
 
-    public ScoreboardManager() {
-        this.plugin = null;
-    }
+    private static final Component SEPARATOR = MiniMessage.miniMessage().deserialize("<gray>-------------------</gray>");
 
     public ScoreboardManager(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -35,7 +35,10 @@ public class ScoreboardManager {
     public void updateAllScoreboards() {
         for (Player p : Bukkit.getOnlinePlayers()) {
             updateScoreboard(p);
-            updateTabList(p);
+            updateTabListName(p);
+        }
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            updateTabListHeaderFooter(p);
         }
     }
 
@@ -53,33 +56,37 @@ public class ScoreboardManager {
 
         Scoreboard board = mgr.getNewScoreboard();
         Component titleComponent = MiniMessage.miniMessage().deserialize("<red><b>🎯 OSOK</b></red>");
-        Objective obj = board.registerNewObjective("oneshot", "dummy", titleComponent);
-        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
-        // Paper 26.1.2 Scoreboard API: Native numberFormat(blank()) without any NMS reflection!
+        // Paper 26.1.2 Scoreboard API: Native Criteria & Kyori Component Titel (0% deprecated String-Criteria)
+        Objective obj = board.registerNewObjective("oneshot", Criteria.DUMMY, titleComponent);
+        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
         obj.numberFormat(NumberFormat.blank());
 
         int scorePos = 15;
-        addScoreLine(obj, "§7-------------------", scorePos--);
+        int lineId = 0;
+
+        lineId = addScoreLine(obj, SEPARATOR, scorePos--, lineId);
 
         if (plugin != null && plugin.getMatchManager() != null && plugin.getMatchManager().isMatchStarted() && !plugin.getMatchManager().isMatchEnded()) {
             if (plugin.getMatchManager().hasKillLimit()) {
-                addScoreLine(obj, "§e§l🎯 MATCH ZIEL: §f" + plugin.getMatchManager().getKillLimit() + " Kills", scorePos--);
-                addScoreLine(obj, "§7------------------- ", scorePos--);
+                lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize(
+                        "<yellow><b>🎯 MATCH ZIEL:</b></yellow> <white>" + plugin.getMatchManager().getKillLimit() + " Kills</white>"), scorePos--, lineId);
+                lineId = addScoreLine(obj, SEPARATOR, scorePos--, lineId);
             } else if (plugin.getMatchManager().hasTimeLimit()) {
-                addScoreLine(obj, "§e§l⏱ VERBLEIBEND: §f" + plugin.getMatchManager().formatTime(plugin.getMatchManager().getRemainingSeconds()), scorePos--);
-                addScoreLine(obj, "§7------------------- ", scorePos--);
+                lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize(
+                        "<yellow><b>⏱ VERBLEIBEND:</b></yellow> <white>" + plugin.getMatchManager().formatTime(plugin.getMatchManager().getRemainingSeconds()) + "</white>"), scorePos--, lineId);
+                lineId = addScoreLine(obj, SEPARATOR, scorePos--, lineId);
             }
         }
 
-        addScoreLine(obj, "§e§l🏆 TOP RANKING:", scorePos--);
+        lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize("<yellow><b>🏆 TOP RANKING:</b></yellow>"), scorePos--, lineId);
 
         // Alle Online-Spieler nach Kills sortieren
         List<Player> sortedPlayers = Bukkit.getOnlinePlayers().stream()
                 .sorted((p1, p2) -> Integer.compare(getKills(p2.getUniqueId()), getKills(p1.getUniqueId())))
                 .collect(Collectors.toList());
 
-        String[] rankColors = new String[]{"§e#1 ", "§7#2 ", "§c#3 ", "§f#4 ", "§f#5 ", "§f#6 ", "§f#7 ", "§f#8 ", "§f#9 ", "§f#10 "};
+        String[] rankColors = new String[]{"yellow", "gray", "red"};
 
         for (int i = 0; i < Math.min(10, sortedPlayers.size()); i++) {
             Player p = sortedPlayers.get(i);
@@ -88,25 +95,28 @@ public class ScoreboardManager {
             int hs = getHighestStreak(p.getUniqueId());
             String kd = getKDRatio(p.getUniqueId());
 
-            String prefix = (i < rankColors.length) ? rankColors[i] : "§f#" + (i + 1) + " ";
-            String bountyTag = isBountyTarget(p.getUniqueId()) ? "§e[👑] " : "";
-            String playerLine = prefix + bountyTag + "§f" + p.getName() + " §7» §a" + k + "K §7| §b" + kd + " §7| §e⚡" + s + " §6(★" + hs + ")";
+            String rankColor = (i < rankColors.length) ? rankColors[i] : "white";
+            String bountyTag = isBountyTarget(p.getUniqueId()) ? "<yellow>[👑] </yellow>" : "";
+            Component playerLine = MiniMessage.miniMessage().deserialize(
+                    "<" + rankColor + ">#" + (i + 1) + " </" + rankColor + ">" + bountyTag
+                            + "<white>" + p.getName() + "</white> <gray>»</gray> <green>" + k + "K</green> <gray>|</gray> <aqua>" + kd
+                            + "</aqua> <gray>|</gray> <yellow>⚡" + s + "</yellow> <gold>(★" + hs + ")</gold>");
 
-            addScoreLine(obj, playerLine, scorePos--);
+            lineId = addScoreLine(obj, playerLine, scorePos--, lineId);
         }
 
         if (sortedPlayers.isEmpty()) {
-            addScoreLine(obj, "§7Keine Spieler online", scorePos--);
+            lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize("<gray>Keine Spieler online</gray>"), scorePos--, lineId);
         }
 
-        addScoreLine(obj, "§7--------------------", 0);
+        addScoreLine(obj, SEPARATOR, 0, lineId);
 
         // Nametags über den Köpfen aller Spieler komplett ausblenden
-        org.bukkit.scoreboard.Team noTagTeam = board.getTeam("no_nametag");
+        Team noTagTeam = board.getTeam("no_nametag");
         if (noTagTeam == null) {
             noTagTeam = board.registerNewTeam("no_nametag");
         }
-        noTagTeam.setOption(org.bukkit.scoreboard.Team.Option.NAME_TAG_VISIBILITY, org.bukkit.scoreboard.Team.OptionStatus.NEVER);
+        noTagTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER);
 
         for (Player p : Bukkit.getOnlinePlayers()) {
             noTagTeam.addEntry(p.getName());
@@ -115,10 +125,16 @@ public class ScoreboardManager {
         player.setScoreboard(board);
     }
 
-    private void addScoreLine(Objective obj, String text, int scoreVal) {
-        org.bukkit.scoreboard.Score score = obj.getScore(text);
+    /**
+     * Paper Native Scoreboard API: Die Zeile wird ausschliesslich ueber {@link Score#customName(Component)}
+     * als Kyori Component gerendert. Der Entry-String dient nur als eindeutiger, nie sichtbarer Schluessel.
+     */
+    private int addScoreLine(Objective obj, Component text, int scoreVal, int lineId) {
+        Score score = obj.getScore("osok_line_" + lineId);
         score.setScore(scoreVal);
+        score.customName(text);
         score.numberFormat(NumberFormat.blank());
+        return lineId + 1;
     }
 
     public void resetAllStats() {
@@ -130,32 +146,30 @@ public class ScoreboardManager {
         updateAllScoreboards();
     }
 
-    public void updateTabList(Player player) {
+    /**
+     * Kyori Component Tabliste: Setzt den Anzeigenamen des Spielers inkl. Live-Stats.
+     */
+    public void updateTabListName(Player player) {
+        int k = getKills(player.getUniqueId());
+        int d = getDeaths(player.getUniqueId());
+        int s = getStreak(player.getUniqueId());
+        int hs = getHighestStreak(player.getUniqueId());
+        String kd = getKDRatio(player.getUniqueId());
+
+        String bountyTag = isBountyTarget(player.getUniqueId()) ? "<yellow>[👑] </yellow>" : "";
+        Component tabName = MiniMessage.miniMessage().deserialize(
+                bountyTag + "<white>" + player.getName() + "</white>"
+                        + " <gray>|</gray> <green>K: " + k + "</green> <gray>|</gray> <red>D: " + d + "</red>"
+                        + " <gray>|</gray> <aqua>K/D: " + kd + "</aqua> <gray>|</gray> <yellow>⚡" + s + "</yellow> <gold>(★" + hs + ")</gold>");
+
+        player.playerListName(tabName);
+    }
+
+    public void updateTabListHeaderFooter(Player player) {
         Component header = MiniMessage.miniMessage().deserialize("\n<red><b>🎯 OSOK</b></red> <gray>|</gray> <red>MATCH STATS</red>\n");
         Component footer = MiniMessage.miniMessage().deserialize("\n<gray>Scoreboard & Leaderboard</gray>\n");
-        
+
         player.sendPlayerListHeaderAndFooter(header, footer);
-
-        List<Player> sortedPlayers = Bukkit.getOnlinePlayers().stream()
-                .sorted((p1, p2) -> Integer.compare(getKills(p2.getUniqueId()), getKills(p1.getUniqueId())))
-                .collect(Collectors.toList());
-
-        for (int rank = 0; rank < sortedPlayers.size(); rank++) {
-            Player p = sortedPlayers.get(rank);
-            int k = getKills(p.getUniqueId());
-            int d = getDeaths(p.getUniqueId());
-            int s = getStreak(p.getUniqueId());
-            int hs = getHighestStreak(p.getUniqueId());
-            String kd = getKDRatio(p.getUniqueId());
-
-            String rankPrefix = "<yellow>#" + (rank + 1) + " </yellow>";
-            String bountyTag = isBountyTarget(p.getUniqueId()) ? "<yellow>[👑] </yellow>" : "";
-            String nameText = "<white>" + p.getName() + "</white>";
-            String statsText = " <gray>|</gray> <green>K: " + k + "</green> <gray>|</gray> <red>D: " + d + "</red> <gray>|</gray> <aqua>K/D: " + kd + "</aqua> <gray>|</gray> <yellow>⚡" + s + "</yellow> <gold>(★" + hs + ")</gold>";
-
-            Component fullTabLine = MiniMessage.miniMessage().deserialize(rankPrefix + bountyTag + nameText + statsText);
-            player.sendPlayerListHeaderAndFooter(header, footer);
-        }
     }
 
     public int addKill(UUID uuid) {
@@ -189,7 +203,7 @@ public class ScoreboardManager {
             Bukkit.broadcast(msg);
             if (p != null) {
                 p.getWorld().strikeLightningEffect(p.getLocation());
-                p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 0.6f, 1.8f);
+                p.playSound(Sound.sound(org.bukkit.Sound.ENTITY_LIGHTNING_BOLT_THUNDER, Sound.Source.MASTER, 0.6f, 1.8f));
             }
         }
 

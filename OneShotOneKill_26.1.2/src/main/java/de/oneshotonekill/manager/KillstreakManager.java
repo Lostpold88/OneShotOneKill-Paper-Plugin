@@ -1,6 +1,7 @@
 package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
+import net.kyori.adventure.sound.Sound;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -149,7 +150,7 @@ public class KillstreakManager {
 
         spawnLoc.getWorld().spawnParticle(Particle.FIREWORK, spawnLoc.clone().add(0, 0.5, 0), 30, 0.4, 0.4, 0.4, 0.05);
         spawnLoc.getWorld().spawnParticle(Particle.END_ROD, spawnLoc.clone().add(0, 0.5, 0), 20, 0.3, 0.3, 0.3, 0.1);
-        spawnLoc.getWorld().playSound(spawnLoc, Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.5f);
+        spawnLoc.getWorld().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f), spawnLoc.x(), spawnLoc.y(), spawnLoc.z());
 
         // Paper Native Global Region Scheduler: Nach 60 Sekunden automatisch despawnen
         Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
@@ -189,7 +190,7 @@ public class KillstreakManager {
         Component itemNameComponent = meta != null && meta.hasDisplayName() ? meta.displayName() : Component.text("Spezial-Item");
 
         player.getInventory().addItem(item);
-        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
+        player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.8f));
         if (streak > 0) {
             Component msg = MiniMessage.miniMessage().deserialize("<green>[OSOK] 🎁 <b>" + streak + "er Killstreak!</b> <gray>Du hast den Spezial-Item erhalten: </gray></green>")
                     .append(itemNameComponent);
@@ -231,7 +232,7 @@ public class KillstreakManager {
 
         activeMiniguns.add(player.getUniqueId());
         player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🔥 <b>MINIGUN AKTIVIERT!</b> <gray>8 Sekunden Dauerfeuer!</gray></green>"));
-        player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 0.8f, 1.5f);
+        player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ENDER_DRAGON_GROWL, Sound.Source.MASTER, 0.8f, 1.5f));
 
         List<Arrow> minigunArrows = new ArrayList<>();
 
@@ -254,7 +255,7 @@ public class KillstreakManager {
 
                     if (player.isOnline()) {
                         player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] 🔥 Minigun abgelaufen. Pfeile wurden entfernt!</red>"));
-                        player.playSound(player.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, SoundCategory.MASTER, 1.0f, 1.0f);
+                        player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_FIRE_EXTINGUISH, Sound.Source.MASTER, 1.0f, 1.0f));
                     }
                     return;
                 }
@@ -264,7 +265,7 @@ public class KillstreakManager {
                 arrow.setPickupStatus(org.bukkit.entity.AbstractArrow.PickupStatus.DISALLOWED);
                 minigunArrows.add(arrow);
 
-                player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ARROW_SHOOT, SoundCategory.MASTER, 0.8f, 2.0f);
+                player.getWorld().playSound(Sound.sound(org.bukkit.Sound.ENTITY_ARROW_SHOOT, Sound.Source.MASTER, 0.8f, 2.0f), player.getLocation().x(), player.getLocation().y(), player.getLocation().z());
                 player.getWorld().spawnParticle(Particle.FLAME, player.getEyeLocation().add(player.getEyeLocation().getDirection()), 3, 0.1, 0.1, 0.1, 0.05);
 
                 ticksLeft -= 2;
@@ -276,7 +277,7 @@ public class KillstreakManager {
         if (arrowMagnets.contains(player.getUniqueId())) return;
         arrowMagnets.add(player.getUniqueId());
         player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ⚓ Pfeil-Magnetfeld für 15 Sekunden aktiv!</green>"));
-        player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, SoundCategory.MASTER, 1.0f, 1.5f);
+        player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_BEACON_ACTIVATE, Sound.Source.MASTER, 1.0f, 1.5f));
 
         // Paper Native Entity Scheduler: Lenkt Pfeile ab gebunden an den Player-Tick
         player.getScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
@@ -289,7 +290,7 @@ public class KillstreakManager {
                     task.cancel();
                     if (player.isOnline()) {
                         player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⚓ Pfeil-Magnetfeld abgelaufen.</red>"));
-                        player.playSound(player.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, SoundCategory.MASTER, 1.0f, 1.0f);
+                        player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_BEACON_DEACTIVATE, Sound.Source.MASTER, 1.0f, 1.0f));
                     }
                     return;
                 }

@@ -4,38 +4,25 @@ import de.oneshotonekill.OneShotOneKill;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 
-public class ItemTestCommand implements CommandExecutor, Listener {
+/**
+ * Spezial-Item Test-GUI fuer <code>/osok itemtest</code>.
+ * <p>
+ * Implementiert nur noch {@link Listener} fuer die GUI-Klicks; die Befehlsregistrierung laeuft
+ * ausschliesslich ueber die Paper Lifecycle Commands API (Brigadier {@code BasicCommand}).
+ */
+public class ItemTestCommand implements Listener {
 
     private final OneShotOneKill plugin;
     public static final Component GUI_TITLE = MiniMessage.miniMessage().deserialize("<yellow><b>🧪 Spezial-Item Test-Menü (11 Items)</b></yellow>");
 
     public ItemTestCommand(OneShotOneKill plugin) {
         this.plugin = plugin;
-    }
-
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dieser Befehl ist nur für Spieler verfügbar.</red>"));
-            return true;
-        }
-
-        if (!player.isOp()) {
-            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dazu hast du keine Rechte.</red>"));
-            return true;
-        }
-
-        openTestGui(player);
-        return true;
     }
 
     public void openTestGui(Player player) {

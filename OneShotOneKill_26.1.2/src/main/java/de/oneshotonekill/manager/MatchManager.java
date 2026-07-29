@@ -11,8 +11,7 @@ import org.bukkit.Color;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Location;
 import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
@@ -162,7 +161,7 @@ public class MatchManager {
             } else if (remainingSeconds == 60 || remainingSeconds == 30 || remainingSeconds == 10 || remainingSeconds <= 5) {
                 broadcast("<red>[OSOK] ⏱ Noch <yellow>" + formatTime(remainingSeconds) + "</yellow> Verbleibend!</red>");
                 for (Player p : Bukkit.getOnlinePlayers()) {
-                    p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
+                    p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.8f));
                 }
             }
         }, 20L, 20L);
@@ -220,7 +219,7 @@ public class MatchManager {
 
         // Initialer Sound für alle Spieler
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 1.0f, 1.0f);
+            p.playSound(Sound.sound(org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, Sound.Source.MASTER, 1.0f, 1.0f));
         }
 
         // Chat Ankündigung mit Regenbogen-Gradient
@@ -243,7 +242,7 @@ public class MatchManager {
     private void playWinnerCelebrationLoop(Player winner, int winnerKills) {
         stopVictoryTasks();
 
-        String winnerNameClean = winner != null ? winner.getName().replaceAll("§[0-9a-fk-orA-FK-OR]", "") : "Spieler";
+        String winnerNameClean = winner != null ? winner.getName() : "Spieler";
 
         // 1. Paper Native Global Region Scheduler: Animierter Regenbogen-Titel auf dem Bildschirm!
         victoryTitleTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
@@ -348,10 +347,9 @@ public class MatchManager {
                 if (clicks >= 0) {
                     float pitch = (float) Math.pow(2.0, (clicks - 12.0) / 12.0);
                     for (Player player : Bukkit.getOnlinePlayers()) {
-                        Location loc = player.getLocation();
-                        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BIT, SoundCategory.MASTER, 1.0f, pitch);
-                        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 0.8f, pitch);
-                        player.playSound(loc, Sound.BLOCK_NOTE_BLOCK_BASS, SoundCategory.MASTER, 1.0f, pitch * 0.5f);
+                        player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_BIT, Sound.Source.MASTER, 1.0f, pitch));
+                        player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 0.8f, pitch));
+                        player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, Sound.Source.MASTER, 1.0f, pitch * 0.5f));
                     }
                 }
 
@@ -375,7 +373,7 @@ public class MatchManager {
 
         if (matchPaused) {
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, SoundCategory.MASTER, 1.0f, 0.8f);
+                p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, Sound.Source.MASTER, 1.0f, 0.8f));
                 plugin.getEquipmentManager().clearBaseEquipment(p);
                 p.teleportAsync(fallback);
             }
@@ -393,7 +391,7 @@ public class MatchManager {
                 p.teleportAsync(targetLoc).thenAccept(success -> {
                     if (success && p.isOnline()) {
                         plugin.getEquipmentManager().giveOneShotEquipment(p);
-                        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.2f);
+                        p.playSound(Sound.sound(org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, Sound.Source.MASTER, 1.0f, 1.2f));
                     }
                 });
             }
@@ -434,7 +432,7 @@ public class MatchManager {
                     if (success && p.isOnline()) {
                         plugin.getEquipmentManager().giveOneShotEquipment(p);
                         p.showTitle(newMatchTitle);
-                        p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 0.7f, 1.2f);
+                        p.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ENDER_DRAGON_GROWL, Sound.Source.MASTER, 0.7f, 1.2f));
                     }
                 });
                 count++;

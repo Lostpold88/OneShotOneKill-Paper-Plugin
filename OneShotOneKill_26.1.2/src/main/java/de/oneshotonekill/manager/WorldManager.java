@@ -4,10 +4,9 @@ import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.model.MapConfig;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
-import org.bukkit.GameRule;
+import org.bukkit.GameRules;
 import org.bukkit.Location;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.entity.Player;
@@ -171,7 +170,7 @@ public class WorldManager {
             // 6. Paper Async Teleportation: Alle Spieler in die neue Map-Lobby bringen
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.teleportAsync(spawnLocation);
-                p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 1.0f, 1.0f);
+                p.playSound(Sound.sound(org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, Sound.Source.MASTER, 1.0f, 1.0f));
                 p.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🗺 Map erfolgreich zu <b>" + targetConfig.getName() + "</b> gewechselt!</green>"));
             }
 
@@ -185,11 +184,12 @@ public class WorldManager {
     }
 
     private void applyPaperGameRules(World world) {
-        world.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, true);
-        world.setGameRule(GameRule.KEEP_INVENTORY, true);
-        world.setGameRule(GameRule.DO_MOB_SPAWNING, false);
-        world.setGameRule(GameRule.DO_PATROL_SPAWNING, false);
-        world.setGameRule(GameRule.DO_TRADER_SPAWNING, false);
+        // Moderne Paper GameRules-Registry (org.bukkit.GameRule ist deprecated for removal)
+        world.setGameRule(GameRules.IMMEDIATE_RESPAWN, true);
+        world.setGameRule(GameRules.KEEP_INVENTORY, true);
+        world.setGameRule(GameRules.SPAWN_MOBS, false);
+        world.setGameRule(GameRules.SPAWN_PATROLS, false);
+        world.setGameRule(GameRules.SPAWN_WANDERING_TRADERS, false);
     }
 
     private boolean deleteDirectory(File dir) {

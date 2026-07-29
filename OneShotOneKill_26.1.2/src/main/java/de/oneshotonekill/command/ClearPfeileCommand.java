@@ -1,30 +1,22 @@
 package de.oneshotonekill.command;
 
-import de.oneshotonekill.OneShotOneKill;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.AbstractArrow;
 
-public class ClearPfeileCommand implements CommandExecutor {
+/**
+ * Aktion fuer <code>/osok clearpfeile</code>.
+ * <p>
+ * Bewusst ohne Bukkit {@code CommandExecutor}: Die Registrierung erfolgt ausschliesslich ueber die
+ * Paper Lifecycle Commands API (Brigadier {@code BasicCommand}) in {@link OsokCommand}.
+ */
+public class ClearPfeileCommand {
 
-    private final OneShotOneKill plugin;
-
-    public ClearPfeileCommand(OneShotOneKill plugin) {
-        this.plugin = plugin;
-    }
-
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.isOp()) {
-            sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dazu hast du keine Rechte.</red>"));
-            return true;
-        }
-
+    public void clearArrows(CommandSender sender) {
         int removed = 0;
+        // Paper Spatial Entity Index Engine: gezielte Klassen-Abfrage statt Iteration ueber alle Entities
         for (World world : Bukkit.getWorlds()) {
             for (AbstractArrow arrow : world.getEntitiesByClass(AbstractArrow.class)) {
                 arrow.remove();
@@ -33,6 +25,5 @@ public class ClearPfeileCommand implements CommandExecutor {
         }
 
         sender.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🧹 Es wurden <yellow>" + removed + "</yellow> Pfeile aus der Welt gelöscht!</green>"));
-        return true;
     }
 }

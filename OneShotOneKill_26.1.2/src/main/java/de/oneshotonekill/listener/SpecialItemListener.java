@@ -1,10 +1,10 @@
 package de.oneshotonekill.listener;
 
 import de.oneshotonekill.OneShotOneKill;
+import net.kyori.adventure.sound.Sound;
 import de.oneshotonekill.manager.KillstreakManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -38,27 +38,15 @@ public class SpecialItemListener implements Listener {
         this.plugin = plugin;
     }
 
+    /**
+     * Identifiziert Spezial-Items ausschliesslich ueber den PersistentDataContainer.
+     * Jedes Spezial-Item erhaelt seinen Typ in {@code KillstreakManager#createSpecialItem} per NamespacedKey,
+     * daher sind Anzeigenamen-Vergleiche weder noetig noch zulaessig.
+     */
     private String getSpecialItemType(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return null;
         ItemMeta meta = item.getItemMeta();
-        String type = meta.getPersistentDataContainer().get(plugin.getKillstreakManager().getSpecialItemKey(), PersistentDataType.STRING);
-        if (type != null) return type;
-
-        if (meta.hasDisplayName()) {
-            String name = LegacyComponentSerializer.legacySection().serialize(meta.displayName());
-            if (name.contains("Radar-Puls")) return KillstreakManager.KEY_RADAR;
-            if (name.contains("Explosiv-Schuss")) return KillstreakManager.KEY_EXPLOSIVE;
-            if (name.contains("Reflektor-Schild")) return KillstreakManager.KEY_REFLECTOR;
-            if (name.contains("Rauchbombe")) return KillstreakManager.KEY_SMOKE;
-            if (name.contains("Frost-Trap") || name.contains("Bärenfalle")) return KillstreakManager.KEY_FROST;
-            if (name.contains("Minigun")) return KillstreakManager.KEY_MINIGUN;
-            if (name.contains("Teleport-Granate")) return KillstreakManager.KEY_TELEPORT;
-            if (name.contains("Unsichtbarkeits-Mantel")) return KillstreakManager.KEY_INVISIBILITY;
-            if (name.contains("Pfeil-Magnetfeld")) return KillstreakManager.KEY_MAGNET;
-            if (name.contains("Kettenblitz-Schuss")) return KillstreakManager.KEY_CHAIN_LIGHTNING;
-            if (name.contains("Raketen-Sprung")) return KillstreakManager.KEY_ROCKET_JUMP;
-        }
-        return null;
+        return meta.getPersistentDataContainer().get(plugin.getKillstreakManager().getSpecialItemKey(), PersistentDataType.STRING);
     }
 
     @EventHandler
@@ -90,7 +78,7 @@ public class SpecialItemListener implements Listener {
             ItemMeta meta = item.getItemStack().hasItemMeta() ? item.getItemStack().getItemMeta() : null;
             Component nameComp = meta != null && meta.hasDisplayName() ? meta.displayName() : Component.text("Spezial-Item");
             
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
+            player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.8f));
             
             Location loc = item.getLocation();
             loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 30, 0.3, 0.3, 0.3, 0.1);
@@ -109,7 +97,7 @@ public class SpecialItemListener implements Listener {
             event.setCancelled(true);
             Player player = event.getPlayer();
             player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Spezial-Items können nicht weggeworfen werden!</red>"));
-            player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
         }
     }
 
@@ -124,12 +112,12 @@ public class SpecialItemListener implements Listener {
             if (activeBearTraps.remove(block.getLocation())) {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 140, 10));
                 player.setFreezeTicks(140);
-                player.playSound(player.getLocation(), Sound.BLOCK_GLASS_BREAK, SoundCategory.MASTER, 1.0f, 0.5f);
+                player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_GLASS_BREAK, Sound.Source.MASTER, 1.0f, 0.5f));
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❄ Du bist in eine Frost-Trap getreten und für 7s eingefroren!</red>"));
 
                 // Nach 7 Sekunden (140 Ticks) verschwindet die Druckplatte
                 Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
-                    if (block.getType() == Material.HEAVY_WEIGHTED_PRESSURE_PLATE || block.getType().name().contains("PRESSURE_PLATE")) {
+                    if (Tag.PRESSURE_PLATES.isTagged(block.getType())) {
                         block.setType(Material.AIR);
                         block.getWorld().spawnParticle(Particle.SNOWFLAKE, block.getLocation().add(0.5, 0.2, 0.5), 15, 0.2, 0.2, 0.2, 0.05);
                     }
@@ -150,14 +138,14 @@ public class SpecialItemListener implements Listener {
                 } else {
                     player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Warte auf /start.</red>"));
                 }
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
                 return;
             }
 
             if (!plugin.getArenaManager().isInArenaArea(player.getLocation())) {
                 event.setCancelled(true);
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Spezial-Items können nur innerhalb der Arena genutzt werden!</red>"));
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
                 return;
             }
             // Radar-Puls
@@ -165,7 +153,7 @@ public class SpecialItemListener implements Listener {
                 event.setCancelled(true);
                 consumeItem(player, item);
 
-                player.playSound(player.getLocation(), Sound.ENTITY_EVOKER_CAST_SPELL, SoundCategory.MASTER, 1.0f, 1.5f);
+                player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_EVOKER_CAST_SPELL, Sound.Source.MASTER, 1.0f, 1.5f));
                 player.getWorld().spawnParticle(Particle.END_ROD, player.getLocation().add(0, 1, 0), 50, 0.5, 0.5, 0.5, 0.1);
 
                 int count = 0;
@@ -186,7 +174,7 @@ public class SpecialItemListener implements Listener {
                 consumeItem(player, item);
 
                 plugin.getKillstreakManager().addExplosiveShot(player.getUniqueId());
-                player.playSound(player.getLocation(), Sound.ENTITY_TNT_PRIMED, SoundCategory.MASTER, 1.0f, 1.2f);
+                player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_TNT_PRIMED, Sound.Source.MASTER, 1.0f, 1.2f));
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ★ Explosiv-Schuss geladen! Dein nächster Schuss erzeugt eine große Explosion.</green>"));
                 return;
             }
@@ -197,7 +185,7 @@ public class SpecialItemListener implements Listener {
                 consumeItem(player, item);
 
                 plugin.getKillstreakManager().addShield(player.getUniqueId());
-                player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER, 1.0f, 1.2f);
+                player.playSound(Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BLOCK, Sound.Source.MASTER, 1.0f, 1.2f));
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🛡 Reflektor-Schild ist aktiv! Blockiert deinen nächsten Treffer.</green>"));
                 return;
             }
@@ -218,7 +206,7 @@ public class SpecialItemListener implements Listener {
 
                 Location currentLoc = player.getLocation();
                 currentLoc.getWorld().spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, currentLoc, 200, 1.5, 1.0, 1.5, 0.05);
-                currentLoc.getWorld().playSound(currentLoc, Sound.BLOCK_FIRE_EXTINGUISH, SoundCategory.MASTER, 1.0f, 0.8f);
+                currentLoc.getWorld().playSound(Sound.sound(org.bukkit.Sound.BLOCK_FIRE_EXTINGUISH, Sound.Source.MASTER, 1.0f, 0.8f), currentLoc.x(), currentLoc.y(), currentLoc.z());
 
                 Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
                 if (randomLoc != null) {
@@ -226,7 +214,7 @@ public class SpecialItemListener implements Listener {
                         if (success && player.isOnline()) {
                             plugin.getEquipmentManager().giveOneShotEquipment(player);
                             plugin.getScoreboardManager().updateAllScoreboards();
-                            player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.MASTER, 1.0f, 1.2f);
+                            player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, Sound.Source.MASTER, 1.0f, 1.2f));
                         }
                     });
                 }
@@ -241,7 +229,7 @@ public class SpecialItemListener implements Listener {
                     targetBlock.setType(Material.HEAVY_WEIGHTED_PRESSURE_PLATE);
                     activeBearTraps.add(targetBlock.getLocation());
                     consumeItem(player, item);
-                    player.playSound(player.getLocation(), Sound.BLOCK_GLASS_PLACE, SoundCategory.MASTER, 1.0f, 1.0f);
+                    player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_GLASS_PLACE, Sound.Source.MASTER, 1.0f, 1.0f));
                     player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ❄ Frost-Trap platziert!</green>"));
                 }
                 return;
@@ -254,7 +242,7 @@ public class SpecialItemListener implements Listener {
 
                 EnderPearl pearl = player.launchProjectile(EnderPearl.class, player.getEyeLocation().getDirection().multiply(1.8));
                 pearl.getPersistentDataContainer().set(KillstreakManager.KEY_TP_GRENADE_PDC, PersistentDataType.BYTE, (byte) 1);
-                player.playSound(player.getLocation(), Sound.ENTITY_ENDER_PEARL_THROW, SoundCategory.MASTER, 1.0f, 1.0f);
+                player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ENDER_PEARL_THROW, Sound.Source.MASTER, 1.0f, 1.0f));
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🌀 Teleport-Granate geworfen!</green>"));
                 return;
             }
@@ -273,7 +261,7 @@ public class SpecialItemListener implements Listener {
                     }
                 }
 
-                player.playSound(player.getLocation(), Sound.ENTITY_PHANTOM_FLAP, SoundCategory.MASTER, 1.0f, 1.5f);
+                player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_PHANTOM_FLAP, Sound.Source.MASTER, 1.0f, 1.5f));
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ✦ Unsichtbarkeits-Mantel aktiviert! Du bist für 15s komplett unsichtbar (Vanish).</green>"));
 
                 player.getScheduler().runDelayed(plugin, task -> {
@@ -304,7 +292,7 @@ public class SpecialItemListener implements Listener {
                 consumeItem(player, item);
 
                 plugin.getKillstreakManager().addChainLightningShot(player.getUniqueId());
-                player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THUNDER, SoundCategory.MASTER, 1.0f, 1.5f);
+                player.playSound(Sound.sound(org.bukkit.Sound.ITEM_TRIDENT_THUNDER, Sound.Source.MASTER, 1.0f, 1.5f));
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ⚡ Kettenblitz-Schuss geladen! Dein nächster Treffer beschwört Blitze.</green>"));
                 return;
             }
@@ -317,7 +305,7 @@ public class SpecialItemListener implements Listener {
                 player.setVelocity(new org.bukkit.util.Vector(0, 1.8, 0));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 400, 2, false, false));
                 player.getWorld().spawnParticle(Particle.FIREWORK, player.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
-                player.playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, SoundCategory.MASTER, 1.0f, 1.2f);
+                player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, Sound.Source.MASTER, 1.0f, 1.2f));
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ★ Raketen-Sprung! Du hast 20 Sekunden Air-Sprint & Fallschutz.</green>"));
 
                 noFallPlayers.add(player.getUniqueId());
@@ -368,11 +356,12 @@ public class SpecialItemListener implements Listener {
         if (event.getEntity() instanceof EnderPearl pearl && pearl.getPersistentDataContainer().has(KillstreakManager.KEY_TP_GRENADE_PDC, PersistentDataType.BYTE)) {
             Location loc = pearl.getLocation();
             loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 2);
-            loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 1.0f, 1.5f);
+            loc.getWorld().playSound(Sound.sound(org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, Sound.Source.MASTER, 1.0f, 1.5f), loc.x(), loc.y(), loc.z());
 
             if (pearl.getShooter() instanceof Player shooter) {
-                for (Entity entity : loc.getWorld().getNearbyEntities(loc, 5.0, 5.0, 5.0)) {
-                    if (entity instanceof Player victim && !victim.equals(shooter)) {
+                // Paper Spatial Entity Index: direkte Spieler-Abfrage statt Entity-Box + instanceof
+                for (Player victim : loc.getNearbyPlayers(5.0)) {
+                    if (!victim.equals(shooter)) {
                         org.bukkit.util.Vector push = victim.getLocation().toVector().subtract(loc.toVector()).normalize().multiply(1.5).setY(0.5);
                         victim.setVelocity(push);
                         victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 2));
@@ -405,7 +394,7 @@ public class SpecialItemListener implements Listener {
             Location loc = arrow.getLocation();
             loc.getWorld().createExplosion(loc, 0.0f, false, false);
             loc.getWorld().spawnParticle(Particle.EXPLOSION_EMITTER, loc, 3);
-            loc.getWorld().playSound(loc, Sound.ENTITY_GENERIC_EXPLODE, SoundCategory.MASTER, 1.0f, 1.0f);
+            loc.getWorld().playSound(Sound.sound(org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, Sound.Source.MASTER, 1.0f, 1.0f), loc.x(), loc.y(), loc.z());
 
             if (arrow.getShooter() instanceof Player shooter) {
                 for (Player victim : loc.getNearbyPlayers(7.0)) {

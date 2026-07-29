@@ -6,8 +6,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import net.kyori.adventure.sound.Sound;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -59,7 +58,7 @@ public class CombatListener implements Listener {
                 } else if (!plugin.getMatchManager().isMatchStarted()) {
                     damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Kämpfen ist deaktiviert. Warte auf /osok start.</red>"));
                 }
-                damager.playSound(damager.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                damager.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
             }
             return;
         }
@@ -72,7 +71,7 @@ public class CombatListener implements Listener {
             event.setCancelled(true);
             if (damager != null) {
                 damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] 🛡 Außerhalb der Arena ist Kämpfen deaktiviert!</red>"));
-                damager.playSound(damager.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+                damager.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
             }
             return;
         }
@@ -90,9 +89,9 @@ public class CombatListener implements Listener {
             if (plugin.getKillstreakManager().hasShield(target.getUniqueId())) {
                 plugin.getKillstreakManager().removeShield(target.getUniqueId());
                 event.setCancelled(true);
-                target.playSound(target.getLocation(), Sound.ITEM_SHIELD_BREAK, SoundCategory.MASTER, 1.0f, 1.0f);
+                target.playSound(Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BREAK, Sound.Source.MASTER, 1.0f, 1.0f));
                 target.sendMessage(MiniMessage.miniMessage().deserialize("<aqua>[OSOK] [🛡] Dein Reflektor-Schild hat den tödlichen Treffer abgewehrt!</aqua>"));
-                damager.playSound(damager.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER, 1.0f, 0.8f);
+                damager.playSound(Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BLOCK, Sound.Source.MASTER, 1.0f, 0.8f));
                 damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] [🛡] Treffer abgeprallt! " + target.getName() + " hatte ein Reflektor-Schild!</red>"));
                 return;
             }
@@ -103,7 +102,7 @@ public class CombatListener implements Listener {
             // Refill Arrow on Bow Hit
             if (event.getDamager() instanceof Arrow) {
                 damager.getInventory().addItem(new ItemStack(Material.ARROW, 1));
-                damager.playSound(damager.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.5f);
+                damager.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f));
             }
         }
     }
@@ -130,14 +129,14 @@ public class CombatListener implements Listener {
             // Standard Blut-Splash Killeffekt beim Opfer abspielen
             plugin.getKillEffectManager().playKillEffect(victim.getLocation());
 
-            killer.playSound(killer.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER, 1.0f, 1.2f);
+            killer.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ARROW_HIT_PLAYER, Sound.Source.MASTER, 1.0f, 1.2f));
             killer.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] Du hast <yellow>" + victim.getName() + "</yellow> eliminiert! <gray>(Streak: <yellow>" + s + "</yellow>)</gray></green>"));
 
             // Kopfgeld Belohnung: 2 Spezial-Items für den Killer!
             if (wasBounty) {
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
-                killer.playSound(killer.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.5f);
+                killer.playSound(Sound.sound(org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, Sound.Source.MASTER, 1.0f, 1.5f));
                 Component bcMsg = MiniMessage.miniMessage().deserialize("<green>[OSOK] 💰 KOPFGELD KASSIERT! <white>" + killer.getName() + "</white> <gray>hat das Kopfgeld auf <yellow>" + victim.getName() + "</yellow> geholt und 2 Spezial-Items kassiert!</gray></green>");
                 Bukkit.broadcast(bcMsg);
             }
@@ -159,12 +158,8 @@ public class CombatListener implements Listener {
         // Live-Scoreboard und Tab-Liste für ALLE Online-Spieler aktualisieren
         plugin.getScoreboardManager().updateAllScoreboards();
 
-        // Paper Native Entity Scheduler: Sofortiger Auto-Respawn ohne Wiederbeleben-Button!
-        victim.getScheduler().runDelayed(plugin, task -> {
-            if (victim.isOnline() && victim.isDead()) {
-                victim.spigot().respawn();
-            }
-        }, null, 1L);
+        // Sofortiger Auto-Respawn ohne Wiederbeleben-Button laeuft rein ueber die
+        // Paper GameRule DO_IMMEDIATE_RESPAWN (siehe WorldManager#applyPaperGameRules).
     }
 
     @EventHandler
