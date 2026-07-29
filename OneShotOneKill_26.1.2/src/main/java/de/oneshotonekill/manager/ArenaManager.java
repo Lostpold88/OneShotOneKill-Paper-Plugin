@@ -73,12 +73,12 @@ public class ArenaManager {
         double y = loc.getY();
         double z = loc.getZ();
 
-        double minX = Math.min(221.0, 287.0);
-        double maxX = Math.max(221.0, 287.0);
-        double minY = Math.min(58.0, 68.0);
-        double maxY = Math.max(58.0, 68.0);
-        double minZ = Math.min(-50.0, -106.0);
-        double maxZ = Math.max(-50.0, -106.0);
+        double minX = 221.0;
+        double maxX = 288.0;
+        double minY = 50.0;
+        double maxY = 120.0;
+        double minZ = -107.0;
+        double maxZ = -50.0;
 
         return x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ;
     }

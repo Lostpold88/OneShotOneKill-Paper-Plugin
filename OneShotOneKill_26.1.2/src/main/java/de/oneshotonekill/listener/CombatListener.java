@@ -14,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
 
@@ -26,27 +27,18 @@ public class CombatListener implements Listener {
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
+    public void onEntityDamage(EntityDamageEvent event) {
+        if (event.getEntity() instanceof Player player) {
+            // Außerhalb der Arena ist JEGLICHER Schaden (Sturz, Angriff etc.) verboten
+            if (!plugin.getArenaManager().isInArenaArea(player.getLocation())) {
+                event.setCancelled(true);
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         if (!(event.getEntity() instanceof Player target)) return;
-
-        if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchPaused() || plugin.getMatchManager().isMatchEnded()) {
-            event.setCancelled(true);
-            Player damager = null;
-            if (event.getDamager() instanceof Player attacker) {
-                damager = attacker;
-            } else if (event.getDamager() instanceof Arrow arrow && arrow.getShooter() instanceof Player shooter) {
-                damager = shooter;
-            }
-            if (damager != null) {
-                if (plugin.getMatchManager().isMatchPaused()) {
-                    damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⏸ Das Match ist aktuell pausiert! Kämpfen ist deaktiviert.</red>"));
-                } else if (!plugin.getMatchManager().isMatchStarted()) {
-                    damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Kämpfen ist deaktiviert. Warte auf /start.</red>"));
-                }
-                damager.playSound(damager.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
-            }
-            return;
-        }
 
         Player damager = null;
         boolean isMelee = false;
@@ -58,8 +50,35 @@ public class CombatListener implements Listener {
             damager = shooter;
         }
 
+        // 1. Match-Status Prüfung (Vor Start, Pause oder nach Ende)
+        if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchPaused() || plugin.getMatchManager().isMatchEnded()) {
+            event.setCancelled(true);
+            if (damager != null) {
+                if (plugin.getMatchManager().isMatchPaused()) {
+                    damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⏸ Das Match ist aktuell pausiert! Kämpfen ist deaktiviert.</red>"));
+                } else if (!plugin.getMatchManager().isMatchStarted()) {
+                    damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Kämpfen ist deaktiviert. Warte auf /osok start.</red>"));
+                }
+                damager.playSound(damager.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return;
+        }
+
+        // 2. Arena-Bereichs Prüfung (Außerhalb der Arena ist Kämpfen & Töten verboten!)
+        boolean targetInArena = plugin.getArenaManager().isInArenaArea(target.getLocation());
+        boolean damagerInArena = (damager == null) || plugin.getArenaManager().isInArenaArea(damager.getLocation());
+
+        if (!targetInArena || !damagerInArena) {
+            event.setCancelled(true);
+            if (damager != null) {
+                damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] 🛡 Außerhalb der Arena ist Kämpfen deaktiviert!</red>"));
+                damager.playSound(damager.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
+            }
+            return;
+        }
+
         if (damager != null) {
-            // Prüfung: Nahkampfschlag -> NUR mit dem Eisenschwert (OneShot Dolch)! Andere Items (Wolle, Bogen, Fäuste etc.) verursachen normalen Schaden.
+            // Nahkampfschlag: NUR mit dem Eisenschwert (OneShot Dolch)! Andere Items verursachen normalen Schaden.
             if (isMelee) {
                 ItemStack mainHand = damager.getInventory().getItemInMainHand();
                 if (mainHand == null || mainHand.getType() != Material.IRON_SWORD) {
@@ -78,7 +97,7 @@ public class CombatListener implements Listener {
                 return;
             }
 
-            // Instant 1-Hit Kill per Waffe / Pfeil / Item
+            // Instant 1-Hit Kill per Waffe / Pfeil
             event.setDamage(1000.0);
 
             // Refill Arrow on Bow Hit
