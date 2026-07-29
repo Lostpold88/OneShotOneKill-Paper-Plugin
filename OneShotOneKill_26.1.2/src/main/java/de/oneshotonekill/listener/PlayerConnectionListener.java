@@ -3,8 +3,12 @@ package de.oneshotonekill.listener;
 import de.oneshotonekill.OneShotOneKill;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.potion.PotionEffect;
+
+import java.util.ArrayList;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -38,6 +42,11 @@ public class PlayerConnectionListener implements Listener {
         Player player = event.getPlayer();
         event.joinMessage(MiniMessage.miniMessage().deserialize("<green>[✦] <white>" + player.getName() + "</white> <gray>hat <yellow><b>OSOK</b></yellow> betreten!</gray></green>"));
 
+        // Definierter Startzustand: Ueberlebensmodus und komplett leeres Inventar.
+        // Laeuft sofort im Event, nicht im verzoegerten Task, damit kein Zeitfenster
+        // entsteht, in dem der Spieler noch alte Items oder einen anderen Modus hat.
+        prepareCleanStart(player);
+
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_CHIME, Sound.Source.MASTER, 1.0f, 1.5f));
         }
@@ -61,6 +70,32 @@ public class PlayerConnectionListener implements Listener {
                 });
             }
         }, null, 5L);
+    }
+
+    /**
+     * Versetzt einen Spieler in einen sauberen Ausgangszustand: Ueberlebensmodus,
+     * leeres Inventar (inkl. Ruestung, Zweithand und Cursor) und keine Alteffekte.
+     * Die eigentliche Match-Ausruestung vergibt anschliessend der EquipmentManager.
+     */
+    private void prepareCleanStart(Player player) {
+        player.setGameMode(GameMode.SURVIVAL);
+
+        player.getInventory().clear();
+        player.getInventory().setArmorContents(null);
+        player.getInventory().setItemInOffHand(null);
+        player.setItemOnCursor(null);
+
+        for (PotionEffect effect : new ArrayList<>(player.getActivePotionEffects())) {
+            player.removePotionEffect(effect.getType());
+        }
+        player.setGlowing(false);
+        player.setFireTicks(0);
+        player.setFreezeTicks(0);
+        player.setLevel(0);
+        player.setExp(0.0f);
+        player.setHealth(20.0);
+        player.setFoodLevel(20);
+        player.setSaturation(20.0f);
     }
 
     @EventHandler
