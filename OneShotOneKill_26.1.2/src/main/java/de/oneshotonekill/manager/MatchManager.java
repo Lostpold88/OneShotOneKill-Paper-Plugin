@@ -168,6 +168,7 @@ public class MatchManager {
         stopMatch();
         plugin.getKillstreakManager().clearAllGroundItems();
         plugin.getStealthBomberManager().clearAll();
+        plugin.getExplosivesManager().clearAll();
         plugin.getScoreboardManager().resetAllStats();
 
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -485,6 +486,7 @@ public class MatchManager {
         plugin.getScoreboardManager().resetAllStats();
         plugin.getKillstreakManager().clearAllGroundItems();
         plugin.getStealthBomberManager().clearAll();
+        plugin.getExplosivesManager().clearAll();
 
         Location spawn = plugin.getWorldManager().getSpawnLocation();
         int count = 0;

@@ -35,9 +35,11 @@ public class KillstreakManager {
     public static final String KEY_CHAIN_LIGHTNING = "chain_lightning";
     public static final String KEY_ROCKET_JUMP = "rocket_jump";
     public static final String KEY_STEALTH_BOMBER = "stealth_bomber";
+    public static final String KEY_AIRSTRIKE = "air_strike";
+    public static final String KEY_C4 = "c4_charge_item";
 
     /** Anzahl der verfuegbaren Spezial-Item-Typen (Indizes 0 bis SPECIAL_ITEM_COUNT-1). */
-    public static final int SPECIAL_ITEM_COUNT = 12;
+    public static final int SPECIAL_ITEM_COUNT = 14;
 
     public static final NamespacedKey KEY_EXPLOSIVE_PDC = new NamespacedKey("oneshotonekill", "explosive_arrow");
     public static final NamespacedKey KEY_CHAIN_LIGHTNING_PDC = new NamespacedKey("oneshotonekill", "chain_lightning_arrow");
@@ -195,6 +197,8 @@ public class KillstreakManager {
             case 8 -> createSpecialItem(Material.HEART_OF_THE_SEA, "<blue><b>[⚓] Pfeil-Magnetfeld (Rechtsklick)</b></blue>", "<gray>Lenkt herannahende Pfeile für 15s ab!</gray>", KEY_MAGNET);
             case 9 -> createSpecialItem(Material.LIGHTNING_ROD, "<yellow><b>[⚡] Kettenblitz-Schuss (Rechtsklick)</b></yellow>", "<gray>Dein nächster Schuss erzeugt Blitze!</gray>", KEY_CHAIN_LIGHTNING);
             case 10 -> createSpecialItem(Material.DRAGON_HEAD, "<dark_purple><b>[🐉] Tarnkappenbomber (Rechtsklick)</b></dark_purple>", "<gray>Setzt 10s lang einen TNT-werfenden Drachen auf ein Ziel an!</gray>", KEY_STEALTH_BOMBER);
+            case 11 -> createSpecialItem(Material.FILLED_MAP, "<red><b>[🛰] Air-Strike (Rechtsklick)</b></red>", "<gray>Arena-Karte öffnen und einen Bombenhagel anfordern!</gray>", KEY_AIRSTRIKE);
+            case 12 -> createSpecialItem(Material.TNT_MINECART, "<gold><b>[💥] C4 (Auf Block platzieren)</b></gold>", "<gray>Platzieren und per Fernzünder auslösen!</gray>", KEY_C4);
             default -> createSpecialItem(Material.FIREWORK_ROCKET, "<red><b>[★] Raketen-Sprung (Rechtsklick)</b></red>", "<gray>Schleudert dich 15 Blöcke in die Höhe!</gray>", KEY_ROCKET_JUMP);
         };
     }

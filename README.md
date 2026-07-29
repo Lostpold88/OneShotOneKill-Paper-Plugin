@@ -58,6 +58,11 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   11. 🚀 **Raketen-Sprung** *(Feuerwerksrakete)*: Katapultiert den Spieler hoch (inkl. 20s Fallschutz & Air-Sprint).
   12. 🐉 **Tarnkappenbomber** *(Drachenkopf)*: Öffnet ein Auswahlmenü mit allen anderen Spielern. Über dem gewählten Ziel erscheint ein **Ender-Drache**, der ihm **10 Sekunden** lang folgt und dabei durchgehend **TNT** abwirft. Der Drache greift niemanden an: Wahrnehmung deaktiviert, unverwundbar, und sein gesamter Schaden wird gecancelt. Er wird jeden Tick über das Ziel teleportiert; ein Reset der `HOVER`-Phase verhindert, dass er gegen den Teleport zurückfliegt. Das TNT **zerstört keine Blöcke** – die Blockliste der Explosion wird geleert – und **zündet sofort bei Bodenkontakt** statt per Zeitzünder. Sein Schaden ist auf **3 Herzen gedeckelt**, es tötet also ausdrücklich nicht mit einem Treffer.
 
+  13. 🛰 **Air-Strike** *(Karte)*: Öffnet eine **Karte der aktiven Arena** – ein 9×6-Raster über die XZ-Grenzen der Map, auf dem alle Spieler in der Arena als Kopf auf ihrem Sektor eingezeichnet sind (der eigene in Blau, Gegner in Rot). Ein Klick markiert das Ziel, eine Partikelsäule kündigt den Einschlag an, und nach ~2 s gehen 8 Bomben auf den Sektor nieder. Die Abwurfhöhe respektiert die **Decke der Map** (auf Standard also maximal `Y 68`). Das Item wird erst bei der Zielauswahl verbraucht.
+  14. 💥 **C4** *(TNT-Lore)*: Wird per Rechtsklick auf einen Block **platziert** und liegt dort als leuchtender TNT-Block – umgesetzt als `BlockDisplay`, die Map bleibt also völlig unberührt. Beim Platzieren erhält man automatisch einen **Fernzünder** (Hebel), der per Rechtsklick **alle eigenen Ladungen gleichzeitig** auslöst. Mehrere Ladungen lassen sich vorher verteilen.
+
+  > **Sprengkraft von Air-Strike und C4**: Beide nutzen `createExplosion(…, breakBlocks = false)` mit Stärke `8.0` (Vanilla-TNT liegt bei `4.0`). Die Explosion ist damit gewaltig und im Zentrum tödlich, kann die Map aber **grundsätzlich nicht** beschädigen – es werden gar keine Blöcke angetastet, statt eine Blockliste nachträglich zu leeren. Als Verursacher wird der auslösende Spieler übergeben, damit ein tödlicher Treffer ihm korrekt als Kill zugeschrieben wird.
+
   > Wichtig: `setAI(false)` darf hier **nicht** gesetzt werden. Das NoAI-Flag wird zum Client synchronisiert, und der Drache ist ein mehrteiliges Modell, dessen Segmente clientseitig in `aiStep()` nachgeführt werden – mit NoAI bleibt das Modell optisch stehen, obwohl die Entity serverseitig korrekt mitwandert. Das Item wird erst beim Auswählen eines Ziels verbraucht, nicht beim Öffnen des Menüs.
 
 - **📦 Item-Boxen am Arena-Boden**:
@@ -94,7 +99,7 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - Automatische Extraktion von `Standard.zip` bzw. `DustPvP.zip` aus den Plugin-Ressourcen in die Server-Welt.
   - **`locator_bar` ist serverweit dauerhaft auf `false`**: gesetzt beim Start auf allen geladenen Welten, bei `WorldInitEvent`/`WorldLoadEvent` für später geladene Welten, und ein Reaktivieren per `/gamerule` wird über den Paper `WorldGameRuleChangeEvent` blockiert.
   - Arena-GameRules über die moderne `org.bukkit.GameRules` Registry: `IMMEDIATE_RESPAWN`, `KEEP_INVENTORY`, `SPAWN_MOBS=false`, `SPAWN_PATROLS=false`, `SPAWN_WANDERING_TRADERS=false`.
-  - **Map-Wechsel ohne Neustart**: Das laufende Match wird sauber gestoppt, Boden-Items samt Chunk-Tickets werden freigegeben, und die alte Welt wird erst entladen, wenn **alle** `teleportAsync`-Vorgänge nachweislich abgeschlossen sind (`CompletableFuture.allOf`). Parallele Wechsel sind gesperrt.
+  - **Map-Wechsel ohne Neustart**: Das laufende Match wird sauber gestoppt, Boden-Items samt Chunk-Tickets sowie Drachen, fallende Bomben und platzierte C4-Ladungen werden freigegeben, und die alte Welt wird erst entladen, wenn **alle** `teleportAsync`-Vorgänge nachweislich abgeschlossen sind (`CompletableFuture.allOf`). Parallele Wechsel sind gesperrt. Der Wechsel läuft bewusst **ohne Sound-Quittung**.
 
 ---
 

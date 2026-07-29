@@ -304,6 +304,26 @@ public class SpecialItemListener implements Listener {
                 return;
             }
 
+            // Air-Strike: oeffnet die Arena-Karte. Verbrauch erst bei der Zielauswahl im Menue.
+            if (KillstreakManager.KEY_AIRSTRIKE.equals(typeId)) {
+                event.setCancelled(true);
+                plugin.getExplosivesManager().openAirStrikeMap(player);
+                return;
+            }
+
+            // C4: wird auf einen Block platziert, der Fernzuender kommt automatisch dazu
+            if (KillstreakManager.KEY_C4.equals(typeId)) {
+                event.setCancelled(true);
+                if (event.getClickedBlock() == null) {
+                    player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] 💥 Ziele auf einen Block, um die C4 zu platzieren!</red>"));
+                    return;
+                }
+                if (plugin.getExplosivesManager().placeC4(player, event.getClickedBlock())) {
+                    consumeItem(player, item);
+                }
+                return;
+            }
+
             // Tarnkappenbomber: oeffnet nur die Zielauswahl.
             // Der Verbrauch erfolgt erst bei der Auswahl des Ziels im Menue.
             if (KillstreakManager.KEY_STEALTH_BOMBER.equals(typeId)) {

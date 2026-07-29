@@ -126,9 +126,16 @@ public class WorldManager {
             plugin.getMatchManager().stopMatch();
         }
 
-        // 2. Boden-Items der alten Map inkl. Chunk-Tickets freigeben
+        // 2. Boden-Items der alten Map inkl. Chunk-Tickets freigeben, dazu Drachen,
+        //    fallende Bomben und platzierte C4-Ladungen der alten Welt
         if (plugin.getKillstreakManager() != null) {
             plugin.getKillstreakManager().clearAllGroundItems();
+        }
+        if (plugin.getStealthBomberManager() != null) {
+            plugin.getStealthBomberManager().clearAll();
+        }
+        if (plugin.getExplosivesManager() != null) {
+            plugin.getExplosivesManager().clearAll();
         }
 
         // 3. Paper Async Teleportation: Alle Spieler aus der OSOK-Welt heraus sichern.
@@ -206,7 +213,8 @@ public class WorldManager {
                 p.teleportAsync(spawnLocation).thenAccept(success -> {
                     if (success && p.isOnline()) {
                         plugin.getEquipmentManager().clearBaseEquipment(p);
-                        p.playSound(Sound.sound(org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, Sound.Source.MASTER, 1.0f, 1.0f));
+                        // Bewusst ohne Sound: Der Map-Wechsel soll nicht mit einem lauten
+                        // Fanfaren-Jingle quittiert werden.
                         p.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🗺 Map erfolgreich zu <b>" + targetConfig.getName() + "</b> gewechselt! <gray>Starte mit /osok start.</gray></green>"));
                     }
                 });
