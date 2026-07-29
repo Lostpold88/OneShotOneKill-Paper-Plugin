@@ -1,7 +1,6 @@
 package de.oneshotonekill;
 
 import de.oneshotonekill.command.ItemTestCommand;
-import de.oneshotonekill.command.KillEffectCommand;
 import de.oneshotonekill.command.OsokCommand;
 import de.oneshotonekill.listener.CombatListener;
 import de.oneshotonekill.listener.PlayerConnectionListener;
@@ -44,13 +43,11 @@ public class OneShotOneKill extends JavaPlugin {
 
         // 3. Event-Listener registrieren
         ItemTestCommand itemTestCommand = new ItemTestCommand(this);
-        KillEffectCommand killEffectCommand = new KillEffectCommand(this);
 
         getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
         getServer().getPluginManager().registerEvents(new SpecialItemListener(this), this);
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
-        getServer().getPluginManager().registerEvents(killEffectCommand, this);
 
         // 4. Paper Dynamic Lifecycle Command Registration (Brigadier BasicCommand)
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
