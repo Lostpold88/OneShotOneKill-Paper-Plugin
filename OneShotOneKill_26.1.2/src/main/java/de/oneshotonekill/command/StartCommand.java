@@ -1,11 +1,7 @@
 package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -26,12 +22,12 @@ public class StartCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cDieser Befehl ist nur für Spieler verfügbar."));
+            sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dieser Befehl ist nur für Spieler verfügbar.</red>"));
             return true;
         }
 
         if (!player.isOp()) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cDazu hast du keine Rechte."));
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dazu hast du keine Rechte.</red>"));
             return true;
         }
 

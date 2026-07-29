@@ -2,7 +2,7 @@ package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -16,8 +16,7 @@ import org.bukkit.inventory.Inventory;
 public class ItemTestCommand implements CommandExecutor, Listener {
 
     private final OneShotOneKill plugin;
-    public static final String GUI_TITLE_STRING = "§e§l🧪 Spezial-Item Test-Menü (11 Items)";
-    public static final Component GUI_TITLE = LegacyComponentSerializer.legacySection().deserialize(GUI_TITLE_STRING);
+    public static final Component GUI_TITLE = MiniMessage.miniMessage().deserialize("<yellow><b>🧪 Spezial-Item Test-Menü (11 Items)</b></yellow>");
 
     public ItemTestCommand(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -26,12 +25,12 @@ public class ItemTestCommand implements CommandExecutor, Listener {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cDieser Befehl ist nur für Spieler verfügbar."));
+            sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dieser Befehl ist nur für Spieler verfügbar.</red>"));
             return true;
         }
 
         if (!player.isOp()) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cDazu hast du keine Rechte."));
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dazu hast du keine Rechte.</red>"));
             return true;
         }
 
@@ -55,7 +54,7 @@ public class ItemTestCommand implements CommandExecutor, Listener {
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getView().title().equals(GUI_TITLE) || LegacyComponentSerializer.legacySection().serialize(event.getView().title()).equals(GUI_TITLE_STRING)) {
+        if (event.getView().title().equals(GUI_TITLE)) {
             event.setCancelled(true);
 
             if (event.getWhoClicked() instanceof Player player) {

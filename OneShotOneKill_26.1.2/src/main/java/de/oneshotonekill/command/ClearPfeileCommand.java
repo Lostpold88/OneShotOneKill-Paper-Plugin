@@ -1,15 +1,13 @@
 package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.AbstractArrow;
-import org.bukkit.entity.Arrow;
-import org.bukkit.entity.Entity;
 
 public class ClearPfeileCommand implements CommandExecutor {
 
@@ -22,7 +20,7 @@ public class ClearPfeileCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.isOp()) {
-            sender.sendMessage("§cDazu hast du keine Rechte.");
+            sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dazu hast du keine Rechte.</red>"));
             return true;
         }
 
@@ -34,7 +32,7 @@ public class ClearPfeileCommand implements CommandExecutor {
             }
         }
 
-        sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🧹 Es wurden §e" + removed + " §aPfeile aus der Welt gelöscht!"));
+        sender.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🧹 Es wurden <yellow>" + removed + "</yellow> Pfeile aus der Welt gelöscht!</green>"));
         return true;
     }
 }

@@ -3,7 +3,7 @@ package de.oneshotonekill.command;
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.manager.KillEffectManager.KillEffect;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -27,8 +27,7 @@ import java.util.List;
 public class KillEffectCommand implements CommandExecutor, Listener, TabCompleter {
 
     private final OneShotOneKill plugin;
-    public static final String GUI_TITLE_STRING = "§e§l💥 Wähle deinen Kill-Effekt";
-    public static final Component GUI_TITLE = LegacyComponentSerializer.legacySection().deserialize(GUI_TITLE_STRING);
+    public static final Component GUI_TITLE = MiniMessage.miniMessage().deserialize("<yellow><b>💥 Wähle deinen Kill-Effekt</b></yellow>");
 
     public KillEffectCommand(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -37,7 +36,7 @@ public class KillEffectCommand implements CommandExecutor, Listener, TabComplete
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§cDieser Befehl ist nur für Spieler verfügbar."));
+            sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dieser Befehl ist nur für Spieler verfügbar.</red>"));
             return true;
         }
 
@@ -61,19 +60,19 @@ public class KillEffectCommand implements CommandExecutor, Listener, TabComplete
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.5f);
     }
 
-    private ItemStack createGuiItem(Material mat, String name, boolean isSelected) {
+    private ItemStack createGuiItem(Material mat, Component name, boolean isSelected) {
         ItemStack stack = new ItemStack(mat);
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
-            meta.displayName(LegacyComponentSerializer.legacySection().deserialize(name));
+            meta.displayName(name);
             if (isSelected) {
                 meta.lore(Arrays.asList(
-                        LegacyComponentSerializer.legacySection().deserialize("§a§l✔ AKTIV AUSGEWÄHLT"),
-                        LegacyComponentSerializer.legacySection().deserialize("§7Klick zum Auswählen")
+                        MiniMessage.miniMessage().deserialize("<green><b>✔ AKTIV AUSGEWÄHLT</b></green>"),
+                        MiniMessage.miniMessage().deserialize("<gray>Klick zum Auswählen</gray>")
                 ));
             } else {
                 meta.lore(Collections.singletonList(
-                        LegacyComponentSerializer.legacySection().deserialize("§7Klick zum Auswählen")
+                        MiniMessage.miniMessage().deserialize("<gray>Klick zum Auswählen</gray>")
                 ));
             }
             stack.setItemMeta(meta);
@@ -83,7 +82,7 @@ public class KillEffectCommand implements CommandExecutor, Listener, TabComplete
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getView().title().equals(GUI_TITLE) || LegacyComponentSerializer.legacySection().serialize(event.getView().title()).equals(GUI_TITLE_STRING)) {
+        if (event.getView().title().equals(GUI_TITLE)) {
             event.setCancelled(true);
 
             if (event.getWhoClicked() instanceof Player player) {
@@ -102,7 +101,7 @@ public class KillEffectCommand implements CommandExecutor, Listener, TabComplete
                 if (chosen != null) {
                     plugin.getKillEffectManager().setSelectedEffect(player.getUniqueId(), chosen);
                     player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, SoundCategory.MASTER, 1.0f, 1.5f);
-                    player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 💥 Kill-Effekt geändert zu: " + chosen.getDisplayName()));
+                    player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 💥 Kill-Effekt geändert zu: </green>").append(chosen.getDisplayName()));
                     openEffectGui(player);
                 }
             }

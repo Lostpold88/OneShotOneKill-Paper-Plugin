@@ -3,6 +3,7 @@ package de.oneshotonekill.manager;
 import de.oneshotonekill.OneShotOneKill;
 import io.papermc.paper.scoreboard.numbers.NumberFormat;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
@@ -52,7 +53,7 @@ public class ScoreboardManager {
         if (mgr == null) return;
 
         Scoreboard board = mgr.getNewScoreboard();
-        Component titleComponent = LegacyComponentSerializer.legacySection().deserialize("§e§l🎯 OSOK");
+        Component titleComponent = MiniMessage.miniMessage().deserialize("<yellow><b>🎯 OSOK</b></yellow>");
         Objective obj = board.registerNewObjective("oneshot", "dummy", titleComponent);
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
@@ -130,8 +131,8 @@ public class ScoreboardManager {
     }
 
     public void updateTabList(Player player) {
-        Component header = LegacyComponentSerializer.legacySection().deserialize("\n§e§l🎯 OSOK §7| §cMATCH STATS\n");
-        Component footer = LegacyComponentSerializer.legacySection().deserialize("\n§7Scoreboard & Leaderboard\n");
+        Component header = MiniMessage.miniMessage().deserialize("\n<yellow><b>🎯 OSOK</b></yellow> <gray>|</gray> <red>MATCH STATS</red>\n");
+        Component footer = MiniMessage.miniMessage().deserialize("\n<gray>Scoreboard & Leaderboard</gray>\n");
         
         player.sendPlayerListHeaderAndFooter(header, footer);
 
@@ -147,40 +148,37 @@ public class ScoreboardManager {
             int hs = getHighestStreak(p.getUniqueId());
             String kd = getKDRatio(p.getUniqueId());
 
-            String rankPrefix = "§e#" + (rank + 1) + " ";
-            String bountyTag = isBountyTarget(p.getUniqueId()) ? "§e[👑] " : "";
-            String nameText = "§f" + p.getName();
-            String statsText = " §7| §aK: " + k + " §7| §cD: " + d + " §7| §bK/D: " + kd + " §7| §e⚡" + s + " §6(★" + hs + ")";
+            String rankPrefix = "<yellow>#" + (rank + 1) + " </yellow>";
+            String bountyTag = isBountyTarget(p.getUniqueId()) ? "<yellow>[👑] </yellow>" : "";
+            String nameText = "<white>" + p.getName() + "</white>";
+            String statsText = " <gray>|</gray> <green>K: " + k + "</green> <gray>|</gray> <red>D: " + d + "</red> <gray>|</gray> <aqua>K/D: " + kd + "</aqua> <gray>|</gray> <yellow>⚡" + s + "</yellow> <gold>(★" + hs + ")</gold>";
 
-            Component listName = LegacyComponentSerializer.legacySection().deserialize(rankPrefix + bountyTag + nameText + statsText);
+            Component listName = MiniMessage.miniMessage().deserialize(rankPrefix + bountyTag + nameText + statsText);
             p.playerListName(listName);
         }
     }
 
     public String getKDRatio(UUID uuid) {
-        int kills = getKills(uuid);
-        int deaths = getDeaths(uuid);
-        if (deaths == 0) {
-            return String.valueOf(kills) + ".00";
-        }
-        double ratio = (double) kills / (double) deaths;
-        return String.format(Locale.US, "%.2f", ratio);
+        int k = getKills(uuid);
+        int d = getDeaths(uuid);
+        if (d == 0) return String.format("%.2f", (double) k);
+        return String.format("%.2f", (double) k / d);
     }
 
-    public int incrementKills(UUID uuid) {
-        int kills = killsMap.getOrDefault(uuid, 0) + 1;
-        killsMap.put(uuid, kills);
-        return kills;
+    public int addKill(UUID uuid) {
+        int k = getKills(uuid) + 1;
+        killsMap.put(uuid, k);
+        return k;
     }
 
-    public int incrementDeaths(UUID uuid) {
-        int deaths = deathsMap.getOrDefault(uuid, 0) + 1;
-        deathsMap.put(uuid, deaths);
-        return deaths;
+    public int addDeath(UUID uuid) {
+        int d = getDeaths(uuid) + 1;
+        deathsMap.put(uuid, d);
+        return d;
     }
 
-    public int incrementStreak(UUID uuid) {
-        int streak = streakMap.getOrDefault(uuid, 0) + 1;
+    public int addStreak(UUID uuid) {
+        int streak = getStreak(uuid) + 1;
         streakMap.put(uuid, streak);
 
         int highscore = highestStreakMap.getOrDefault(uuid, 0);
@@ -193,7 +191,7 @@ public class ScoreboardManager {
             bountyTargets.add(uuid);
             Player p = Bukkit.getPlayer(uuid);
             String pName = p != null ? p.getName() : "Ein Spieler";
-            Component msg = LegacyComponentSerializer.legacySection().deserialize("§e[OSOK] 👑 KOPFGELD AUSGESETZT! §f" + pName + " §7hat eine §l5er Killstreak §7erreicht! Eliminiere ihn für 2 Spezial-Items!");
+            Component msg = MiniMessage.miniMessage().deserialize("<yellow>[OSOK] 👑 KOPFGELD AUSGESETZT! <white>" + pName + "</white> <gray>hat eine <b>5er Killstreak</b> erreicht! Eliminiere ihn für 2 Spezial-Items!</gray></yellow>");
             Bukkit.broadcast(msg);
             for (Player online : Bukkit.getOnlinePlayers()) {
                 online.playSound(online.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 0.6f, 1.8f);

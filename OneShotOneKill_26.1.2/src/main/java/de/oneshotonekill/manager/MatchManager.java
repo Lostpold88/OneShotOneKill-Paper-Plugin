@@ -2,7 +2,7 @@ package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
 import net.kyori.adventure.util.Ticks;
 import org.bukkit.Bukkit;
@@ -81,7 +81,7 @@ public class MatchManager {
         this.matchEnded = false;
 
         plugin.getScoreboardManager().updateAllScoreboards();
-        broadcast("§e[OSOK] 🎯 Match-Ziel gesetzt: §a§l" + kills + " Kills§7 (wird bei /start aktiv)!");
+        broadcast("<yellow>[OSOK] 🎯 Match-Ziel gesetzt: <green><b>" + kills + " Kills</b></green> <gray>(wird bei /start aktiv)!</gray></yellow>");
     }
 
     public void setTimeLimitMinutes(int minutes) {
@@ -100,7 +100,7 @@ public class MatchManager {
             startTimer();
         }
         plugin.getScoreboardManager().updateAllScoreboards();
-        broadcast("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + minutes + " Minuten§7 (wird bei /start aktiv)!");
+        broadcast("<yellow>[OSOK] ⏱ Match-Zeit gesetzt: <green><b>" + minutes + " Minuten</b></green> <gray>(wird bei /start aktiv)!</gray></yellow>");
     }
 
     public void setTimeLimitSeconds(int seconds) {
@@ -119,7 +119,7 @@ public class MatchManager {
             startTimer();
         }
         plugin.getScoreboardManager().updateAllScoreboards();
-        broadcast("§e[OSOK] ⏱ Match-Zeit gesetzt: §a§l" + formatTime(seconds) + "§7 (" + seconds + "s) (wird bei /start aktiv)!");
+        broadcast("<yellow>[OSOK] ⏱ Match-Zeit gesetzt: <green><b>" + formatTime(seconds) + "</b></green> <gray>(" + seconds + "s) (wird bei /start aktiv)!</gray></yellow>");
     }
 
     public void resetLimits() {
@@ -131,7 +131,7 @@ public class MatchManager {
         this.matchEnded = false;
 
         plugin.getScoreboardManager().updateAllScoreboards();
-        broadcast("§e[OSOK] 🔄 Match-Limits (Kills & Zeit) wurden deaktiviert.");
+        broadcast("<yellow>[OSOK] 🔄 Match-Limits (Kills & Zeit) wurden deaktiviert.</yellow>");
     }
 
     private void startTimer() {
@@ -154,7 +154,7 @@ public class MatchManager {
                     cancel();
                     triggerTimeLimitWinner();
                 } else if (remainingSeconds == 60 || remainingSeconds == 30 || remainingSeconds == 10 || remainingSeconds <= 5) {
-                    broadcast("§c[OSOK] ⏱ Noch §e" + formatTime(remainingSeconds) + " §cVerbleibend!");
+                    broadcast("<red>[OSOK] ⏱ Noch <yellow>" + formatTime(remainingSeconds) + "</yellow> Verbleibend!</red>");
                     for (Player p : Bukkit.getOnlinePlayers()) {
                         p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
                     }
@@ -199,7 +199,7 @@ public class MatchManager {
         if (winner != null) {
             celebrateWinner(winner);
         } else {
-            broadcast("§c[OSOK] ⏱ Die Zeit ist abgelaufen! Keines Match-Ergebnis.");
+            broadcast("<red>[OSOK] ⏱ Die Zeit ist abgelaufen! Keines Match-Ergebnis.</red>");
         }
     }
 
@@ -209,8 +209,8 @@ public class MatchManager {
 
         int winnerKills = plugin.getScoreboardManager().getKills(winner.getUniqueId());
 
-        Component mainTitle = LegacyComponentSerializer.legacySection().deserialize("§e§l🏆 GEWINNER!");
-        Component subTitle = LegacyComponentSerializer.legacySection().deserialize("§f" + winner.getName() + " §7hat gewonnen! (§a" + winnerKills + " Kills§7)");
+        Component mainTitle = MiniMessage.miniMessage().deserialize("<yellow><b>🏆 GEWINNER!</b></yellow>");
+        Component subTitle = MiniMessage.miniMessage().deserialize("<white>" + winner.getName() + "</white> <gray>hat gewonnen! (<green>" + winnerKills + " Kills</green>)</gray>");
         Title.Times times = Title.Times.times(Ticks.duration(10), Ticks.duration(200), Ticks.duration(20));
         Title winnerTitle = Title.title(mainTitle, subTitle, times);
 
@@ -222,11 +222,11 @@ public class MatchManager {
 
         // Chat Ankündigung & Rangliste
         broadcast(" ");
-        broadcast("§a§l=======================================");
-        broadcast("§e§l   🏆 MATCH BEENDET - MATCH GEWINNER!   ");
-        broadcast("§f  Gewinner: §e§l" + winner.getName() + " §7mit §a§l" + winnerKills + " Kills§7!");
-        broadcast("§7  Starte ein neues Match mit: §e/start");
-        broadcast("§a§l=======================================");
+        broadcast("<green><b>=======================================</b></green>");
+        broadcast("<yellow><b>   🏆 MATCH BEENDET - MATCH GEWINNER!   </b></yellow>");
+        broadcast("<white>  Gewinner: <yellow><b>" + winner.getName() + "</b></yellow> <gray>mit <green><b>" + winnerKills + " Kills</b></green>!</gray></white>");
+        broadcast("<gray>  Starte ein neues Match mit: <yellow>/start</yellow></gray>");
+        broadcast("<green><b>=======================================</b></green>");
         broadcast(" ");
 
         // Gewinner Effekte
@@ -319,7 +319,7 @@ public class MatchManager {
     public void togglePause(Player sender) {
         if (!matchStarted || matchEnded) {
             if (sender != null) {
-                sender.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Es läuft aktuell kein aktives Match, das pausiert werden kann!"));
+                sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Es läuft aktuell kein aktives Match, das pausiert werden kann!</red>"));
             }
             return;
         }
@@ -337,10 +337,10 @@ public class MatchManager {
             }
 
             broadcast(" ");
-            broadcast("§c§l=======================================");
-            broadcast("§c§l   ⏸ MATCH PAUSIERT!   ");
-            broadcast("§7  Spieler wurden in die Lobby teleportiert.");
-            broadcast("§c§l=======================================");
+            broadcast("<red><b>=======================================</b></red>");
+            broadcast("<red><b>   ⏸ MATCH PAUSIERT!   </b></red>");
+            broadcast("<gray>  Spieler wurden in die Lobby teleportiert.</gray>");
+            broadcast("<red><b>=======================================</b></red>");
             broadcast(" ");
         } else {
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -352,10 +352,10 @@ public class MatchManager {
             }
 
             broadcast(" ");
-            broadcast("§a§l=======================================");
-            broadcast("§a§l   ▶ MATCH FORTGESETZT!   ");
-            broadcast("§7  Spieler wurden in die Arena teleportiert!");
-            broadcast("§a§l=======================================");
+            broadcast("<green><b>=======================================</b></green>");
+            broadcast("<green><b>   ▶ MATCH FORTGESETZT!   </b></green>");
+            broadcast("<gray>  Spieler wurden in die Arena teleportiert!</gray>");
+            broadcast("<green><b>=======================================</b></green>");
             broadcast(" ");
         }
 
@@ -374,8 +374,8 @@ public class MatchManager {
 
         Title.Times times = Title.Times.times(Ticks.duration(10), Ticks.duration(40), Ticks.duration(10));
         Title newMatchTitle = Title.title(
-                LegacyComponentSerializer.legacySection().deserialize("§a§lNEUES MATCH!"),
-                LegacyComponentSerializer.legacySection().deserialize("§7OneShotOneKill gestartet"),
+                MiniMessage.miniMessage().deserialize("<green><b>NEUES MATCH!</b></green>"),
+                MiniMessage.miniMessage().deserialize("<gray>OneShotOneKill gestartet</gray>"),
                 times
         );
 
@@ -402,10 +402,10 @@ public class MatchManager {
         plugin.getScoreboardManager().updateAllScoreboards();
 
         broadcast(" ");
-        broadcast("§a§l=======================================");
-        broadcast("§e§l   🚀 MATCH NEU GESTARTET!   ");
-        broadcast("§7" + count + " Spieler wurden zufällig in der Arena platziert!");
-        broadcast("§a§l=======================================");
+        broadcast("<green><b>=======================================</b></green>");
+        broadcast("<yellow><b>   🚀 MATCH NEU GESTARTET!   </b></yellow>");
+        broadcast("<gray>" + count + " Spieler wurden zufällig in der Arena platziert!</gray>");
+        broadcast("<green><b>=======================================</b></green>");
     }
 
     public String formatTime(int totalSeconds) {
@@ -415,6 +415,6 @@ public class MatchManager {
     }
 
     private void broadcast(String message) {
-        Bukkit.broadcast(LegacyComponentSerializer.legacySection().deserialize(message));
+        Bukkit.broadcast(MiniMessage.miniMessage().deserialize(message));
     }
 }
