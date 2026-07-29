@@ -8,10 +8,10 @@ Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin
 
 Zwei eingebaute Maps, umschaltbar im laufenden Betrieb per `/osok map`:
 
-| Map | Welt | Arena-Ecke 1 | Arena-Ecke 2 | Lobby |
-| :--- | :--- | :--- | :--- | :--- |
-| **Standard** | `OSOK_Standard` | `221 / 58 / -50` | `287 / 64 / -106` | `223.5 / 48.0 / 55.5` |
-| **DustPvP** | `OSOK_DustPvP` | `-25 / 70 / 33` | `25 / 70 / -33` | `0.5 / 90.0 / 0.5` |
+| Map | Welt | Arena-Ecke 1 | Arena-Ecke 2 | Lobby | Max. Item-Höhe |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Standard** | `OSOK_Standard` | `221 / 58 / -50` | `287 / 64 / -106` | `223.5 / 48.0 / 55.5` | `61` |
+| **DustPvP** | `OSOK_DustPvP` | `-25 / 70 / 33` | `25 / 70 / -33` | `0.5 / 90.0 / 0.5` | `71` |
 
 Die Reihenfolge der Ecken ist egal – sie werden automatisch normalisiert. Die Arena-Grenzen steuern
 Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
@@ -30,6 +30,7 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - Nahkampftreffer mit anderen Gegenständen (Fäuste, Wolle, Bogen-Nahkampf) verursachen normalen Vanilla-Schaden.
   - Treffer mit dem Bogen füllen automatisch 1 Pfeil im Inventar auf.
   - **Kampf nur innerhalb der Arena-Grenzen**: Außerhalb ist jeglicher Schaden deaktiviert – auch Sturzschaden.
+  - **Respawn ohne Ladebildschirm**: Ein Treffer tötet den Spieler bewusst *nicht* im Sinne von Minecraft. Der Schaden wird gecancelt, und Statistik, Kill-Effekt und Rückkehr in die Arena wickelt der `EliminationManager` selbst ab. Da kein echter Tod stattfindet, sendet der Server kein Respawn-Paket – der Bildschirm „Welt wird geladen" entfällt vollständig. Auch tödlicher Schaden ohne Angreifer (z. B. Sturz) wird so abgefangen. `PlayerDeathEvent` bleibt nur noch als Auffangnetz für echte Tode (`/kill`, Void) bestehen.
   - **Waffen-Vergabe erst ab `/osok start`**: Vor dem Match-Start oder während einer Pause besitzen Spieler keine Waffen. Bei `/osok pause` werden Dolch, Bogen und Pfeile entfernt – **Spezial-Items bleiben im Inventar erhalten**.
   - **Kein Hunger & Volle Sättigung**: Spieler verlieren keinen Hunger (`FoodLevelChangeEvent` nativ gecancelt).
 
@@ -51,11 +52,12 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   9. 🧲 **Pfeil-Magnetfeld** *(Herz des Meeres)*: Lenkt gegnerische Pfeile im Umkreis von 8 Blöcken für 15s ab.
   10. ⚡ **Kettenblitz-Schuss** *(Blitzableiter)*: Nächster Treffer beschwört Blitze und springt auf bis zu 2 nahe Feinde über.
   11. 🚀 **Raketen-Sprung** *(Feuerwerksrakete)*: Katapultiert den Spieler hoch (inkl. 20s Fallschutz & Air-Sprint).
+  12. 🐉 **Tarnkappenbomber** *(Drachenkopf)*: Öffnet ein Auswahlmenü mit allen anderen Spielern. Über dem gewählten Ziel erscheint ein **Ender-Drache**, der ihm **10 Sekunden** lang folgt und dabei durchgehend **TNT** abwirft. Der Drache greift niemanden an (AI und Wahrnehmung deaktiviert, sein Schaden wird zusätzlich gecancelt). Das TNT **zerstört keine Blöcke** – die Blockliste der Explosion wird geleert – richtet aber vollen Schaden an und **zündet sofort bei Bodenkontakt** statt per Zeitzünder. Das Item wird erst beim Auswählen eines Ziels verbraucht, nicht beim Öffnen des Menüs.
 
 - **📦 Item-Boxen am Arena-Boden**:
   - Spawnen alle 30 Sekunden als Mario-Kart-artige Boxen mit rotierendem Partikelring.
   - **Leuchten sichtbar** über `Entity#setGlowing(true)` – der Leuchtrahmen ist auch durch Wände erkennbar.
-  - Spawnen **ausschließlich auf dem Arena-Boden**: Die Bodensuche scannt von unten nach oben und landet daher nie auf Dächern, Brücken oder Plattformen. Findet sie keinen freien Bodenplatz, wird der Spawn übersprungen (statt das Item an falscher Stelle abzulegen).
+  - Spawnen **ausschließlich auf dem Arena-Boden**: Die Bodensuche scannt von unten nach oben und landet daher nie auf Dächern, Brücken oder Plattformen. Zusätzlich begrenzt eine **maximale Item-Höhe pro Map** (siehe Arena-Tabelle) den Spawn auf die Grundfläche. Findet die Suche keinen freien Bodenplatz, wird der Spawn übersprungen (statt das Item an falscher Stelle abzulegen).
   - Liegen dank aktiver Gravitation flach auf dem Boden auf und schweben nicht.
   - Verschwinden nach 60 Sekunden automatisch.
 
@@ -76,6 +78,8 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - Tablisten-Namen mit Live-Stats über `Player#playerListName(Component)`.
 
 - **🏆 Match-Manager & Dauer-Einstellung**:
+  - `/osok start` setzt vor jedem Match das Scoreboard zurück und räumt alte Item-Boxen und Bomber weg.
+  - `/osok stop` beendet das Spiel: Statistiken zurückgesetzt, Ausrüstung und Effekte entfernt, alle Spieler in der Lobby der aktiven Map.
   - Konfigurierbare Kills-, Minuten- und Sekunden-Limits (`/osok dauer kills <n>`, `/osok dauer minuten <n>`, `/osok dauer sekunden <n>`, `/osok dauer off`).
   - **Verzögerter Start**: Festgelegte Limits werden gespeichert und erst beim Ausführen von `/osok start` im Scoreboard sichtbar & als Timer gestartet.
   - Gewinner-Titel, Siegeshymne (Notenblock-Song) & Feuerwerksspektakel.
@@ -139,7 +143,8 @@ also beliebig verschoben oder umbenannt werden. Bricht `javac` oder `jar` ab, sc
 | Befehl | Beschreibung | Berechtigung |
 | :--- | :--- | :--- |
 | `/osok` | OSOK Hauptbefehl & Übersicht aller Unterbefehle | Operator (OP) |
-| `/osok start` | Teleportiert alle Spieler zufällig in die Arena, startet ein neues Match & setzt den Item-Modus auf `BOTH` | Operator (OP) |
+| `/osok start` | Setzt das Scoreboard zurück, teleportiert alle Spieler zufällig in die Arena, startet ein neues Match & setzt den Item-Modus auf `BOTH` | Operator (OP) |
+| `/osok stop` | Beendet das Spiel, setzt das Scoreboard zurück & teleportiert alle Spieler in die Lobby der aktiven Map | Operator (OP) |
 | `/osok pause` | Pausiert / Fortsetzt das aktuelle Match & teleportiert zur Lobby | Operator (OP) |
 | `/osok map <Standard\|DustPvP>` | Dynamischer Map-Wechsel ohne Server-Neustart | Operator (OP) |
 | `/osok dauer kills <n>` | Setzt ein Kill-Ziel (z. B. `/osok dauer kills 20`, aktiv ab `/osok start`) | Operator (OP) |

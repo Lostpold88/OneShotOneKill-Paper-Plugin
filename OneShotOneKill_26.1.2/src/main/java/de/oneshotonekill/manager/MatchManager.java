@@ -152,6 +152,50 @@ public class MatchManager {
         this.remainingSeconds = this.timeLimitSeconds;
     }
 
+    /**
+     * Beendet das laufende Spiel vollstaendig: Match stoppen, Statistiken zuruecksetzen,
+     * Ausruestung einziehen und alle Spieler in die Lobby der aktiven Map teleportieren.
+     */
+    public void stopGame(Player sender) {
+        Location lobbyLoc = plugin.getWorldManager().getSpawnLocation();
+        if (lobbyLoc == null) {
+            if (sender != null) {
+                sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Die Arena-Welt ist aktuell nicht geladen!</red>"));
+            }
+            return;
+        }
+
+        stopMatch();
+        plugin.getKillstreakManager().clearAllGroundItems();
+        plugin.getStealthBomberManager().clearAll();
+        plugin.getScoreboardManager().resetAllStats();
+
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            p.setGlowing(false);
+            p.setFireTicks(0);
+            p.setFreezeTicks(0);
+            for (PotionEffect effect : new java.util.ArrayList<>(p.getActivePotionEffects())) {
+                p.removePotionEffect(effect.getType());
+            }
+            plugin.getEquipmentManager().clearBaseEquipment(p);
+            p.teleportAsync(lobbyLoc).thenAccept(success -> {
+                if (success && p.isOnline()) {
+                    p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, Sound.Source.MASTER, 1.0f, 0.8f));
+                }
+            });
+        }
+
+        plugin.getScoreboardManager().updateAllScoreboards();
+
+        broadcast(" ");
+        broadcast("<red><b>=======================================</b></red>");
+        broadcast("<red><b>   ⏹ SPIEL BEENDET!   </b></red>");
+        broadcast("<gray>  Statistiken zurückgesetzt, alle Spieler in der Lobby.</gray>");
+        broadcast("<gray>  Neues Match starten mit: <yellow>/osok start</yellow></gray>");
+        broadcast("<red><b>=======================================</b></red>");
+        broadcast(" ");
+    }
+
     private void startTimer() {
         stopTimer();
         timerTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
@@ -436,6 +480,11 @@ public class MatchManager {
         // Standard-Item-Modus bei jedem Start: BOTH (Killstreak-Items + Boden-Item-Boxen).
         // Gilt unabhaengig von der aktiven Arena.
         plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.BOTH);
+
+        // Jedes neue Match startet mit leerem Scoreboard
+        plugin.getScoreboardManager().resetAllStats();
+        plugin.getKillstreakManager().clearAllGroundItems();
+        plugin.getStealthBomberManager().clearAll();
 
         Location spawn = plugin.getWorldManager().getSpawnLocation();
         int count = 0;

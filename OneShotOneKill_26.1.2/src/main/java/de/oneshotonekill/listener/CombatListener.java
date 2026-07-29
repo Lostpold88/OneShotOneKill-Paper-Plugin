@@ -27,11 +27,19 @@ public class CombatListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onEntityDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Player player) {
-            // Außerhalb der Arena ist JEGLICHER Schaden (Sturz, Angriff etc.) verboten
-            if (!plugin.getArenaManager().isInArenaArea(player.getLocation())) {
-                event.setCancelled(true);
-            }
+        if (!(event.getEntity() instanceof Player player)) return;
+
+        // Außerhalb der Arena ist JEGLICHER Schaden (Sturz, Angriff etc.) verboten
+        if (!plugin.getArenaManager().isInArenaArea(player.getLocation())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        // Toedlicher Schaden ohne Angreifer (z. B. Sturz) wuerde einen echten Tod ausloesen
+        // und damit den Respawn-Ladebildschirm zeigen. Stattdessen regulaer eliminieren.
+        if (event.getFinalDamage() >= player.getHealth()) {
+            event.setCancelled(true);
+            plugin.getEliminationManager().eliminate(player, null);
         }
     }
 
@@ -96,14 +104,16 @@ public class CombatListener implements Listener {
                 return;
             }
 
-            // Instant 1-Hit Kill per Waffe / Pfeil
-            event.setDamage(1000.0);
-
             // Refill Arrow on Bow Hit
             if (event.getDamager() instanceof Arrow) {
                 damager.getInventory().addItem(new ItemStack(Material.ARROW, 1));
                 damager.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f));
             }
+
+            // Instant 1-Hit Kill: Schaden wird gecancelt, die Eliminierung uebernimmt der
+            // EliminationManager. Ohne echten Tod entfaellt der Respawn-Ladebildschirm.
+            event.setCancelled(true);
+            plugin.getEliminationManager().eliminate(target, damager);
         }
     }
 
@@ -164,6 +174,11 @@ public class CombatListener implements Listener {
 
     @EventHandler
     public void onCreatureSpawn(org.bukkit.event.entity.CreatureSpawnEvent event) {
+        // Natuerliche Spawns unterbinden - vom Plugin selbst gesetzte Entities
+        // (z. B. der Tarnkappenbomber-Drache) muessen aber erlaubt bleiben.
+        if (event.getSpawnReason() == org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason.CUSTOM) {
+            return;
+        }
         if (!(event.getEntity() instanceof Player)) {
             event.setCancelled(true);
         }

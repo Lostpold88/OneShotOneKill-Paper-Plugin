@@ -55,7 +55,8 @@ public class OsokCommand implements BasicCommand {
             msg(player, "<yellow><b>=======================================</b></yellow>");
             msg(player, "<green><b>🎯 OSOK COMMANDS (/osok <befehl>)</b></green>");
             msg(player, "<yellow><b>=======================================</b></yellow>");
-            msg(player, "<gray>/osok start <dark_gray>-</dark_gray> <white>Match starten & alle zufällig in die Arena spawnen (Admin)</white></gray>");
+            msg(player, "<gray>/osok start <dark_gray>-</dark_gray> <white>Match starten, Scoreboard zurücksetzen & alle zufällig in die Arena spawnen (Admin)</white></gray>");
+            msg(player, "<gray>/osok stop <dark_gray>-</dark_gray> <white>Spiel beenden, Scoreboard zurücksetzen & alle in die Lobby teleportieren (Admin)</white></gray>");
             msg(player, "<gray>/osok pause <dark_gray>-</dark_gray> <white>Match pausieren / fortsetzen (Admin)</white></gray>");
             msg(player, "<gray>/osok map <Standard|DustPvP> <dark_gray>-</dark_gray> <white>Dynamisch zwischen Arenen wechseln (Admin)</white></gray>");
             msg(player, "<gray>/osok dauer [kills|minuten|sekunden|off] [Anzahl] <dark_gray>-</dark_gray> <white>Match-Dauer/Ziel festlegen (Admin)</white></gray>");
@@ -73,6 +74,11 @@ public class OsokCommand implements BasicCommand {
 
         if (sub.equals("start")) {
             new StartCommand(plugin).start(player);
+            return;
+        }
+
+        if (sub.equals("stop") || sub.equals("beenden")) {
+            plugin.getMatchManager().stopGame(player);
             return;
         }
 
@@ -265,7 +271,7 @@ public class OsokCommand implements BasicCommand {
         if (args.length <= 1) {
             String current = args.length == 1 ? args[0] : "";
             List<String> subCommands = Arrays.asList(
-                    "start", "pause", "map", "dauer", "limit", "itemmode",
+                    "start", "stop", "pause", "map", "dauer", "limit", "itemmode",
                     "itemtest", "clearpfeile", "setspawn",
                     "resetstats", "resetmap", "help"
             );

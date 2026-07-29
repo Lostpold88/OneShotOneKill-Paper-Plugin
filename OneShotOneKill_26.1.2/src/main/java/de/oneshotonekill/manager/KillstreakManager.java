@@ -34,6 +34,10 @@ public class KillstreakManager {
     public static final String KEY_MAGNET = "arrow_magnet";
     public static final String KEY_CHAIN_LIGHTNING = "chain_lightning";
     public static final String KEY_ROCKET_JUMP = "rocket_jump";
+    public static final String KEY_STEALTH_BOMBER = "stealth_bomber";
+
+    /** Anzahl der verfuegbaren Spezial-Item-Typen (Indizes 0 bis SPECIAL_ITEM_COUNT-1). */
+    public static final int SPECIAL_ITEM_COUNT = 12;
 
     public static final NamespacedKey KEY_EXPLOSIVE_PDC = new NamespacedKey("oneshotonekill", "explosive_arrow");
     public static final NamespacedKey KEY_CHAIN_LIGHTNING_PDC = new NamespacedKey("oneshotonekill", "chain_lightning_arrow");
@@ -141,7 +145,7 @@ public class KillstreakManager {
         }
 
         Random random = new Random();
-        int itemType = random.nextInt(11);
+        int itemType = random.nextInt(SPECIAL_ITEM_COUNT);
         ItemStack itemStack = createSpecificSpecialItem(itemType);
 
         spawnLoc.getWorld().addPluginChunkTicket(spawnLoc.getBlockX() >> 4, spawnLoc.getBlockZ() >> 4, plugin);
@@ -174,7 +178,7 @@ public class KillstreakManager {
 
     public void awardRandomKillstreakItem(Player player, int streak) {
         Random random = new Random();
-        int itemType = random.nextInt(11);
+        int itemType = random.nextInt(SPECIAL_ITEM_COUNT);
         giveSpecificSpecialItem(player, itemType, streak);
     }
 
@@ -190,6 +194,7 @@ public class KillstreakManager {
             case 7 -> createSpecialItem(Material.PHANTOM_MEMBRANE, "<gray><b>[✦] Unsichtbarkeits-Mantel (Rechtsklick)</b></gray>", "<gray>Macht dich für 15s komplett unsichtbar!</gray>", KEY_INVISIBILITY);
             case 8 -> createSpecialItem(Material.HEART_OF_THE_SEA, "<blue><b>[⚓] Pfeil-Magnetfeld (Rechtsklick)</b></blue>", "<gray>Lenkt herannahende Pfeile für 15s ab!</gray>", KEY_MAGNET);
             case 9 -> createSpecialItem(Material.LIGHTNING_ROD, "<yellow><b>[⚡] Kettenblitz-Schuss (Rechtsklick)</b></yellow>", "<gray>Dein nächster Schuss erzeugt Blitze!</gray>", KEY_CHAIN_LIGHTNING);
+            case 10 -> createSpecialItem(Material.DRAGON_HEAD, "<dark_purple><b>[🐉] Tarnkappenbomber (Rechtsklick)</b></dark_purple>", "<gray>Setzt 10s lang einen TNT-werfenden Drachen auf ein Ziel an!</gray>", KEY_STEALTH_BOMBER);
             default -> createSpecialItem(Material.FIREWORK_ROCKET, "<red><b>[★] Raketen-Sprung (Rechtsklick)</b></red>", "<gray>Schleudert dich 15 Blöcke in die Höhe!</gray>", KEY_ROCKET_JUMP);
         };
     }

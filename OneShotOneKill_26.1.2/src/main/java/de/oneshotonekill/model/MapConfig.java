@@ -45,6 +45,12 @@ public class MapConfig {
 
     private final String name;
     private final String zipResource;
+    /**
+     * Maximale Y-Position, auf der eine Boden-Item-Box liegen darf.
+     * Begrenzt den Boden-Scan zusaetzlich zu den Arena-Grenzen, damit Items wirklich nur
+     * auf der Grundflaeche landen und nicht auf hoeher gelegenen Bereichen.
+     */
+    private double maxItemSpawnY;
     private Location lobbyLocation;
     private double minX;
     private double maxX;
@@ -61,6 +67,15 @@ public class MapConfig {
         this.zipResource = zipResource;
         this.lobbyLocation = lobbyLocation;
         setArenaBounds(minX, maxX, minY, maxY, minZ, maxZ);
+        this.maxItemSpawnY = this.maxY + 1.0;
+    }
+
+    public double getMaxItemSpawnY() {
+        return maxItemSpawnY;
+    }
+
+    public void setMaxItemSpawnY(double maxItemSpawnY) {
+        this.maxItemSpawnY = maxItemSpawnY;
     }
 
     public String getName() {
@@ -154,6 +169,14 @@ public class MapConfig {
 
         int scanMinY = Math.max((int) Math.floor(minY) - SPAWN_SCAN_BELOW, osokWorld.getMinHeight());
         int scanMaxY = Math.min((int) Math.floor(maxY) + SPAWN_SCAN_ABOVE, osokWorld.getMaxHeight() - 3);
+
+        if (!topDown) {
+            // Boden-Items: Der Bodenblock liegt eine Position unter dem Item selbst.
+            scanMaxY = Math.min(scanMaxY, (int) Math.floor(maxItemSpawnY) - 1);
+        }
+        if (scanMaxY < scanMinY) {
+            return null;
+        }
 
         for (int attempts = 0; attempts < 200; attempts++) {
             int blockX = (int) Math.floor(minX + (RANDOM.nextDouble() * (maxX - minX)));
