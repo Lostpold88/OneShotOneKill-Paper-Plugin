@@ -122,16 +122,8 @@ public class CombatListener implements Listener {
                 }
             }
 
-            // Reflektor-Schild Prüfung
-            if (plugin.getKillstreakManager().hasShield(target.getUniqueId())) {
-                plugin.getKillstreakManager().removeShield(target.getUniqueId());
-                event.setCancelled(true);
-                target.playSound(Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BREAK, Sound.Source.MASTER, 1.0f, 1.0f));
-                target.sendMessage(MiniMessage.miniMessage().deserialize("<aqua>[OSOK] [🛡] Dein Reflektor-Schild hat den tödlichen Treffer abgewehrt!</aqua>"));
-                damager.playSound(Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BLOCK, Sound.Source.MASTER, 1.0f, 0.8f));
-                damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] [🛡] Treffer abgeprallt! " + target.getName() + " hatte ein Reflektor-Schild!</red>"));
-                return;
-            }
+            // Das Reflektor-Schild wird zentral im EliminationManager geprueft, damit es
+            // auch gegen Explosionen, Kettenblitz und Sturzschaden wirkt.
 
             // Refill Arrow on Bow Hit
             if (event.getDamager() instanceof Arrow) {
