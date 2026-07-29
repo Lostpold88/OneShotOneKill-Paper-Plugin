@@ -13,7 +13,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityShootBowEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -36,7 +35,6 @@ public class SpecialItemListener implements Listener {
 
     private final OneShotOneKill plugin;
     private final Set<Location> activeBearTraps = new HashSet<>();
-    private final Set<UUID> noFallPlayers = new HashSet<>();
     private final Set<UUID> vanishedPlayers = new HashSet<>();
     /** Zaehler pro Spieler, damit ein neuer Radar-Puls das Leuchten des vorherigen verlaengert. */
     private final Map<UUID, Integer> radarGlowGeneration = new HashMap<>();
@@ -332,30 +330,6 @@ public class SpecialItemListener implements Listener {
                 return;
             }
 
-            // Raketen-Sprung (20 Sekunden Fallschutz & Air-Sprint Geschwindigkeit)
-            if (KillstreakManager.KEY_ROCKET_JUMP.equals(typeId)) {
-                event.setCancelled(true);
-                consumeItem(player, item);
-
-                player.setVelocity(new org.bukkit.util.Vector(0, 1.8, 0));
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 400, 2, false, false));
-                player.getWorld().spawnParticle(Particle.FIREWORK, player.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
-                player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, Sound.Source.MASTER, 1.0f, 1.2f));
-                player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ★ Raketen-Sprung! Du hast 20 Sekunden Air-Sprint & Fallschutz.</green>"));
-
-                noFallPlayers.add(player.getUniqueId());
-                player.getScheduler().runDelayed(plugin, task -> noFallPlayers.remove(player.getUniqueId()), null, 400L); // 20 Sekunden
-                return;
-            }
-        }
-    }
-
-    @EventHandler
-    public void onFallDamage(EntityDamageEvent event) {
-        if (event.getCause() == EntityDamageEvent.DamageCause.FALL && event.getEntity() instanceof Player player) {
-            if (noFallPlayers.contains(player.getUniqueId())) {
-                event.setCancelled(true);
-            }
         }
     }
 

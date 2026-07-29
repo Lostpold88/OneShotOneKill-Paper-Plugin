@@ -19,7 +19,6 @@ import de.oneshotonekill.manager.WorldManager;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.List;
 
 public class OneShotOneKill extends JavaPlugin {
 
@@ -72,7 +71,8 @@ public class OneShotOneKill extends JavaPlugin {
         // 4. Paper Dynamic Lifecycle Command Registration (Brigadier BasicCommand)
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             OsokCommand osokCommand = new OsokCommand(this);
-            event.registrar().register("osok", "OneShotOneKill Hauptbefehl", List.of("oneshot"), osokCommand);
+            // Bewusst ohne Aliase: Alle Befehle sind ausschliesslich ueber /osok erreichbar.
+            event.registrar().register("osok", "OneShotOneKill Hauptbefehl", osokCommand);
         });
 
         // 5. Scoreboards für alle bereits verbundenen Spieler aktualisieren

@@ -84,9 +84,19 @@ public class ExplosivesManager implements Listener {
     private final OneShotOneKill plugin;
     private final Set<TNTPrimed> activeBombs = new HashSet<>();
     private final Map<UUID, List<BlockDisplay>> c4Charges = new HashMap<>();
+    /** Ausloeser der aktuell laufenden Sprengung, nur waehrend {@code createExplosion} gesetzt. */
+    private Player currentBlastOwner = null;
 
     public ExplosivesManager(OneShotOneKill plugin) {
         this.plugin = plugin;
+    }
+
+    /**
+     * Ausloeser der gerade laufenden Sprengung, oder {@code null}.
+     * Wird vom {@code CombatListener} zur Kill-Zuordnung bei Explosionsschaden abgefragt.
+     */
+    public Player getCurrentBlastOwner() {
+        return currentBlastOwner;
     }
 
     // ==================================================================
@@ -94,20 +104,28 @@ public class ExplosivesManager implements Listener {
     // ==================================================================
 
     /**
-     * Gewaltige Explosion ohne jede Blockveraenderung.
-     * Der Schaden wird dem Ausloeser zugeschrieben.
+     * Gewaltige Explosion ohne jede Blockveraenderung, die <b>jeden</b> Spieler in Reichweite
+     * trifft - auch den Ausloeser selbst.
+     * <p>
+     * Wichtig: Es wird bewusst <b>keine</b> Verursacher-Entity uebergeben. Minecraft ermittelt
+     * die Explosionsopfer ueber {@code getEntities(source, box)}, und diese Abfrage schliesst
+     * die Quell-Entity aus. Wuerde der Ausloeser als Quelle uebergeben, waere er von seiner
+     * eigenen Sprengung ausgenommen.
+     * <p>
+     * Fuer die Kill-Zuordnung wird der Ausloeser stattdessen fuer die Dauer der Sprengung in
+     * {@link #currentBlastOwner} hinterlegt. Das ist zuverlaessig, weil
+     * {@code createExplosion} synchron laeuft und die Schadensevents unmittelbar ausloest.
      */
     private void blast(Location loc, Player owner) {
         World world = loc.getWorld();
         if (world == null) return;
 
         // breakBlocks = false -> die Map kann nicht beschaedigt werden. setFire = false -> kein Feuer.
-        // Der Ausloeser wird als Verursacher uebergeben, damit ein toedlicher Treffer ihm
-        // zugeschrieben wird. Ist er inzwischen offline, explodiert es ohne Verursacher.
-        if (owner != null && owner.isOnline()) {
-            world.createExplosion(owner, loc, BLAST_POWER, false, false);
-        } else {
+        this.currentBlastOwner = (owner != null && owner.isOnline()) ? owner : null;
+        try {
             world.createExplosion(loc, BLAST_POWER, false, false);
+        } finally {
+            this.currentBlastOwner = null;
         }
 
         world.spawnParticle(Particle.EXPLOSION_EMITTER, loc, 8, 2.5, 1.5, 2.5, 0.0);
@@ -333,7 +351,7 @@ public class ExplosivesManager implements Listener {
         // BlockDisplay statt echtem Block: Die Map bleibt voellig unberuehrt.
         BlockDisplay charge = loc.getWorld().spawn(loc, BlockDisplay.class, spawned -> {
             spawned.setBlock(Material.TNT.createBlockData());
-            spawned.setGlowing(true);
+            // Bewusst ohne Leuchtrahmen: Die Ladung soll nicht durch Waende sichtbar sein.
             spawned.setPersistent(false);
             spawned.getPersistentDataContainer().set(KEY_C4_CHARGE, PersistentDataType.BYTE, (byte) 1);
             spawned.getPersistentDataContainer().set(KEY_OWNER, PersistentDataType.STRING, owner.getUniqueId().toString());

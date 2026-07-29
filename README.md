@@ -22,7 +22,7 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 
 > **Hinweis zur DustPvP-Lobby**: Sie liegt bei `Y=90` direkt über der Arena-Grundfläche. Damit sie nicht
 > als „innerhalb der Arena" gilt, ist der vertikale Spielraum über der Arena-Oberkante auf 12 Blöcke
-> begrenzt (Arena-Y effektiv 68–82). Ein Raketen-Sprung (~15 Blöcke) kann diese Kante kurz überschreiten.
+> begrenzt (Arena-Y effektiv 68–82).
 
 ---
 
@@ -44,7 +44,7 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - Das Betreten des Arena-Bereichs wird während der Pause blockiert.
   - Beim Fortsetzen werden alle Spieler wieder **zufällig verteilt in die Arena** teleportiert.
 
-- **🎁 11 Spezial-Items (Powerups)**:
+- **🎁 13 Spezial-Items (Powerups)**:
   1. 👁️ **Radar-Puls** *(Enderauge)*: Lässt alle Feinde für 30s aufleuchten. **Geheim**: Umgesetzt über das Glow-Flag der Entity statt über `PotionEffectType.GLOWING` – dadurch erscheint beim Betroffenen **kein Eintrag im Effekt-Fenster des Inventars**, kein HUD-Icon und keine Partikel. (Einzige verbleibende Eigenwahrnehmung: der eigene Umriss in der Third-Person-Ansicht `F5`.)
   2. 💣 **Explosiv-Schuss** *(TNT)*: Nächster Pfeil erzeugt eine Explosion am Einschlagort.
   3. 🛡️ **Reflektor-Schild** *(Netherstern)*: Blockiert den nächsten tödlichen Treffer inkl. Schildbruch-Effekt.
@@ -55,13 +55,14 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   8. 👻 **Unsichtbarkeits-Mantel** *(Phantom-Membran)*: Echter Vanish für 15s (`hidePlayer`).
   9. 🧲 **Pfeil-Magnetfeld** *(Herz des Meeres)*: Lenkt gegnerische Pfeile im Umkreis von 8 Blöcken für 15s ab.
   10. ⚡ **Kettenblitz-Schuss** *(Blitzableiter)*: Nächster Treffer beschwört Blitze und springt auf bis zu 2 nahe Feinde über.
-  11. 🚀 **Raketen-Sprung** *(Feuerwerksrakete)*: Katapultiert den Spieler hoch (inkl. 20s Fallschutz & Air-Sprint).
-  12. 🐉 **Tarnkappenbomber** *(Drachenkopf)*: Öffnet ein Auswahlmenü mit allen anderen Spielern. Über dem gewählten Ziel erscheint ein **Ender-Drache**, der ihm **10 Sekunden** lang folgt und dabei durchgehend **TNT** abwirft. Der Drache greift niemanden an: Wahrnehmung deaktiviert, unverwundbar, und sein gesamter Schaden wird gecancelt. Er wird jeden Tick über das Ziel teleportiert; ein Reset der `HOVER`-Phase verhindert, dass er gegen den Teleport zurückfliegt. Das TNT **zerstört keine Blöcke** – die Blockliste der Explosion wird geleert – und **zündet sofort bei Bodenkontakt** statt per Zeitzünder. Sein Schaden ist auf **3 Herzen gedeckelt**, es tötet also ausdrücklich nicht mit einem Treffer.
+  11. 🐉 **Tarnkappenbomber** *(Drachenkopf)*: Öffnet ein Auswahlmenü mit allen anderen Spielern. Über dem gewählten Ziel erscheint ein **Ender-Drache**, der ihm **10 Sekunden** lang folgt und dabei durchgehend **TNT** abwirft. Der Drache greift niemanden an: Wahrnehmung deaktiviert, unverwundbar, und sein gesamter Schaden wird gecancelt. Er wird jeden Tick über das Ziel teleportiert; ein Reset der `HOVER`-Phase verhindert, dass er gegen den Teleport zurückfliegt. Das TNT **zerstört keine Blöcke** – die Blockliste der Explosion wird geleert – und **zündet sofort bei Bodenkontakt** statt per Zeitzünder. Sein Schaden ist auf **3 Herzen gedeckelt**, es tötet also ausdrücklich nicht mit einem Treffer.
 
-  13. 🛰 **Air-Strike** *(Karte)*: Öffnet eine **Karte der aktiven Arena** – ein 9×6-Raster über die XZ-Grenzen der Map, auf dem alle Spieler in der Arena als Kopf auf ihrem Sektor eingezeichnet sind (der eigene in Blau, Gegner in Rot). Ein Klick markiert das Ziel, eine Partikelsäule kündigt den Einschlag an, und nach ~2 s gehen 8 Bomben auf den Sektor nieder. Die Abwurfhöhe respektiert die **Decke der Map** (auf Standard also maximal `Y 68`). Das Item wird erst bei der Zielauswahl verbraucht.
-  14. 💥 **C4** *(TNT-Lore)*: Wird per Rechtsklick auf einen Block **platziert** und liegt dort als leuchtender TNT-Block – umgesetzt als `BlockDisplay`, die Map bleibt also völlig unberührt. Beim Platzieren erhält man automatisch einen **Fernzünder** (Hebel), der per Rechtsklick **alle eigenen Ladungen gleichzeitig** auslöst. Mehrere Ladungen lassen sich vorher verteilen.
+  12. 🛰 **Air-Strike** *(Karte)*: Öffnet eine **Karte der aktiven Arena** – ein 9×6-Raster über die XZ-Grenzen der Map, auf dem alle Spieler in der Arena als Kopf auf ihrem Sektor eingezeichnet sind (der eigene in Blau, Gegner in Rot). Ein Klick markiert das Ziel, eine Partikelsäule kündigt den Einschlag an, und nach ~2 s gehen 8 Bomben auf den Sektor nieder. Die Abwurfhöhe respektiert die **Decke der Map** (auf Standard also maximal `Y 68`). Das Item wird erst bei der Zielauswahl verbraucht.
+  13. 💥 **C4** *(TNT-Lore)*: Wird per Rechtsklick auf einen Block **platziert** und liegt dort als TNT-Block ohne Leuchtrahmen, ist also nicht durch Waende sichtbar – umgesetzt als `BlockDisplay`, die Map bleibt also völlig unberührt. Beim Platzieren erhält man automatisch einen **Fernzünder** (Hebel), der per Rechtsklick **alle eigenen Ladungen gleichzeitig** auslöst. Mehrere Ladungen lassen sich vorher verteilen.
 
-  > **Sprengkraft von Air-Strike und C4**: Beide nutzen `createExplosion(…, breakBlocks = false)` mit Stärke `8.0` (Vanilla-TNT liegt bei `4.0`). Die Explosion ist damit gewaltig und im Zentrum tödlich, kann die Map aber **grundsätzlich nicht** beschädigen – es werden gar keine Blöcke angetastet, statt eine Blockliste nachträglich zu leeren. Als Verursacher wird der auslösende Spieler übergeben, damit ein tödlicher Treffer ihm korrekt als Kill zugeschrieben wird.
+  > **Sprengkraft von Air-Strike und C4**: Beide nutzen `createExplosion(…, breakBlocks = false)` mit Stärke `8.0` (Vanilla-TNT liegt bei `4.0`). Die Explosion ist damit gewaltig und im Zentrum tödlich, kann die Map aber **grundsätzlich nicht** beschädigen – es werden gar keine Blöcke angetastet, statt eine Blockliste nachträglich zu leeren.
+  >
+  > Beide treffen **jeden** Spieler in Reichweite, **auch den Auslöser selbst**. Dafür wird bewusst *keine* Verursacher-Entity übergeben: Minecraft ermittelt die Explosionsopfer über `getEntities(source, box)`, und diese Abfrage schließt die Quell-Entity aus – der Auslöser wäre also von seiner eigenen Sprengung ausgenommen. Für die Kill-Zuordnung hält der `ExplosivesManager` den Auslöser stattdessen nur für die Dauer der Sprengung fest; das ist zuverlässig, weil `createExplosion` synchron läuft und die Schadensevents unmittelbar auslöst.
 
   > Wichtig: `setAI(false)` darf hier **nicht** gesetzt werden. Das NoAI-Flag wird zum Client synchronisiert, und der Drache ist ein mehrteiliges Modell, dessen Segmente clientseitig in `aiStep()` nachgeführt werden – mit NoAI bleibt das Modell optisch stehen, obwohl die Entity serverseitig korrekt mitwandert. Das Item wird erst beim Auswählen eines Ziels verbraucht, nicht beim Öffnen des Menüs.
 

@@ -49,17 +49,27 @@ public class CombatListener implements Listener {
      * Bomber-TNT-Explosion dem Ausloeser als Kill gutgeschrieben wird.
      */
     private Player resolveKiller(EntityDamageEvent event) {
-        if (!(event instanceof EntityDamageByEntityEvent byEntity)) {
-            return null;
+        if (event instanceof EntityDamageByEntityEvent byEntity) {
+            Entity damager = byEntity.getDamager();
+            if (damager instanceof Player attacker) {
+                return attacker;
+            }
+            if (damager instanceof Arrow arrow && arrow.getShooter() instanceof Player shooter) {
+                return shooter;
+            }
+            Player bombOwner = plugin.getStealthBomberManager().resolveBombOwner(damager);
+            if (bombOwner != null) {
+                return bombOwner;
+            }
         }
-        Entity damager = byEntity.getDamager();
-        if (damager instanceof Player attacker) {
-            return attacker;
+
+        // Air-Strike und C4 sprengen bewusst ohne Verursacher-Entity, damit auch der
+        // Ausloeser Schaden nimmt. Die Zuordnung liefert daher der ExplosivesManager.
+        if (event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION
+                || event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION) {
+            return plugin.getExplosivesManager().getCurrentBlastOwner();
         }
-        if (damager instanceof Arrow arrow && arrow.getShooter() instanceof Player shooter) {
-            return shooter;
-        }
-        return plugin.getStealthBomberManager().resolveBombOwner(damager);
+        return null;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
