@@ -243,9 +243,11 @@ public class MatchManager {
     private void playWinnerCelebrationLoop(Player winner, int winnerKills) {
         stopVictoryTasks();
 
+        String winnerNameClean = winner != null ? winner.getName().replaceAll("§[0-9a-fk-orA-FK-OR]", "") : "Spieler";
+
         // 1. Animierter Regenbogen-Titel auf dem Bildschirm!
         victoryTitleTask = new BukkitRunnable() {
-            float phase = 0.0f;
+            int titleTicks = 0;
 
             @Override
             public void run() {
@@ -254,15 +256,18 @@ public class MatchManager {
                     return;
                 }
 
-                phase += 0.08f;
-                if (phase > 2.0f) phase -= 2.0f;
+                // MiniMessage Syntax: <rainbow:phase> benötigt ein Integer (z. B. 0, 2, 4, 6...)
+                int rainbowPhase = titleTicks * 3;
 
-                String phaseStr = String.format(java.util.Locale.US, "%.2f", phase);
+                // MiniMessage Syntax: <gradient:colors:phase> benötigt einen Float Wert strictly zwischen -1.0 und 1.0!
+                float gradPhase = (float) Math.sin(titleTicks * 0.15);
+                String gradPhaseStr = String.format(java.util.Locale.US, "%.2f", gradPhase);
+
                 Component mainTitle = MiniMessage.miniMessage().deserialize(
-                        "<rainbow:" + phaseStr + "><b>🏆 GEWINNER! 🏆</b></rainbow>"
+                        "<rainbow:" + rainbowPhase + "><b>🏆 GEWINNER! 🏆</b></rainbow>"
                 );
                 Component subTitle = MiniMessage.miniMessage().deserialize(
-                        "<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff:" + phaseStr + "><b>" + winner.getName() + "</b></gradient> <gray>hat gewonnen! (<green>" + winnerKills + " Kills</green>)</gray>"
+                        "<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff:" + gradPhaseStr + "><b>" + winnerNameClean + "</b></gradient> <gray>hat gewonnen! (<green>" + winnerKills + " Kills</green>)</gray>"
                 );
 
                 Title.Times times = Title.Times.times(Ticks.duration(0), Ticks.duration(30), Ticks.duration(10));
@@ -271,6 +276,8 @@ public class MatchManager {
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     p.showTitle(animatedTitle);
                 }
+
+                titleTicks++;
             }
         }.runTaskTimer(plugin, 0L, 2L);
 
