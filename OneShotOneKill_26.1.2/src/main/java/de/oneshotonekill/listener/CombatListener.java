@@ -8,6 +8,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import net.kyori.adventure.sound.Sound;
 import org.bukkit.entity.Arrow;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -35,12 +36,30 @@ public class CombatListener implements Listener {
             return;
         }
 
-        // Toedlicher Schaden ohne Angreifer (z. B. Sturz) wuerde einen echten Tod ausloesen
-        // und damit den Respawn-Ladebildschirm zeigen. Stattdessen regulaer eliminieren.
+        // Toedlicher Schaden ohne direkten Nahkampftreffer (Sturz, Explosion) wuerde einen echten
+        // Tod ausloesen und damit den Respawn-Ladebildschirm zeigen. Stattdessen regulaer eliminieren.
         if (event.getFinalDamage() >= player.getHealth()) {
             event.setCancelled(true);
-            plugin.getEliminationManager().eliminate(player, null);
+            plugin.getEliminationManager().eliminate(player, resolveKiller(event));
         }
+    }
+
+    /**
+     * Ermittelt den verantwortlichen Spieler fuer toedlichen Schaden, damit z. B. eine
+     * Bomber-TNT-Explosion dem Ausloeser als Kill gutgeschrieben wird.
+     */
+    private Player resolveKiller(EntityDamageEvent event) {
+        if (!(event instanceof EntityDamageByEntityEvent byEntity)) {
+            return null;
+        }
+        Entity damager = byEntity.getDamager();
+        if (damager instanceof Player attacker) {
+            return attacker;
+        }
+        if (damager instanceof Arrow arrow && arrow.getShooter() instanceof Player shooter) {
+            return shooter;
+        }
+        return plugin.getStealthBomberManager().resolveBombOwner(damager);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
