@@ -133,8 +133,12 @@ public class KillstreakManager {
     }
 
     public void spawnGroundSpecialItem() {
-        Location spawnLoc = plugin.getArenaManager().getRandomArenaLocation();
-        if (spawnLoc == null || spawnLoc.getWorld() == null) return;
+        // Boden-Items ausschliesslich auf dem Arena-Boden - kein Dach, keine Plattform, keine Lobby
+        Location spawnLoc = plugin.getArenaManager().getRandomFloorLocation();
+        if (spawnLoc == null || spawnLoc.getWorld() == null) {
+            plugin.getLogger().warning("[OSOK] Kein freier Arena-Bodenplatz fuer eine Item-Box gefunden - Spawn uebersprungen.");
+            return;
+        }
 
         Random random = new Random();
         int itemType = random.nextInt(11);
@@ -142,10 +146,16 @@ public class KillstreakManager {
 
         spawnLoc.getWorld().addPluginChunkTicket(spawnLoc.getBlockX() >> 4, spawnLoc.getBlockZ() >> 4, plugin);
 
-        Item dropped = spawnLoc.getWorld().dropItem(spawnLoc, itemStack);
-        dropped.setCanMobPickup(false);
-        dropped.setGravity(false);
-        dropped.getPersistentDataContainer().set(KEY_GROUND_SPECIAL_PDC, PersistentDataType.BYTE, (byte) 1);
+        // Paper dropItem mit Consumer: Eigenschaften stehen fest, BEVOR das Item in der Welt erscheint.
+        // Gravitation MUSS aktiv bleiben, sonst bleibt die Item-Box in der Luft haengen.
+        Item dropped = spawnLoc.getWorld().dropItem(spawnLoc, itemStack, item -> {
+            item.setCanMobPickup(false);
+            item.setGravity(true);
+            item.setVelocity(new Vector(0, 0, 0));
+            // Deutlich sichtbarer Leuchtrahmen durch alle Waende hindurch
+            item.setGlowing(true);
+            item.getPersistentDataContainer().set(KEY_GROUND_SPECIAL_PDC, PersistentDataType.BYTE, (byte) 1);
+        });
         activeGroundItems.add(dropped);
 
         spawnLoc.getWorld().spawnParticle(Particle.FIREWORK, spawnLoc.clone().add(0, 0.5, 0), 30, 0.4, 0.4, 0.4, 0.05);

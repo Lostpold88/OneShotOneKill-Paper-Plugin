@@ -44,12 +44,10 @@ public class PlayerConnectionListener implements Listener {
 
         player.getScheduler().runDelayed(plugin, task -> {
             World targetWorld = plugin.getWorldManager().getOsokWorld();
-            if (targetWorld != null && player.isOnline()) {
-                Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
-                Location loc = (spawnLoc != null) ? spawnLoc : new Location(targetWorld, 223.5, 48.0, 55.5);
-                
+            Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
+            if (targetWorld != null && spawnLoc != null && player.isOnline()) {
                 // Paper API: Asynchrones Teleportieren mit pre-loading
-                player.teleportAsync(loc).thenAccept(success -> {
+                player.teleportAsync(spawnLoc).thenAccept(success -> {
                     if (success && player.isOnline()) {
                         if (plugin.getMatchManager().isMatchStarted() && !plugin.getMatchManager().isMatchPaused()) {
                             plugin.getEquipmentManager().giveOneShotEquipment(player);
@@ -57,7 +55,8 @@ public class PlayerConnectionListener implements Listener {
                             plugin.getEquipmentManager().clearBaseEquipment(player);
                         }
                         plugin.getScoreboardManager().updateAllScoreboards();
-                        plugin.getLogger().info("Spieler " + player.getName() + " wurde auf OSOK Arena (223.5, 48.0, 55.5) teleportiert!");
+                        plugin.getLogger().info("Spieler " + player.getName() + " wurde in die Lobby der Map "
+                                + plugin.getWorldManager().getActiveMapConfig().getName() + " teleportiert.");
                     }
                 });
             }
@@ -79,8 +78,8 @@ public class PlayerConnectionListener implements Listener {
         World osokWorld = plugin.getWorldManager().getOsokWorld();
         Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
 
-        if (osokWorld != null) {
-            event.setRespawnLocation(spawnLoc != null ? spawnLoc : new Location(osokWorld, 223.5, 48.0, 55.5));
+        if (osokWorld != null && spawnLoc != null) {
+            event.setRespawnLocation(spawnLoc);
         }
 
         Player player = event.getPlayer();
@@ -98,10 +97,9 @@ public class PlayerConnectionListener implements Listener {
     public void onPlayerMove(org.bukkit.event.player.PlayerMoveEvent event) {
         if (plugin.getMatchManager().isMatchPaused()) {
             Player player = event.getPlayer();
-            if (plugin.getArenaManager().isInArenaArea(event.getTo())) {
-                Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
-                Location fallback = (spawnLoc != null) ? spawnLoc : new Location(plugin.getWorldManager().getOsokWorld(), 223.5, 48.0, 55.5);
-                player.teleportAsync(fallback);
+            Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
+            if (spawnLoc != null && plugin.getArenaManager().isInArenaArea(event.getTo())) {
+                player.teleportAsync(spawnLoc);
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⏸ Das Match ist pausiert! Du kannst die Arena aktuell nicht betreten.</red>"));
                 player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
             }
