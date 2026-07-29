@@ -7,24 +7,24 @@ Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin
 ## ⚡ Features & Spielmechaniken
 
 - **🎯 1-Hit Kill Kampfsystem**:
-  - Jeder Treffer mit dem **OneShot-Dolch** (Eisenschwert) oder einem **Bogenpfeil** eliminiert den Gegner sofort.
+  - Jeder Treffer mit dem **OneShot-Dolch** (Eisenschwert) oder einem **Bogenpfeil** eliminiert den Gegner sofort mit 1 Schlag.
   - Nahkampftreffer mit anderen Gegenständen (Fäuste, Wolle, Bogen-Nahkampf) verursachen normalen Vanilla-Schaden.
   - Treffer mit dem Bogen füllen automatisch 1 Pfeil im Inventar auf.
   - **Waffen-Vergabe erst ab `/osok start`**: Vor dem Match-Start oder während einer Pause besitzen Spieler keine Waffen. Bei `/osok pause` werden Dolch, Bogen und Pfeile entfernt – **Spezial-Items bleiben im Inventar erhalten**.
   - **Kampfsperre & Chat-Meldungen**: Vor `/osok start` und während `/osok pause` ist Schaden deaktiviert. Bei einem Angriff erscheint eine Chat-Nachricht inklusive Sound.
   - **Kein Hunger & Volle Sättigung**: Spieler verlieren im gesamten Spiel keinen Hunger (`FoodLevelChangeEvent` ist nativ gecancelt; Hunger und Sättigung bleiben auf Maximum).
+
 - **⏸️ Pause-System (`/osok pause`)**:
-  - Pausiert/Fortsetzt das laufende Match.
+  - Pausiert / Fortsetzt das laufende Match.
   - Teleportiert bei Pausierung **alle Spieler umgehend zur Lobby** (`223.5, 48.0, 55.5`).
   - Der Match-Timer friert ein.
   - Das Betreten des Arena-Bereichs wird während der Pause blockiert (Spieler werden zur Lobby zurückteleportiert).
   - Beim Fortsetzen werden alle Spieler wieder **zufällig verteilt in die Arena** teleportiert.
-- **🛡️ Reflektor-Schild**:
-  - Wehrt den nächsten tödlichen Treffer ab und löst Schildbruch-Sound- und Partikeleffekte aus.
+
 - **🎁 11 Spezial-Items (Powerups)**:
   1. 👁️ **Radar-Puls** *(Enderauge)*: Lässt alle Feinde in der Arena für 30s aufleuchten (Glowing). **Geheim**: Opfer sehen *weder* Partikel *noch* ein Potion-Icon im HUD!
   2. 💣 **Explosiv-Schuss** *(TNT)*: Nächster Pfeil erzeugt eine Explosion am Einschlagort.
-  3. 🛡️ **Reflektor-Schild** *(Netherstern)*: Wehrt den nächsten tödlichen Treffer ab.
+  3. 🛡️ **Reflektor-Schild** *(Netherstern)*: Blockiert den nächsten tödlichen Treffer inkl. Schildbruch-Effekt.
   4. 💨 **Rauchbombe** *(Schneeball)*: Erzeugt dichten Lagerfeuer-Rauch und teleportiert zufällig in die Arena.
   5. ❄️ **Frost-Trap** *(Gewichtete Druckplatte)*: Friert den ersten betretenden Spieler für 7s fest (mit echter Paper Eis-Vignette am Bildschirm!).
   6. 🔫 **Minigun** *(Lohenrute)*: Feuert 8 Sekunden lang durchgehend Pfeile ab (alle 2 Ticks).
@@ -33,24 +33,30 @@ Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin
   9. 🧲 **Pfeil-Magnetfeld** *(Herz des Meeres)*: Lenkt gegnerische Pfeile im Umkreis von 8 Blöcken für 15s ab.
   10. ⚡ **Kettenblitz-Schuss** *(Blitzableiter)*: Nächster Treffer beschwört Blitze und springt auf bis zu 2 nahe Feinde über.
   11. 🚀 **Raketen-Sprung** *(Feuerwerksrakete)*: Katapultiert den Spieler 15 Blöcke hoch (inkl. 20s Fallschutz & Air-Sprint).
+
 - **📦 Item-Modi (`/osok itemmode <streak|spawn|both>`)**:
   - `STREAK`: Spezial-Item alle 3 Kills.
   - `SPAWN`: 30s-Map-Spawns mit Mario-Kart-Partikelboxen (aktiv erst nach `/osok start`).
   - `BOTH`: Kombinationsmodus (Standard).
+
 - **👑 Kopfgeld-System**:
   - Ab einer 5er Killstreak erhält der Spieler ein Kopfgeld `[👑]` mit Blitzschlag-Ankündigung.
   - Wer das Kopfgeld holt, erhält 2 zufällige Spezial-Items als Belohnung.
+
 - **📊 Native Paper Scoreboard & Tabliste**:
   - Live Leaderboard mit Kills, K/D Ratio, Streak, Highscore und Kopfgeld-Marker.
   - Ausblendung der roten Sidebar-Zahlen nativ über `Objective#numberFormat(NumberFormat.blank())` (0% NMS-Reflection).
   - Langsame, flüssige Regenbogen-Title- & Tablist-Animation (`<rainbow>🎯 OSOK</rainbow>`).
+
 - **🏆 Match-Manager & Dauer-Einstellung**:
   - Konfigurierbare Kills-, Minuten- und Sekunden-Limits (`/osok dauer kills <n>`, `/osok dauer minuten <n>`, `/osok dauer sekunden <n>`, `/osok dauer off`).
   - Kurzformen: `/osok dauer 20k`, `/osok dauer 10m`, `/osok dauer 45s`.
   - **Verzögerter Start**: Festgelegte Limits werden gespeichert und erst beim Ausführen von `/osok start` im Scoreboard sichtbar & als Timer gestartet!
   - Gewinner-Titel, Siegeshymne (Notenblock-Song) & Feuerwerksspektakel.
+
 - **🎆 Kill-Effekte GUI (`/osok killeffect`)**:
   - Auswahl persönlicher Kill-Animationen: *Lightning, Firework, Blood, Ender, Totem, None*.
+
 - **🗺️ Welt-Extraktion**:
   - Automatische Extraktion der arenafertigen `map.zip` aus den Plugin-Ressourcen in die Server-Welt.
 
