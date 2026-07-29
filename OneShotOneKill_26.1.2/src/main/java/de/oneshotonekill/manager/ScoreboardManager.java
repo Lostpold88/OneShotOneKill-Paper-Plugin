@@ -2,7 +2,6 @@ package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
 import io.papermc.paper.scoreboard.numbers.NumberFormat;
-import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -25,37 +24,12 @@ public class ScoreboardManager {
     private final Map<UUID, Integer> highestStreakMap = new HashMap<>();
     private final Set<UUID> bountyTargets = new HashSet<>();
 
-    private int currentPhase = 0;
-    private ScheduledTask animTask = null;
-
     public ScoreboardManager() {
         this.plugin = null;
     }
 
     public ScoreboardManager(OneShotOneKill plugin) {
         this.plugin = plugin;
-        startSlowTitleAnimation();
-    }
-
-    public void startSlowTitleAnimation() {
-        if (plugin == null || animTask != null) return;
-
-        // Paper Native Global Region Scheduler: Läuft alle 5 Ticks (0,25 Sekunden)
-        animTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
-            currentPhase++;
-            Component titleComp = MiniMessage.miniMessage().deserialize("<rainbow:" + currentPhase + "><b>🎯 OSOK</b></rainbow>");
-            Component headerComp = MiniMessage.miniMessage().deserialize("\n<rainbow:" + currentPhase + "><b>🎯 OSOK</b></rainbow> <gray>|</gray> <red>MATCH STATS</red>\n");
-            Component footerComp = MiniMessage.miniMessage().deserialize("\n<gray>Scoreboard & Leaderboard</gray>\n");
-
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                Scoreboard board = p.getScoreboard();
-                Objective obj = board.getObjective("oneshot");
-                if (obj != null) {
-                    obj.displayName(titleComp);
-                }
-                p.sendPlayerListHeaderAndFooter(headerComp, footerComp);
-            }
-        }, 1L, 5L);
     }
 
     public void updateAllScoreboards() {
@@ -78,7 +52,7 @@ public class ScoreboardManager {
         if (mgr == null) return;
 
         Scoreboard board = mgr.getNewScoreboard();
-        Component titleComponent = MiniMessage.miniMessage().deserialize("<rainbow:" + currentPhase + "><b>🎯 OSOK</b></rainbow>");
+        Component titleComponent = MiniMessage.miniMessage().deserialize("<red><b>🎯 OSOK</b></red>");
         Objective obj = board.registerNewObjective("oneshot", "dummy", titleComponent);
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
@@ -128,13 +102,14 @@ public class ScoreboardManager {
         addScoreLine(obj, "§7--------------------", 0);
 
         // Nametags über den Köpfen aller Spieler komplett ausblenden
-        org.bukkit.scoreboard.Team noNametagTeam = board.getTeam("nonametags");
-        if (noNametagTeam == null) {
-            noNametagTeam = board.registerNewTeam("nonametags");
+        org.bukkit.scoreboard.Team noTagTeam = board.getTeam("no_nametag");
+        if (noTagTeam == null) {
+            noTagTeam = board.registerNewTeam("no_nametag");
         }
-        noNametagTeam.setOption(org.bukkit.scoreboard.Team.Option.NAME_TAG_VISIBILITY, org.bukkit.scoreboard.Team.OptionStatus.NEVER);
+        noTagTeam.setOption(org.bukkit.scoreboard.Team.Option.NAME_TAG_VISIBILITY, org.bukkit.scoreboard.Team.OptionStatus.NEVER);
+
         for (Player p : Bukkit.getOnlinePlayers()) {
-            noNametagTeam.addEntry(p.getName());
+            noTagTeam.addEntry(p.getName());
         }
 
         player.setScoreboard(board);
@@ -156,7 +131,7 @@ public class ScoreboardManager {
     }
 
     public void updateTabList(Player player) {
-        Component header = MiniMessage.miniMessage().deserialize("\n<yellow><b>🎯 OSOK</b></yellow> <gray>|</gray> <red>MATCH STATS</red>\n");
+        Component header = MiniMessage.miniMessage().deserialize("\n<red><b>🎯 OSOK</b></red> <gray>|</gray> <red>MATCH STATS</red>\n");
         Component footer = MiniMessage.miniMessage().deserialize("\n<gray>Scoreboard & Leaderboard</gray>\n");
         
         player.sendPlayerListHeaderAndFooter(header, footer);
@@ -178,57 +153,54 @@ public class ScoreboardManager {
             String nameText = "<white>" + p.getName() + "</white>";
             String statsText = " <gray>|</gray> <green>K: " + k + "</green> <gray>|</gray> <red>D: " + d + "</red> <gray>|</gray> <aqua>K/D: " + kd + "</aqua> <gray>|</gray> <yellow>⚡" + s + "</yellow> <gold>(★" + hs + ")</gold>";
 
-            Component listName = MiniMessage.miniMessage().deserialize(rankPrefix + bountyTag + nameText + statsText);
-            p.playerListName(listName);
+            Component fullTabLine = MiniMessage.miniMessage().deserialize(rankPrefix + bountyTag + nameText + statsText);
+            player.sendPlayerListHeaderAndFooter(header, footer);
         }
     }
 
-    public String getKDRatio(UUID uuid) {
-        int k = getKills(uuid);
-        int d = getDeaths(uuid);
-        if (d == 0) return String.format("%.2f", (double) k);
-        return String.format("%.2f", (double) k / d);
-    }
-
     public int addKill(UUID uuid) {
-        int k = getKills(uuid) + 1;
+        int k = killsMap.getOrDefault(uuid, 0) + 1;
         killsMap.put(uuid, k);
+        updateAllScoreboards();
         return k;
     }
 
     public int addDeath(UUID uuid) {
-        int d = getDeaths(uuid) + 1;
+        int d = deathsMap.getOrDefault(uuid, 0) + 1;
         deathsMap.put(uuid, d);
+        updateAllScoreboards();
         return d;
     }
 
     public int addStreak(UUID uuid) {
-        int streak = getStreak(uuid) + 1;
-        streakMap.put(uuid, streak);
+        int s = streakMap.getOrDefault(uuid, 0) + 1;
+        streakMap.put(uuid, s);
 
-        int highscore = highestStreakMap.getOrDefault(uuid, 0);
-        if (streak > highscore) {
-            highestStreakMap.put(uuid, streak);
+        int hs = highestStreakMap.getOrDefault(uuid, 0);
+        if (s > hs) {
+            highestStreakMap.put(uuid, s);
         }
 
-        // Kopfgeld aussetzen ab 5er Killstreak!
-        if (streak == 5) {
+        if (s == 5) {
             bountyTargets.add(uuid);
             Player p = Bukkit.getPlayer(uuid);
-            String pName = p != null ? p.getName() : "Ein Spieler";
-            Component msg = MiniMessage.miniMessage().deserialize("<yellow>[OSOK] 👑 KOPFGELD AUSGESETZT! <white>" + pName + "</white> <gray>hat eine <b>5er Killstreak</b> erreicht! Eliminiere ihn für 2 Spezial-Items!</gray></yellow>");
+            String name = (p != null) ? p.getName() : "Ein Spieler";
+            Component msg = MiniMessage.miniMessage().deserialize("<red><b>[👑 KOPFGELD]</b> <yellow><b>" + name + "</b> hat eine <b>5er Streak!</b> Wer ihn tötet erhält 2 Bonus-Items!</yellow></red>");
             Bukkit.broadcast(msg);
-            for (Player online : Bukkit.getOnlinePlayers()) {
-                online.playSound(online.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 0.6f, 1.8f);
+            if (p != null) {
+                p.getWorld().strikeLightningEffect(p.getLocation());
+                p.playSound(p.getLocation(), Sound.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.MASTER, 0.6f, 1.8f);
             }
         }
 
-        return streak;
+        updateAllScoreboards();
+        return s;
     }
 
     public void resetStreak(UUID uuid) {
         streakMap.put(uuid, 0);
         bountyTargets.remove(uuid);
+        updateAllScoreboards();
     }
 
     public int getKills(UUID uuid) {
@@ -245,5 +217,12 @@ public class ScoreboardManager {
 
     public int getHighestStreak(UUID uuid) {
         return highestStreakMap.getOrDefault(uuid, 0);
+    }
+
+    public String getKDRatio(UUID uuid) {
+        int k = getKills(uuid);
+        int d = getDeaths(uuid);
+        if (d == 0) return String.format(Locale.US, "%.1f", (double) k);
+        return String.format(Locale.US, "%.1f", (double) k / (double) d);
     }
 }
