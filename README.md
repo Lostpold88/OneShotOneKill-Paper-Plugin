@@ -8,10 +8,14 @@ Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin
 
 Zwei eingebaute Maps, umschaltbar im laufenden Betrieb per `/osok map`:
 
-| Map | Welt | Arena-Ecke 1 | Arena-Ecke 2 | Lobby | Max. Item-Höhe |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Standard** | `OSOK_Standard` | `221 / 58 / -50` | `287 / 64 / -106` | `223.5 / 48.0 / 55.5` | `61` |
-| **DustPvP** | `OSOK_DustPvP` | `-25 / 70 / 33` | `25 / 70 / -33` | `0.5 / 90.0 / 0.5` | `71` |
+| Map | Welt | Arena-Ecke 1 | Arena-Ecke 2 | Lobby | Max. Item-Höhe | Decke |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Standard** | `OSOK_Standard` | `221 / 58 / -50` | `287 / 64 / -106` | `223.5 / 48.0 / 55.5` | `61` | `69` |
+| **DustPvP** | `OSOK_DustPvP` | `-25 / 70 / 33` | `25 / 70 / -33` | `0.5 / 90.0 / 0.5` | `71` | offen |
+
+Die **Decke** begrenzt fliegende Entities: Der Tarnkappenbomber-Drache schwebt normalerweise
+12 Blöcke über seinem Ziel, bleibt auf überdachten Maps aber immer einen Block unter der Decke
+(auf Standard also maximal `Y 68`). Auf DustPvP gilt keine Begrenzung.
 
 Die Reihenfolge der Ecken ist egal – sie werden automatisch normalisiert. Die Arena-Grenzen steuern
 Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.

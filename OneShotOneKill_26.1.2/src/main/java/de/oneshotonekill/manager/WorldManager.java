@@ -48,6 +48,8 @@ public class WorldManager {
         );
         // Boden-Item-Boxen duerfen auf Standard hoechstens auf Y=61 liegen
         standardMap.setMaxItemSpawnY(61.0);
+        // Standard ist ueberdacht: Die Decke liegt auf Y=69
+        standardMap.setCeilingY(69.0);
         availableMaps.put("standard", standardMap);
 
         // DustPvP Map (OSOK_DustPvP) - Arena-Ecken: (-25, 70, 33) / (25, 70, -33)
