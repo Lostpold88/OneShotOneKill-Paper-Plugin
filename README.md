@@ -91,7 +91,8 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - Tablisten-Namen mit Live-Stats über `Player#playerListName(Component)`.
 
 - **🏆 Match-Manager & Dauer-Einstellung**:
-  - **Match-Ziel immer sichtbar**: Sobald ein Kill- oder Zeitlimit konfiguriert ist, steht es auf dem Scoreboard **jedes** Spielers – vor dem Start mit dem Zusatz „(ab /osok start)". Bei einem Kill-Limit zeigt jeder zusätzlich seine **persönliche Restanzahl** („Du brauchst noch N Kills").
+  - **Match-Ziel immer sichtbar**: Sobald ein Kill- oder Zeitlimit konfiguriert ist, steht es auf dem Scoreboard **jedes** Spielers.
+  - **Wertung einfrieren (`/osok pausestats`)**: Kills, Tode und Streaks werden nicht mehr gezählt, der Match-Timer läuft nicht weiter und das Scoreboard bleibt stehen. Anders als `/osok pause` bleibt das Match spielbar – Treffer wirken normal (Effekt, Respawn), zählen aber nicht. Ein erneuter Aufruf setzt die Wertung fort.
   - **Endspurt-Hinweis**: Ab **5 verbleibenden Kills** bekommt der Spieler nach jedem Kill eine Nachricht samt Actionbar und Signalton, wie viele Kills ihm noch zum Sieg fehlen.
   - `/osok start` setzt vor jedem Match das Scoreboard zurück und räumt alte Item-Boxen und Bomber weg.
   - `/osok stop` beendet das Spiel: Statistiken zurückgesetzt, Ausrüstung und Effekte entfernt, alle Spieler in der Lobby der aktiven Map.
@@ -161,6 +162,7 @@ also beliebig verschoben oder umbenannt werden. Bricht `javac` oder `jar` ab, sc
 | `/osok start` | Setzt das Scoreboard zurück, teleportiert alle Spieler zufällig in die Arena, startet ein neues Match & setzt den Item-Modus auf `BOTH` | Operator (OP) |
 | `/osok stop` | Beendet das Spiel, setzt das Scoreboard zurück & teleportiert alle Spieler in die Lobby der aktiven Map | Operator (OP) |
 | `/osok pause` | Pausiert / Fortsetzt das aktuelle Match & teleportiert zur Lobby | Operator (OP) |
+| `/osok pausestats` | Friert die Kill- und Zeitwertung ein / setzt sie fort; das Scoreboard bleibt stehen | Operator (OP) |
 | `/osok map <Standard\|DustPvP>` | Dynamischer Map-Wechsel ohne Server-Neustart | Operator (OP) |
 | `/osok dauer kills <n>` | Setzt ein Kill-Ziel (z. B. `/osok dauer kills 20`, aktiv ab `/osok start`) | Operator (OP) |
 | `/osok dauer minuten <n>` | Setzt ein Zeit-Limit in Minuten (aktiv ab `/osok start`) | Operator (OP) |
