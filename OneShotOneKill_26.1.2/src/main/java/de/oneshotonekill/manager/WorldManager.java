@@ -50,6 +50,7 @@ public class WorldManager {
         osokWorld = Bukkit.createWorld(creator);
 
         if (osokWorld != null) {
+            osokWorld.setGameRule(GameRule.DO_IMMEDIATE_RESPAWN, true);
             osokWorld.setGameRule(GameRule.KEEP_INVENTORY, true);
             osokWorld.setGameRule(GameRule.DO_MOB_SPAWNING, false);
             osokWorld.setGameRule(GameRule.DO_PATROL_SPAWNING, false);
