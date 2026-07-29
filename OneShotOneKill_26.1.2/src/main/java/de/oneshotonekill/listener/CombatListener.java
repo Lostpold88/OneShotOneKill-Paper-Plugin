@@ -139,6 +139,13 @@ public class CombatListener implements Listener {
 
         // Live-Scoreboard und Tab-Liste für ALLE Online-Spieler aktualisieren
         plugin.getScoreboardManager().updateAllScoreboards();
+
+        // Paper Native Entity Scheduler: Sofortiger Auto-Respawn ohne Wiederbeleben-Button!
+        victim.getScheduler().runDelayed(plugin, task -> {
+            if (victim.isOnline() && victim.isDead()) {
+                victim.spigot().respawn();
+            }
+        }, null, 1L);
     }
 
     @EventHandler
