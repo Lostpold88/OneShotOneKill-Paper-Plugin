@@ -60,7 +60,6 @@ public class OsokCommand implements BasicCommand {
             msg(player, "<gray>/osok pause <dark_gray>-</dark_gray> <white>Match pausieren / fortsetzen (Admin)</white></gray>");
             msg(player, "<gray>/osok dauer [kills|minuten|sekunden|off] [Anzahl] <dark_gray>-</dark_gray> <white>Match-Dauer/Ziel festlegen (Admin)</white></gray>");
             msg(player, "<gray>/osok itemmode [streak|spawn|both] <dark_gray>-</dark_gray> <white>Item-Modus umschalten (Admin)</white></gray>");
-            msg(player, "<gray>/osok killeffect <dark_gray>-</dark_gray> <white>Killeffekte GUI öffnen</white></gray>");
             msg(player, "<gray>/osok itemtest <dark_gray>-</dark_gray> <white>Spezial-Item Testmenü öffnen (Admin)</white></gray>");
             msg(player, "<gray>/osok clearpfeile <dark_gray>-</dark_gray> <white>Alle Pfeile aus der Welt löschen (Admin)</white></gray>");
             msg(player, "<gray>/osok setspawn <dark_gray>-</dark_gray> <white>Spawnpunkt auf der Map setzen (Admin)</white></gray>");
@@ -95,11 +94,6 @@ public class OsokCommand implements BasicCommand {
         if (sub.equals("itemmode") || sub.equals("itemmodus") || sub.equals("mode")) {
             String[] subArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
             handleItemModeCommand(player, subArgs);
-            return;
-        }
-
-        if (sub.equals("killeffect") || sub.equals("killeffects") || sub.equals("effects")) {
-            new KillEffectCommand(plugin).onCommand(player, null, "killeffect", args);
             return;
         }
 
@@ -253,8 +247,8 @@ public class OsokCommand implements BasicCommand {
             String current = args.length == 1 ? args[0] : "";
             List<String> subCommands = Arrays.asList(
                     "start", "pause", "dauer", "limit", "itemmode",
-                    "killeffect", "itemtest", "clearpfeile",
-                    "setspawn", "resetstats", "resetmap", "help"
+                    "itemtest", "clearpfeile", "setspawn",
+                    "resetstats", "resetmap", "help"
             );
             return StringUtil.copyPartialMatches(current, subCommands, new ArrayList<>());
         }

@@ -108,8 +108,8 @@ public class CombatListener implements Listener {
             int k = plugin.getScoreboardManager().addKill(killer.getUniqueId());
             int s = plugin.getScoreboardManager().addStreak(killer.getUniqueId());
 
-            // Gewählten Kill-Effekt des Täters beim Opfer abspielen
-            plugin.getKillEffectManager().playKillEffect(killer, victim.getLocation());
+            // Standard Blut-Splash Killeffekt beim Opfer abspielen
+            plugin.getKillEffectManager().playKillEffect(victim.getLocation());
 
             killer.playSound(killer.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER, 1.0f, 1.2f);
             killer.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] Du hast <yellow>" + victim.getName() + "</yellow> eliminiert! <gray>(Streak: <yellow>" + s + "</yellow>)</gray></green>"));

@@ -8,6 +8,7 @@ Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin
 
 - **🎯 1-Hit Kill Kampfsystem**:
   - Jeder Treffer mit dem **OneShot-Dolch** (Eisenschwert) oder einem **Bogenpfeil** eliminiert den Gegner sofort mit 1 Schlag.
+  - **🩸 Standard Blut-Splash Killeffekt**: Bei jedem Kill wird automatisch ein dichtet Blut-Splash Partikeleffekt mit spritzenden Block-Trümmern und Sound-Feedback am Ort des Opfers ausgelöst!
   - Nahkampftreffer mit anderen Gegenständen (Fäuste, Wolle, Bogen-Nahkampf) verursachen normalen Vanilla-Schaden.
   - Treffer mit dem Bogen füllen automatisch 1 Pfeil im Inventar auf.
   - **Waffen-Vergabe erst ab `/osok start`**: Vor dem Match-Start oder während einer Pause besitzen Spieler keine Waffen. Bei `/osok pause` werden Dolch, Bogen und Pfeile entfernt – **Spezial-Items bleiben im Inventar erhalten**.
@@ -46,16 +47,12 @@ Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin
 - **📊 Native Paper Scoreboard & Tabliste**:
   - Live Leaderboard mit Kills, K/D Ratio, Streak, Highscore und Kopfgeld-Marker.
   - Ausblendung der roten Sidebar-Zahlen nativ über `Objective#numberFormat(NumberFormat.blank())` (0% NMS-Reflection).
-  - Langsame, flüssige Regenbogen-Title- & Tablist-Animation (`<rainbow>🎯 OSOK</rainbow>`).
+  - Statischer roter Header (`<red><b>🎯 OSOK</b></red>`).
 
 - **🏆 Match-Manager & Dauer-Einstellung**:
   - Konfigurierbare Kills-, Minuten- und Sekunden-Limits (`/osok dauer kills <n>`, `/osok dauer minuten <n>`, `/osok dauer sekunden <n>`, `/osok dauer off`).
-  - Kurzformen: `/osok dauer 20k`, `/osok dauer 10m`, `/osok dauer 45s`.
   - **Verzögerter Start**: Festgelegte Limits werden gespeichert und erst beim Ausführen von `/osok start` im Scoreboard sichtbar & als Timer gestartet!
   - Gewinner-Titel, Siegeshymne (Notenblock-Song) & Feuerwerksspektakel.
-
-- **🎆 Kill-Effekte GUI (`/osok killeffect`)**:
-  - Auswahl persönlicher Kill-Animationen: *Lightning, Firework, Blood, Ender, Totem, None*.
 
 - **🗺️ Welt-Extraktion**:
   - Automatische Extraktion der arenafertigen `map.zip` aus den Plugin-Ressourcen in die Server-Welt.
@@ -113,7 +110,6 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 | `/osok dauer sekunden <n>` | Setzt ein Zeit-Limit in Sekunden (z. B. `/osok dauer sekunden 45`, aktiv ab `/osok start`) | Operator (OP) |
 | `/osok dauer off` | Deaktiviert Match-Limits | Operator (OP) |
 | `/osok itemmode <mode>` | Wechselt zwischen `STREAK`, `SPAWN` und `BOTH` | Operator (OP) |
-| `/osok killeffect` | Öffnet das GUI für Kill-Animationen | Operator (OP) |
 | `/osok itemtest` | Öffnet Admin-Test-GUI für alle 11 Spezial-Items | Operator (OP) |
 | `/osok clearpfeile` | Entfernt herumliegende Pfeile in der Arena | Operator (OP) |
 | `/osok setspawn` | Setzt den aktuellen Spawnpunkt der Map | Operator (OP) |
