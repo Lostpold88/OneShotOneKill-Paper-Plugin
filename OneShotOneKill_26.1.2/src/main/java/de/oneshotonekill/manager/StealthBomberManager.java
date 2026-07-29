@@ -63,6 +63,12 @@ public class StealthBomberManager implements Listener {
     private static final double DRAGON_HEIGHT = 12.0;
     /** Sicherheits-Fuse, falls das TNT nie den Boden beruehrt. */
     private static final int TNT_MAX_FUSE_TICKS = 120;
+    /**
+     * Maximaler Schaden einer Bombe (3 Herzen). Ohne diesen Deckel toetet eine
+     * Vanilla-TNT-Explosion aus naechster Naehe sofort - der Bomber soll aber
+     * ausdruecklich nicht mit einem Treffer toeten.
+     */
+    private static final double BOMB_MAX_DAMAGE = 6.0;
 
     private final OneShotOneKill plugin;
     private final Set<UUID> activeDragons = new HashSet<>();
@@ -218,7 +224,15 @@ public class StealthBomberManager implements Listener {
                 }
 
                 Location above = target.getLocation().clone().add(0, DRAGON_HEIGHT, 0);
-                dragon.teleportAsync(above);
+                // Blickrichtung des Ziels uebernehmen, damit der Drache mitdreht
+                above.setYaw(target.getLocation().getYaw());
+                above.setPitch(0f);
+
+                // Bewusst synchron: Wir laufen bereits im GlobalRegionScheduler auf dem
+                // Main-Thread und der Zielchunk ist geladen, weil dort der Zielspieler steht.
+                // teleportAsync alle 2 Ticks neu anzustossen, bevor der vorherige Teleport
+                // aufgeloest ist, laesst den Drachen an Ort und Stelle stehen.
+                dragon.teleport(above);
                 dragon.setVelocity(new Vector(0, 0, 0));
 
                 if (elapsed % TNT_DROP_INTERVAL_TICKS == 0) {
@@ -323,10 +337,14 @@ public class StealthBomberManager implements Listener {
     }
 
     /**
-     * Schaden durch das Bomber-TNT eliminiert das Ziel und schreibt den Kill dem Nutzer gut.
-     * Schaden durch den Drachen selbst wird komplett unterbunden.
+     * Schaden durch den Drachen selbst wird komplett unterbunden - er soll niemanden angreifen.
+     * <p>
+     * Das Bomber-TNT bleibt bewusst unangetastet: Es richtet regulaeren Explosionsschaden an
+     * und toetet ausdruecklich <b>nicht</b> mit einem Treffer. Wird der Schaden toedlich,
+     * uebernimmt {@code CombatListener#onEntityDamage} die Eliminierung und holt sich ueber
+     * {@link #resolveBombOwner(Entity)} den Verursacher fuer die Kill-Gutschrift.
      */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBomberDamage(EntityDamageByEntityEvent event) {
         Entity damager = event.getDamager();
 
@@ -336,19 +354,22 @@ public class StealthBomberManager implements Listener {
             return;
         }
 
-        if (!(event.getEntity() instanceof Player victim)) return;
+        if (!(event.getEntity() instanceof Player)) return;
         if (!damager.getPersistentDataContainer().has(KEY_BOMBER_TNT, PersistentDataType.BYTE)) return;
 
-        event.setCancelled(true);
+        // Kein One-Shot: Vanilla-TNT richtet aus naechster Naehe fast vollen Schaden an.
+        // Der Deckel sorgt dafuer, dass aus voller Gesundheit immer mehrere Treffer noetig sind.
+        // Laeuft auf HIGH, also bevor CombatListener auf HIGHEST den toedlichen Schaden prueft.
+        event.setDamage(Math.min(event.getDamage(), BOMB_MAX_DAMAGE));
+    }
 
-        if (!plugin.getArenaManager().isInArenaArea(victim.getLocation())) {
-            return;
+    /** Liefert den Spieler, der das Bomber-TNT ausgeloest hat, oder {@code null}. */
+    public Player resolveBombOwner(Entity entity) {
+        if (!entity.getPersistentDataContainer().has(KEY_BOMBER_TNT, PersistentDataType.BYTE)) {
+            return null;
         }
-
-        String ownerId = damager.getPersistentDataContainer().get(KEY_BOMBER_OWNER, PersistentDataType.STRING);
-        Player owner = ownerId != null ? Bukkit.getPlayer(UUID.fromString(ownerId)) : null;
-
-        plugin.getEliminationManager().eliminate(victim, owner);
+        String ownerId = entity.getPersistentDataContainer().get(KEY_BOMBER_OWNER, PersistentDataType.STRING);
+        return ownerId != null ? Bukkit.getPlayer(UUID.fromString(ownerId)) : null;
     }
 
     private boolean isBomberEntity(Entity entity) {
