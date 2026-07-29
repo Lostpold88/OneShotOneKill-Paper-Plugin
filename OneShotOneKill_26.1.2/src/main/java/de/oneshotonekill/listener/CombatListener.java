@@ -7,6 +7,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import net.kyori.adventure.sound.Sound;
+import org.bukkit.damage.DamageSource;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -49,22 +50,17 @@ public class CombatListener implements Listener {
      * Bomber-TNT-Explosion dem Ausloeser als Kill gutgeschrieben wird.
      */
     private Player resolveKiller(EntityDamageEvent event) {
-        if (event instanceof EntityDamageByEntityEvent byEntity) {
-            Entity damager = byEntity.getDamager();
-            if (damager instanceof Player attacker) {
-                return attacker;
-            }
-            if (damager instanceof Arrow arrow && arrow.getShooter() instanceof Player shooter) {
-                return shooter;
-            }
-            Player bombOwner = plugin.getStealthBomberManager().resolveBombOwner(damager);
-            if (bombOwner != null) {
-                return bombOwner;
-            }
+        // Native Bukkit/Paper DamageSource: liefert direkt den ursaechlichen Spieler - beim
+        // Pfeil den Schuetzen, beim TNT den per setSource gesetzten Ausloeser. Ersetzt die
+        // frueher noetige manuelle Aufloesung ueber Arrow#getShooter und eine PDC-Suche.
+        DamageSource source = event.getDamageSource();
+        if (source != null && source.getCausingEntity() instanceof Player causing) {
+            return causing;
         }
 
         // Air-Strike und C4 sprengen bewusst ohne Verursacher-Entity, damit auch der
-        // Ausloeser Schaden nimmt. Die Zuordnung liefert daher der ExplosivesManager.
+        // Ausloeser Schaden nimmt. Dort gibt es also keine CausingEntity und die
+        // Zuordnung liefert der ExplosivesManager.
         if (event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION
                 || event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION) {
             return plugin.getExplosivesManager().getCurrentBlastOwner();
@@ -127,7 +123,7 @@ public class CombatListener implements Listener {
 
             // Refill Arrow on Bow Hit
             if (event.getDamager() instanceof Arrow) {
-                damager.getInventory().addItem(new ItemStack(Material.ARROW, 1));
+                damager.getInventory().addItem(ItemStack.of(Material.ARROW, 1));
                 damager.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f));
             }
 

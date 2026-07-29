@@ -50,8 +50,10 @@ public class SpecialItemListener implements Listener {
      */
     private String getSpecialItemType(ItemStack item) {
         if (item == null || !item.hasItemMeta()) return null;
-        ItemMeta meta = item.getItemMeta();
-        return meta.getPersistentDataContainer().get(plugin.getKillstreakManager().getSpecialItemKey(), PersistentDataType.STRING);
+        // Paper: PersistentDataContainerView direkt am ItemStack - liest ohne ItemMeta-Kopie.
+        // Diese Methode laeuft bei jedem Interact- und Drop-Event, die Kopie war hier messbar teuer.
+        return item.getPersistentDataContainer()
+                .get(plugin.getKillstreakManager().getSpecialItemKey(), PersistentDataType.STRING);
     }
 
     @EventHandler

@@ -219,9 +219,7 @@ public class MatchManager {
                 triggerTimeLimitWinner();
             } else if (remainingSeconds == 60 || remainingSeconds == 30 || remainingSeconds == 10 || remainingSeconds <= 5) {
                 broadcast("<red>[OSOK] ⏱ Noch <yellow>" + formatTime(remainingSeconds) + "</yellow> Verbleibend!</red>");
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.8f));
-                }
+                Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.8f));
             }
         }, 20L, 20L);
     }
@@ -277,9 +275,7 @@ public class MatchManager {
         int winnerKills = plugin.getScoreboardManager().getKills(winner.getUniqueId());
 
         // Initialer Sound für alle Spieler
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            p.playSound(Sound.sound(org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, Sound.Source.MASTER, 1.0f, 1.0f));
-        }
+        Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, Sound.Source.MASTER, 1.0f, 1.0f));
 
         // Chat Ankündigung mit Regenbogen-Gradient
         broadcast(" ");
@@ -329,9 +325,8 @@ public class MatchManager {
                 Title.Times times = Title.Times.times(Ticks.duration(0), Ticks.duration(30), Ticks.duration(10));
                 Title animatedTitle = Title.title(mainTitle, subTitle, times);
 
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    p.showTitle(animatedTitle);
-                }
+                // Server ist eine ForwardingAudience - erreicht alle Spieler ohne Iteration
+                Bukkit.getServer().showTitle(animatedTitle);
 
                 titleTicks++;
             }
@@ -357,16 +352,19 @@ public class MatchManager {
                 wLoc.getWorld().spawnParticle(Particle.FIREWORK, wLoc.clone().add(0, 1, 0), 15, 0.5, 1.0, 0.5, 0.1);
 
                 if (ticks % 2 == 0) {
-                    Firework fw = (Firework) wLoc.getWorld().spawnEntity(wLoc.clone().add(0, 1, 0), EntityType.FIREWORK_ROCKET);
-                    FireworkMeta fwm = fw.getFireworkMeta();
-                    fwm.addEffect(FireworkEffect.builder()
-                            .withColor(Color.YELLOW, Color.ORANGE, Color.PURPLE)
-                            .withFade(Color.WHITE)
-                            .with(FireworkEffect.Type.BALL_LARGE)
-                            .withFlicker()
-                            .build());
-                    fwm.setPower(1);
-                    fw.setFireworkMeta(fwm);
+                    // Paper spawn(..., Consumer): Effekt und Staerke stehen fest, BEVOR die
+                    // Rakete in der Welt erscheint. Kein Cast, kein Meta-Nachtrag.
+                    wLoc.getWorld().spawn(wLoc.clone().add(0, 1, 0), Firework.class, firework -> {
+                        FireworkMeta fwm = firework.getFireworkMeta();
+                        fwm.addEffect(FireworkEffect.builder()
+                                .withColor(Color.YELLOW, Color.ORANGE, Color.PURPLE)
+                                .withFade(Color.WHITE)
+                                .with(FireworkEffect.Type.BALL_LARGE)
+                                .withFlicker()
+                                .build());
+                        fwm.setPower(1);
+                        firework.setFireworkMeta(fwm);
+                    });
                 }
 
                 ticks++;
@@ -405,11 +403,10 @@ public class MatchManager {
                 int clicks = noteClicks[currentTick % 170];
                 if (clicks >= 0) {
                     float pitch = (float) Math.pow(2.0, (clicks - 12.0) / 12.0);
-                    for (Player player : Bukkit.getOnlinePlayers()) {
-                        player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_BIT, Sound.Source.MASTER, 1.0f, pitch));
-                        player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 0.8f, pitch));
-                        player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, Sound.Source.MASTER, 1.0f, pitch * 0.5f));
-                    }
+                    // Laeuft jeden Tick: ueber die Server-Audience statt drei Aufrufe pro Spieler
+                    Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_BIT, Sound.Source.MASTER, 1.0f, pitch));
+                    Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 0.8f, pitch));
+                    Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, Sound.Source.MASTER, 1.0f, pitch * 0.5f));
                 }
 
                 currentTick++;
@@ -436,8 +433,8 @@ public class MatchManager {
         matchPaused = !matchPaused;
 
         if (matchPaused) {
+            Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, Sound.Source.MASTER, 1.0f, 0.8f));
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, Sound.Source.MASTER, 1.0f, 0.8f));
                 plugin.getEquipmentManager().clearBaseEquipment(p);
                 p.teleportAsync(lobbyLoc);
             }

@@ -47,9 +47,7 @@ public class PlayerConnectionListener implements Listener {
         // entsteht, in dem der Spieler noch alte Items oder einen anderen Modus hat.
         prepareCleanStart(player);
 
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_CHIME, Sound.Source.MASTER, 1.0f, 1.5f));
-        }
+        Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_CHIME, Sound.Source.MASTER, 1.0f, 1.5f));
 
         player.getScheduler().runDelayed(plugin, task -> {
             World targetWorld = plugin.getWorldManager().getOsokWorld();
@@ -102,6 +100,9 @@ public class PlayerConnectionListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         event.quitMessage(MiniMessage.miniMessage().deserialize("<red>[❌] <white>" + player.getName() + "</white> <gray>hat <yellow><b>OSOK</b></yellow> verlassen.</gray></red>"));
+
+        // Gecachtes Board freigeben, damit es nicht bis zum Serverstop im Speicher bleibt
+        plugin.getScoreboardManager().removePlayer(player.getUniqueId());
 
         Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
             plugin.getScoreboardManager().updateAllScoreboards();

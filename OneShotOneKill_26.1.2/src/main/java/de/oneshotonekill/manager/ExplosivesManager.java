@@ -205,30 +205,32 @@ public class ExplosivesManager implements Listener {
     }
 
     private ItemStack createTerrainCell(Location cell) {
-        ItemStack item = new ItemStack(Material.LIGHT_GRAY_STAINED_GLASS_PANE);
+        ItemStack item = ItemStack.of(Material.LIGHT_GRAY_STAINED_GLASS_PANE);
         applyCellMeta(item, MiniMessage.miniMessage().deserialize("<gray>Sektor</gray>"), cell, false);
         return item;
     }
 
     private ItemStack createPlayerCell(Player shown, Location cell, boolean self) {
-        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
-        ItemMeta meta = item.getItemMeta();
-        if (meta instanceof SkullMeta skullMeta) {
-            skullMeta.setOwningPlayer(shown);
-        }
-        item.setItemMeta(meta);
-
+        ItemStack item = ItemStack.of(Material.PLAYER_HEAD);
         Component name = self
                 ? MiniMessage.miniMessage().deserialize("<aqua><b>" + shown.getName() + "</b> <gray>(du)</gray></aqua>")
                 : MiniMessage.miniMessage().deserialize("<red><b>" + shown.getName() + "</b></red>");
-        applyCellMeta(item, name, cell, true);
+
+        // Ein einziger editMeta-Durchgang inkl. Skull-Besitzer. Vorher liefen hier zwei
+        // getItemMeta/setItemMeta-Runden pro Kopf - bei 54 Feldern pro Menue spuerbar.
+        item.editMeta(SkullMeta.class, meta -> {
+            meta.setOwningPlayer(shown);
+            writeCellMeta(meta, name, cell, true);
+        });
         return item;
     }
 
     private void applyCellMeta(ItemStack item, Component displayName, Location cell, boolean occupied) {
-        ItemMeta meta = item.getItemMeta();
-        if (meta == null) return;
+        // Paper editMeta: schreibt direkt, ohne die Meta zweimal zu kopieren
+        item.editMeta(meta -> writeCellMeta(meta, displayName, cell, occupied));
+    }
 
+    private void writeCellMeta(ItemMeta meta, Component displayName, Location cell, boolean occupied) {
         meta.displayName(displayName);
         meta.lore(List.of(
                 MiniMessage.miniMessage().deserialize(String.format(java.util.Locale.US,
@@ -239,7 +241,6 @@ public class ExplosivesManager implements Listener {
                 MiniMessage.miniMessage().deserialize("<yellow>Klicken, um den Air-Strike anzufordern</yellow>")));
         meta.getPersistentDataContainer().set(KEY_TARGET_X, PersistentDataType.DOUBLE, cell.getX());
         meta.getPersistentDataContainer().set(KEY_TARGET_Z, PersistentDataType.DOUBLE, cell.getZ());
-        item.setItemMeta(meta);
     }
 
     @EventHandler
@@ -252,8 +253,8 @@ public class ExplosivesManager implements Listener {
         ItemStack clicked = event.getCurrentItem();
         if (clicked == null || !clicked.hasItemMeta()) return;
 
-        Double targetX = clicked.getItemMeta().getPersistentDataContainer().get(KEY_TARGET_X, PersistentDataType.DOUBLE);
-        Double targetZ = clicked.getItemMeta().getPersistentDataContainer().get(KEY_TARGET_Z, PersistentDataType.DOUBLE);
+        Double targetX = clicked.getPersistentDataContainer().get(KEY_TARGET_X, PersistentDataType.DOUBLE);
+        Double targetZ = clicked.getPersistentDataContainer().get(KEY_TARGET_Z, PersistentDataType.DOUBLE);
         if (targetX == null || targetZ == null) return;
 
         user.closeInventory();
@@ -374,12 +375,12 @@ public class ExplosivesManager implements Listener {
     private void giveDetonator(Player owner) {
         for (ItemStack stack : owner.getInventory().getContents()) {
             if (stack != null && stack.hasItemMeta()
-                    && stack.getItemMeta().getPersistentDataContainer().has(KEY_DETONATOR, PersistentDataType.BYTE)) {
+                    && stack.getPersistentDataContainer().has(KEY_DETONATOR, PersistentDataType.BYTE)) {
                 return; // hat schon einen
             }
         }
 
-        ItemStack detonator = new ItemStack(Material.LEVER);
+        ItemStack detonator = ItemStack.of(Material.LEVER);
         ItemMeta meta = detonator.getItemMeta();
         if (meta != null) {
             meta.displayName(MiniMessage.miniMessage().deserialize("<red><b>[💥] Fernzünder (Rechtsklick)</b></red>"));
@@ -397,7 +398,7 @@ public class ExplosivesManager implements Listener {
 
         ItemStack item = event.getItem();
         if (item == null || !item.hasItemMeta()) return;
-        if (!item.getItemMeta().getPersistentDataContainer().has(KEY_DETONATOR, PersistentDataType.BYTE)) return;
+        if (!item.getPersistentDataContainer().has(KEY_DETONATOR, PersistentDataType.BYTE)) return;
 
         event.setCancelled(true);
         Player owner = event.getPlayer();
@@ -434,7 +435,7 @@ public class ExplosivesManager implements Listener {
         NamespacedKey typeKey = plugin.getKillstreakManager().getSpecialItemKey();
         for (ItemStack stack : user.getInventory().getContents()) {
             if (stack == null || !stack.hasItemMeta()) continue;
-            String type = stack.getItemMeta().getPersistentDataContainer().get(typeKey, PersistentDataType.STRING);
+            String type = stack.getPersistentDataContainer().get(typeKey, PersistentDataType.STRING);
             if (typeId.equals(type)) {
                 stack.subtract(1);
                 return true;
