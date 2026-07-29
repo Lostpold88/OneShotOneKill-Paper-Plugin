@@ -16,6 +16,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,7 +38,7 @@ public class WorldManager {
     }
 
     private void initDefaultMaps() {
-        // Standard Map (Standards)
+        // Standard Map (OSOK_Standard)
         MapConfig standardMap = new MapConfig(
                 "Standard",
                 "Standard.zip",
@@ -45,7 +47,7 @@ public class WorldManager {
         );
         availableMaps.put("standard", standardMap);
 
-        // DustPvP Map (Platzhalter-Koordinaten bis exakte Werte angegeben werden)
+        // DustPvP Map (OSOK_DustPvP) - Platzhalter-Koordinaten bis exakte Werte angegeben werden
         MapConfig dustPvPMap = new MapConfig(
                 "DustPvP",
                 "DustPvP.zip",
@@ -58,26 +60,24 @@ public class WorldManager {
     }
 
     public void setupWorld() {
+        String worldName = "OSOK_" + activeMapConfig.getName();
         File containerDir = Bukkit.getWorldContainer();
-        File mapFolder = new File(containerDir, "OSOK");
-        File migratedFolder = new File(containerDir, "world/dimensions/minecraft/osok");
+        File mapFolder = new File(containerDir, worldName);
 
-        plugin.getLogger().info("Entpacke initiale OSOK Map (" + activeMapConfig.getName() + ") aus der JAR...");
+        plugin.getLogger().info("Entpacke initiale Map " + worldName + " aus der JAR...");
         try {
             if (mapFolder.exists()) {
                 deleteDirectory(mapFolder);
             }
-            if (migratedFolder.exists()) {
-                deleteDirectory(migratedFolder);
-            }
             extractEmbeddedMap(activeMapConfig.getZipResource(), mapFolder);
-            plugin.getLogger().info("OSOK Map (" + activeMapConfig.getName() + ") erfolgreich entpackt!");
+            plugin.getLogger().info("Map " + worldName + " erfolgreich entpackt!");
         } catch (Exception e) {
-            plugin.getLogger().severe("Fehler beim Entpacken der OSOK Map: " + e.getMessage());
+            plugin.getLogger().severe("Fehler beim Entpacken der Map " + worldName + ": " + e.getMessage());
             e.printStackTrace();
         }
 
-        WorldCreator creator = new WorldCreator("OSOK");
+        WorldCreator creator = new WorldCreator(worldName);
+        creator.environment(World.Environment.NORMAL);
         osokWorld = Bukkit.createWorld(creator);
 
         if (osokWorld != null) {
@@ -93,7 +93,7 @@ public class WorldManager {
             spawnLocation = activeMapConfig.getLobbyLocation().clone();
             spawnLocation.setWorld(osokWorld);
             osokWorld.setSpawnLocation(spawnLocation);
-            plugin.getLogger().info("OSOK Map (" + activeMapConfig.getName() + ") geladen & Lobby-Spawn gesetzt!");
+            plugin.getLogger().info("Map " + worldName + " geladen & Lobby-Spawn gesetzt!");
         }
     }
 
@@ -103,7 +103,8 @@ public class WorldManager {
             return false;
         }
 
-        plugin.getLogger().info("[OSOK] Starte dynamischen Map-Wechsel zu: " + targetConfig.getName());
+        String targetWorldName = "OSOK_" + targetConfig.getName();
+        plugin.getLogger().info("[OSOK] Starte dynamischen Map-Wechsel zu: " + targetWorldName);
 
         // 1. Pausiere aktives Match falls nötig
         if (plugin.getMatchManager() != null && plugin.getMatchManager().isMatchStarted()) {
@@ -119,26 +120,21 @@ public class WorldManager {
             p.teleportAsync(fallbackLoc);
         }
 
-        // 3. OSOK Welt sicher entladen
+        // 3. Alte OSOK-Welt sicher entladen
         if (osokWorld != null) {
             Bukkit.unloadWorld(osokWorld, false);
             osokWorld = null;
         }
-        Bukkit.unloadWorld("OSOK", false);
+        Bukkit.unloadWorld(targetWorldName, false);
 
-        // 4. Alte Ordner löschen
+        // 4. Ziel-Ordner entpacken (frische Map aus JAR)
         File containerDir = Bukkit.getWorldContainer();
-        File mapFolder = new File(containerDir, "OSOK");
-        File migratedFolder = new File(containerDir, "world/dimensions/minecraft/osok");
+        File mapFolder = new File(containerDir, targetWorldName);
 
         if (mapFolder.exists()) {
             deleteDirectory(mapFolder);
         }
-        if (migratedFolder.exists()) {
-            deleteDirectory(migratedFolder);
-        }
 
-        // 5. Gewählte Map-ZIP entpacken
         try {
             extractEmbeddedMap(targetConfig.getZipResource(), mapFolder);
         } catch (Exception e) {
@@ -146,8 +142,9 @@ public class WorldManager {
             return false;
         }
 
-        // 6. OSOK Welt neu laden & Paper GameRules anwenden
-        WorldCreator creator = new WorldCreator("OSOK");
+        // 5. OSOK Welt neu laden & Paper GameRules anwenden
+        WorldCreator creator = new WorldCreator(targetWorldName);
+        creator.environment(World.Environment.NORMAL);
         osokWorld = Bukkit.createWorld(creator);
 
         if (osokWorld != null) {
@@ -165,7 +162,7 @@ public class WorldManager {
             this.spawnLocation.setWorld(osokWorld);
             osokWorld.setSpawnLocation(spawnLocation);
 
-            // 7. Paper Async Teleportation: Alle Spieler in die neue Map-Lobby bringen
+            // 6. Paper Async Teleportation: Alle Spieler in die neue Map-Lobby bringen
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.teleportAsync(spawnLocation);
                 p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 1.0f, 1.0f);
@@ -206,7 +203,7 @@ public class WorldManager {
     private void extractEmbeddedMap(String zipResourceName, File targetDir) throws IOException {
         InputStream is = plugin.getResource(zipResourceName);
         if (is == null) {
-            is = plugin.getResource("map.zip");
+            is = plugin.getResource("Standard.zip");
         }
         if (is == null) {
             plugin.getLogger().severe(zipResourceName + " wurde im Plugin-Resource Stream nicht gefunden!");
@@ -223,6 +220,7 @@ public class WorldManager {
             while ((entry = zis.getNextEntry()) != null) {
                 String name = entry.getName();
                 File file = new File(targetDir, name);
+
                 if (entry.isDirectory() || name.endsWith("/") || name.endsWith("\\")) {
                     file.mkdirs();
                 } else {
@@ -239,6 +237,21 @@ public class WorldManager {
                                 fos.write(buffer, 0, len);
                             }
                         }
+
+                        // Dual Dimension Fallback für Paper 1.21
+                        if (name.startsWith("dimensions/minecraft/overworld/")) {
+                            String relName = name.substring("dimensions/minecraft/overworld/".length());
+                            if (!relName.isEmpty()) {
+                                File secondaryFile = new File(targetDir, relName);
+                                File secParent = secondaryFile.getParentFile();
+                                if (secParent != null && !secParent.exists()) {
+                                    secParent.mkdirs();
+                                }
+                                try {
+                                    Files.copy(file.toPath(), secondaryFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                                } catch (Exception ignored) {}
+                            }
+                        }
                     }
                 }
                 zis.closeEntry();
@@ -247,8 +260,8 @@ public class WorldManager {
     }
 
     public World getOsokWorld() {
-        if (osokWorld == null) {
-            osokWorld = Bukkit.getWorld("OSOK");
+        if (osokWorld == null && activeMapConfig != null) {
+            osokWorld = Bukkit.getWorld("OSOK_" + activeMapConfig.getName());
         }
         return osokWorld;
     }
