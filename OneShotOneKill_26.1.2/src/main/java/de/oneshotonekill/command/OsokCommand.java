@@ -43,7 +43,7 @@ public class OsokCommand implements BasicCommand {
     public void execute(CommandSourceStack stack, String[] args) {
         CommandSender sender = stack.getSender();
         if (!sender.isOp()) {
-            msg(sender, "<red>[OSOK] Dazu hast du keine Rechte. </red>");
+            msg(sender, "<red>[OSOK] Dazu hast du keine Rechte. Nur Operators (OP) dürfen /osok Befehle ausführen.</red>");
             return;
         }
 
