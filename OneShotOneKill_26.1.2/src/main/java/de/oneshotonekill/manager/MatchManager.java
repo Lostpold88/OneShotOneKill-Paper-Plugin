@@ -388,11 +388,14 @@ public class MatchManager {
             broadcast(" ");
         } else {
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.2f);
-                plugin.getEquipmentManager().giveOneShotEquipment(p);
                 Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
                 Location targetLoc = (randomLoc != null) ? randomLoc : fallback;
-                p.teleportAsync(targetLoc);
+                p.teleportAsync(targetLoc).thenAccept(success -> {
+                    if (success && p.isOnline()) {
+                        plugin.getEquipmentManager().giveOneShotEquipment(p);
+                        p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.2f);
+                    }
+                });
             }
 
             broadcast(" ");
