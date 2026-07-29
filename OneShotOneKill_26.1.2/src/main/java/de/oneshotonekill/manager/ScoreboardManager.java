@@ -4,7 +4,6 @@ import de.oneshotonekill.OneShotOneKill;
 import io.papermc.paper.scoreboard.numbers.NumberFormat;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -12,6 +11,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,12 +26,40 @@ public class ScoreboardManager {
     private final Map<UUID, Integer> highestStreakMap = new HashMap<>();
     private final Set<UUID> bountyTargets = new HashSet<>();
 
+    private int currentPhase = 0;
+    private BukkitTask animTask = null;
+
     public ScoreboardManager() {
         this.plugin = null;
     }
 
     public ScoreboardManager(OneShotOneKill plugin) {
         this.plugin = plugin;
+        startSlowTitleAnimation();
+    }
+
+    public void startSlowTitleAnimation() {
+        if (plugin == null || animTask != null) return;
+
+        // Läuft alle 5 Ticks (0,25 Sekunden) -> Langsamer, entspannter und flüssiger Regenbogen-Farbverlauf!
+        animTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                currentPhase++;
+                Component titleComp = MiniMessage.miniMessage().deserialize("<rainbow:" + currentPhase + "><b>🎯 OSOK</b></rainbow>");
+                Component headerComp = MiniMessage.miniMessage().deserialize("\n<rainbow:" + currentPhase + "><b>🎯 OSOK</b></rainbow> <gray>|</gray> <red>MATCH STATS</red>\n");
+                Component footerComp = MiniMessage.miniMessage().deserialize("\n<gray>Scoreboard & Leaderboard</gray>\n");
+
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    Scoreboard board = p.getScoreboard();
+                    Objective obj = board.getObjective("oneshot");
+                    if (obj != null) {
+                        obj.displayName(titleComp);
+                    }
+                    p.sendPlayerListHeaderAndFooter(headerComp, footerComp);
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 5L);
     }
 
     public void updateAllScoreboards() {
@@ -53,7 +82,7 @@ public class ScoreboardManager {
         if (mgr == null) return;
 
         Scoreboard board = mgr.getNewScoreboard();
-        Component titleComponent = MiniMessage.miniMessage().deserialize("<yellow><b>🎯 OSOK</b></yellow>");
+        Component titleComponent = MiniMessage.miniMessage().deserialize("<rainbow:" + currentPhase + "><b>🎯 OSOK</b></rainbow>");
         Objective obj = board.registerNewObjective("oneshot", "dummy", titleComponent);
         obj.setDisplaySlot(DisplaySlot.SIDEBAR);
 
