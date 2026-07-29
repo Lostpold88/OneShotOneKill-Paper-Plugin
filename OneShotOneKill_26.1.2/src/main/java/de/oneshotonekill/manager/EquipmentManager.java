@@ -40,6 +40,7 @@ public class EquipmentManager {
 
         player.setHealth(20.0);
         player.setFoodLevel(20);
+        player.setSaturation(20.0f);
         player.setLevel(0);
         player.setExp(0.0f);
     }
@@ -48,5 +49,8 @@ public class EquipmentManager {
         player.getInventory().remove(Material.IRON_SWORD);
         player.getInventory().remove(Material.BOW);
         player.getInventory().remove(Material.ARROW);
+        player.setHealth(20.0);
+        player.setFoodLevel(20);
+        player.setSaturation(20.0f);
     }
 }
