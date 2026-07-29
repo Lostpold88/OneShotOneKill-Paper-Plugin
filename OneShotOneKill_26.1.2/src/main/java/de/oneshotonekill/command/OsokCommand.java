@@ -2,23 +2,23 @@ package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.manager.KillstreakManager;
+import io.papermc.paper.command.brigadier.BasicCommand;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.bukkit.util.StringUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-public class OsokCommand implements CommandExecutor, TabCompleter {
+public class OsokCommand implements BasicCommand {
 
     private final OneShotOneKill plugin;
 
@@ -35,10 +35,11 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
     }
 
     @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    public void execute(CommandSourceStack stack, String[] args) {
+        CommandSender sender = stack.getSender();
         if (!(sender instanceof Player player)) {
             msg(sender, "<red>Dieser Befehl ist nur für Spieler verfügbar.</red>");
-            return true;
+            return;
         }
 
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
@@ -56,100 +57,104 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             msg(player, "<gray>/osok resetstats <dark_gray>-</dark_gray> <white>Scoreboard & Statistiken zurücksetzen (Admin)</white></gray>");
             msg(player, "<gray>/osok resetmap <dark_gray>-</dark_gray> <white>Map frisch aus der JAR wiederherstellen (Admin)</white></gray>");
             msg(player, "<yellow><b>=======================================</b></yellow>");
-            return true;
+            return;
         }
 
         String sub = args[0].toLowerCase();
 
         if (sub.equals("start")) {
-            return new StartCommand(plugin).onCommand(sender, command, label, args);
+            new StartCommand(plugin).onCommand(player, null, "start", args);
+            return;
         }
 
         if (sub.equals("pause")) {
             if (!player.isOp()) {
                 msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return true;
+                return;
             }
             plugin.getMatchManager().togglePause(player);
-            return true;
+            return;
         }
 
         if (sub.equals("dauer") || sub.equals("limit") || sub.equals("timer")) {
             String[] subArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
-            return handleDauerCommand(player, subArgs);
+            handleDauerCommand(player, subArgs);
+            return;
         }
 
         if (sub.equals("itemmode") || sub.equals("itemmodus") || sub.equals("mode")) {
             String[] subArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
-            return handleItemModeCommand(player, subArgs);
+            handleItemModeCommand(player, subArgs);
+            return;
         }
 
         if (sub.equals("killeffect") || sub.equals("killeffects") || sub.equals("effects")) {
-            return new KillEffectCommand(plugin).onCommand(sender, command, label, args);
+            new KillEffectCommand(plugin).onCommand(player, null, "killeffect", args);
+            return;
         }
 
         if (sub.equals("itemtest") || sub.equals("testgui")) {
             if (!player.isOp()) {
                 msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return true;
+                return;
             }
             new ItemTestCommand(plugin).openTestGui(player);
-            return true;
+            return;
         }
 
         if (sub.equals("clearpfeile") || sub.equals("cleararrows")) {
             if (!player.isOp()) {
                 msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return true;
+                return;
             }
-            return new ClearPfeileCommand(plugin).onCommand(sender, command, label, args);
+            new ClearPfeileCommand(plugin).onCommand(player, null, "clearpfeile", args);
+            return;
         }
 
         if (sub.equals("setspawn")) {
             if (!player.isOp()) {
                 msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return true;
+                return;
             }
             plugin.getWorldManager().setSpawnLocation(player.getLocation());
             msg(player, "<green>[OSOK] Neuer Arena-Spawnpunkt gesetzt!</green>");
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 2.0f);
-            return true;
+            return;
         }
 
         if (sub.equals("resetstats") || sub.equals("resetboard")) {
             if (!player.isOp()) {
                 msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return true;
+                return;
             }
             plugin.getScoreboardManager().resetAllStats();
             broadcast("<yellow>[OSOK] 🔄 Die Statistiken und das Scoreboard wurden zurückgesetzt!</yellow>");
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1.0f, 1.0f);
             }
-            return true;
+            return;
         }
 
         if (sub.equals("resetmap")) {
             if (!player.isOp()) {
                 msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return true;
+                return;
             }
             broadcast("<yellow>[OSOK] Die Arena-Map wird zurückgesetzt! Server startet neu...</yellow>");
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.kick(MiniMessage.miniMessage().deserialize("<green>[OSOK] Arena-Map wird zurückgesetzt!</green>\n<gray>Der Server startet jetzt neu...</gray>"));
             }
             Bukkit.shutdown();
-            return true;
+            return;
         }
 
         msg(player, "<red>[OSOK] Unbekannter Unterbefehl. Nutze /osok help für eine Liste aller Befehle.</red>");
-        return true;
     }
 
-    private boolean handleDauerCommand(Player player, String[] args) {
+    private void handleDauerCommand(Player player, String[] args) {
         if (!player.isOp()) {
             msg(player, "<red>Dazu hast du keine Rechte.</red>");
-            return true;
+            return;
         }
 
         if (args.length == 0) {
@@ -159,13 +164,13 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
                     + "</green></yellow>");
             msg(player, "<gray>Verwendung: /osok dauer [kills|minuten|sekunden|off] [wert]</gray>");
             msg(player, "<gray>Beispiele: /osok dauer 20k , /osok dauer 10m , /osok dauer 45s</gray>");
-            return true;
+            return;
         }
 
         String type = args[0].toLowerCase();
         if (type.equals("off") || type.equals("none") || type.equals("disable")) {
             plugin.getMatchManager().resetLimits();
-            return true;
+            return;
         }
 
         if (args.length >= 2) {
@@ -174,17 +179,17 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
                 int val = Integer.parseInt(valueStr);
                 if (type.startsWith("kill") || type.equals("k")) {
                     plugin.getMatchManager().setKillLimit(val);
-                    return true;
+                    return;
                 } else if (type.startsWith("min") || type.equals("m")) {
                     plugin.getMatchManager().setTimeLimitMinutes(val);
-                    return true;
+                    return;
                 } else if (type.startsWith("sek") || type.startsWith("sec") || type.equals("s")) {
                     plugin.getMatchManager().setTimeLimitSeconds(val);
-                    return true;
+                    return;
                 }
             } catch (NumberFormatException e) {
                 msg(player, "<red>[OSOK] Ungültiger Zahlenwert: " + valueStr + "</red>");
-                return true;
+                return;
             }
         }
 
@@ -192,37 +197,36 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
             try {
                 int kills = Integer.parseInt(type.substring(0, type.length() - 1));
                 plugin.getMatchManager().setKillLimit(kills);
-                return true;
+                return;
             } catch (NumberFormatException ignored) {}
         }
         if (type.endsWith("m")) {
             try {
                 int minutes = Integer.parseInt(type.substring(0, type.length() - 1));
                 plugin.getMatchManager().setTimeLimitMinutes(minutes);
-                return true;
+                return;
             } catch (NumberFormatException ignored) {}
         }
         if (type.endsWith("s")) {
             try {
                 int seconds = Integer.parseInt(type.substring(0, type.length() - 1));
                 plugin.getMatchManager().setTimeLimitSeconds(seconds);
-                return true;
+                return;
             } catch (NumberFormatException ignored) {}
         }
         try {
             int val = Integer.parseInt(type);
             plugin.getMatchManager().setKillLimit(val);
-            return true;
+            return;
         } catch (NumberFormatException ignored) {}
 
         msg(player, "<red>[OSOK] Ungültiger Parameter. Verwende: /osok dauer [kills|minuten|sekunden|off]</red>");
-        return true;
     }
 
-    private boolean handleItemModeCommand(Player player, String[] args) {
+    private void handleItemModeCommand(Player player, String[] args) {
         if (!player.isOp()) {
             msg(player, "<red>Dazu hast du keine Rechte.</red>");
-            return true;
+            return;
         }
 
         if (args.length >= 1) {
@@ -253,18 +257,23 @@ public class OsokCommand implements CommandExecutor, TabCompleter {
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.5f);
         }
-        return true;
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) {
-            return StringUtil.copyPartialMatches(args[0], Arrays.asList("start", "pause", "dauer", "limit", "itemmode", "killeffect", "itemtest", "clearpfeile", "setspawn", "resetstats", "resetmap", "help"), new ArrayList<>());
+    public Collection<String> suggest(CommandSourceStack stack, String[] args) {
+        if (args.length <= 1) {
+            String current = args.length == 1 ? args[0] : "";
+            List<String> subCommands = Arrays.asList(
+                    "start", "pause", "dauer", "limit", "itemmode",
+                    "killeffect", "itemtest", "clearpfeile",
+                    "setspawn", "resetstats", "resetmap", "help"
+            );
+            return StringUtil.copyPartialMatches(current, subCommands, new ArrayList<>());
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit"))) {
-            return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "minuten", "sekunden", "off"), new ArrayList<>());
+        if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit") || args[0].equalsIgnoreCase("timer"))) {
+            return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "minuten", "sekunden", "off", "20k", "10m", "45s"), new ArrayList<>());
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("itemmode") || args[0].equalsIgnoreCase("mode"))) {
+        if (args.length == 2 && (args[0].equalsIgnoreCase("itemmode") || args[0].equalsIgnoreCase("itemmodus") || args[0].equalsIgnoreCase("mode"))) {
             return StringUtil.copyPartialMatches(args[1], Arrays.asList("streak", "spawn", "both", "kombi"), new ArrayList<>());
         }
         return Collections.emptyList();

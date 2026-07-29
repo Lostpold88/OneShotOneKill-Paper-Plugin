@@ -13,17 +13,9 @@ import de.oneshotonekill.manager.KillstreakManager;
 import de.oneshotonekill.manager.MatchManager;
 import de.oneshotonekill.manager.ScoreboardManager;
 import de.oneshotonekill.manager.WorldManager;
-import io.papermc.paper.command.brigadier.BasicCommand;
-import io.papermc.paper.command.brigadier.CommandSourceStack;
-import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.Collection;
 import java.util.List;
 
 public class OneShotOneKill extends JavaPlugin {
@@ -60,12 +52,10 @@ public class OneShotOneKill extends JavaPlugin {
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
         getServer().getPluginManager().registerEvents(killEffectCommand, this);
 
-        // 4. Paper Dynamic Lifecycle Command Registration: Nur noch einziger Hauptbefehl /osok
+        // 4. Paper Dynamic Lifecycle Command Registration (Brigadier BasicCommand)
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
-            Commands registrar = event.registrar();
             OsokCommand osokCommand = new OsokCommand(this);
-
-            registerBasic(registrar, "osok", "OneShotOneKill Hauptbefehl", List.of(), osokCommand, osokCommand);
+            event.registrar().register("osok", "OneShotOneKill Hauptbefehl", List.of("oneshot"), osokCommand);
         });
 
         // 5. Scoreboards für alle bereits verbundenen Spieler aktualisieren
@@ -74,36 +64,6 @@ public class OneShotOneKill extends JavaPlugin {
         getLogger().info("=========================================");
         getLogger().info("  ONESHOT-ONEKILL NATIVE PAPER PLUGIN    ");
         getLogger().info("=========================================");
-    }
-
-    private void registerBasic(Commands registrar, String name, String desc, List<String> aliases, CommandExecutor executor, TabCompleter completer) {
-        registrar.register(name, desc, aliases, new BasicCommand() {
-            @Override
-            public void execute(CommandSourceStack stack, String[] args) {
-                Command dummyCmd = new Command(name) {
-                    @Override
-                    public boolean execute(CommandSender sender, String commandLabel, String[] args) {
-                        return false;
-                    }
-                };
-                executor.onCommand(stack.getSender(), dummyCmd, name, args);
-            }
-
-            @Override
-            public Collection<String> suggest(CommandSourceStack stack, String[] args) {
-                if (completer != null) {
-                    Command dummyCmd = new Command(name) {
-                        @Override
-                        public boolean execute(CommandSender sender, String commandLabel, String[] args) {
-                            return false;
-                        }
-                    };
-                    List<String> list = completer.onTabComplete(stack.getSender(), dummyCmd, name, args);
-                    if (list != null) return list;
-                }
-                return BasicCommand.super.suggest(stack, args);
-            }
-        });
     }
 
     @Override
