@@ -11,6 +11,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -22,6 +23,15 @@ public class PlayerConnectionListener implements Listener {
 
     public PlayerConnectionListener(OneShotOneKill plugin) {
         this.plugin = plugin;
+    }
+
+    @EventHandler
+    public void onFoodLevelChange(FoodLevelChangeEvent event) {
+        if (event.getEntity() instanceof Player player) {
+            event.setCancelled(true);
+            player.setFoodLevel(20);
+            player.setSaturation(20.0f);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
