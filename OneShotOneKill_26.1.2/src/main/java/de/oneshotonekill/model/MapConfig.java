@@ -51,6 +51,11 @@ public class MapConfig {
      * auf der Grundflaeche landen und nicht auf hoeher gelegenen Bereichen.
      */
     private double maxItemSpawnY;
+    /**
+     * Y-Hoehe der Arena-Decke. {@link Double#MAX_VALUE} bedeutet offener Himmel.
+     * Fliegende Entities (z. B. der Tarnkappenbomber-Drache) muessen darunter bleiben.
+     */
+    private double ceilingY = Double.MAX_VALUE;
     private Location lobbyLocation;
     private double minX;
     private double maxX;
@@ -76,6 +81,26 @@ public class MapConfig {
 
     public void setMaxItemSpawnY(double maxItemSpawnY) {
         this.maxItemSpawnY = maxItemSpawnY;
+    }
+
+    public double getCeilingY() {
+        return ceilingY;
+    }
+
+    public void setCeilingY(double ceilingY) {
+        this.ceilingY = ceilingY;
+    }
+
+    public boolean hasCeiling() {
+        return ceilingY != Double.MAX_VALUE;
+    }
+
+    /**
+     * Hoechste Y-Position, die eine fliegende Entity einnehmen darf: einen Block
+     * unterhalb der Decke, damit sie nicht in ihr steckt. Ohne Decke unbegrenzt.
+     */
+    public double getMaxFlyY() {
+        return hasCeiling() ? ceilingY - 1.0 : Double.MAX_VALUE;
     }
 
     public String getName() {

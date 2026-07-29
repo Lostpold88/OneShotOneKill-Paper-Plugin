@@ -1,6 +1,7 @@
 package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
+import de.oneshotonekill.model.MapConfig;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
@@ -179,8 +180,26 @@ public class StealthBomberManager implements Listener {
     // Drache & TNT
     // ------------------------------------------------------------------
 
+    /**
+     * Flugposition des Drachen ueber dem Ziel, begrenzt durch die Decke der aktiven Map.
+     * Die Standard-Arena ist ueberdacht - ohne diese Begrenzung wuerde der Drache in der
+     * Decke stecken oder darueber schweben.
+     */
+    private Location dragonPositionAbove(Player target) {
+        Location loc = target.getLocation().clone().add(0, DRAGON_HEIGHT, 0);
+
+        MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
+        if (activeMap != null) {
+            double maxY = activeMap.getMaxFlyY();
+            if (loc.getY() > maxY) {
+                loc.setY(maxY);
+            }
+        }
+        return loc;
+    }
+
     public void launchBomber(Player owner, Player target) {
-        Location spawnLoc = target.getLocation().clone().add(0, DRAGON_HEIGHT, 0);
+        Location spawnLoc = dragonPositionAbove(target);
 
         EnderDragon dragon = target.getWorld().spawn(spawnLoc, EnderDragon.class, spawned -> {
             spawned.setPhase(EnderDragon.Phase.HOVER);
@@ -227,7 +246,7 @@ public class StealthBomberManager implements Listener {
                     return;
                 }
 
-                Location above = target.getLocation().clone().add(0, DRAGON_HEIGHT, 0);
+                Location above = dragonPositionAbove(target);
                 // Blickrichtung des Ziels uebernehmen, damit der Drache mitdreht
                 above.setYaw(target.getLocation().getYaw());
                 above.setPitch(0f);
