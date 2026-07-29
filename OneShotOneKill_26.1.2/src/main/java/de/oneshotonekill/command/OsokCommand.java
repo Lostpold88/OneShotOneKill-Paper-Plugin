@@ -58,6 +58,7 @@ public class OsokCommand implements BasicCommand {
             msg(player, "<yellow><b>=======================================</b></yellow>");
             msg(player, "<gray>/osok start <dark_gray>-</dark_gray> <white>Match starten & alle zufällig in die Arena spawnen (Admin)</white></gray>");
             msg(player, "<gray>/osok pause <dark_gray>-</dark_gray> <white>Match pausieren / fortsetzen (Admin)</white></gray>");
+            msg(player, "<gray>/osok map <Standard|DustPvP> <dark_gray>-</dark_gray> <white>Dynamisch zwischen Arenen wechseln (Admin)</white></gray>");
             msg(player, "<gray>/osok dauer [kills|minuten|sekunden|off] [Anzahl] <dark_gray>-</dark_gray> <white>Match-Dauer/Ziel festlegen (Admin)</white></gray>");
             msg(player, "<gray>/osok itemmode [streak|spawn|both] <dark_gray>-</dark_gray> <white>Item-Modus umschalten (Admin)</white></gray>");
             msg(player, "<gray>/osok itemtest <dark_gray>-</dark_gray> <white>Spezial-Item Testmenü öffnen (Admin)</white></gray>");
@@ -82,6 +83,25 @@ public class OsokCommand implements BasicCommand {
                 return;
             }
             plugin.getMatchManager().togglePause(player);
+            return;
+        }
+
+        if (sub.equals("map") || sub.equals("arena") || sub.equals("welt")) {
+            if (!player.isOp()) {
+                msg(player, "<red>Dazu hast du keine Rechte.</red>");
+                return;
+            }
+            if (args.length < 2) {
+                String activeName = plugin.getWorldManager().getActiveMapConfig() != null ? plugin.getWorldManager().getActiveMapConfig().getName() : "Unbekannt";
+                msg(player, "<yellow>[OSOK] Aktuelle Map: <green><b>" + activeName + "</b></green></yellow>");
+                msg(player, "<gray>Verwendung: /osok map <Standard|DustPvP></gray>");
+                return;
+            }
+            String targetMap = args[1];
+            boolean switched = plugin.getWorldManager().switchMap(targetMap);
+            if (!switched) {
+                msg(player, "<red>[OSOK] Map '" + targetMap + "' wurde nicht gefunden! Verfügbar: Standard, DustPvP</red>");
+            }
             return;
         }
 
@@ -246,11 +266,14 @@ public class OsokCommand implements BasicCommand {
         if (args.length <= 1) {
             String current = args.length == 1 ? args[0] : "";
             List<String> subCommands = Arrays.asList(
-                    "start", "pause", "dauer", "limit", "itemmode",
+                    "start", "pause", "map", "dauer", "limit", "itemmode",
                     "itemtest", "clearpfeile", "setspawn",
                     "resetstats", "resetmap", "help"
             );
             return StringUtil.copyPartialMatches(current, subCommands, new ArrayList<>());
+        }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("map") || args[0].equalsIgnoreCase("arena") || args[0].equalsIgnoreCase("welt"))) {
+            return StringUtil.copyPartialMatches(args[1], Arrays.asList("Standard", "DustPvP"), new ArrayList<>());
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit") || args[0].equalsIgnoreCase("timer"))) {
             return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "minuten", "sekunden", "off"), new ArrayList<>());
