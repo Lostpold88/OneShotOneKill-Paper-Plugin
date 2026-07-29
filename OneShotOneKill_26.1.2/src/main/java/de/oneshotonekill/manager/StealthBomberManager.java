@@ -55,8 +55,8 @@ public class StealthBomberManager implements Listener {
 
     /** Gesamtdauer des Angriffs (10 Sekunden). */
     private static final int BOMBER_DURATION_TICKS = 200;
-    /** Takt der Verfolgung. */
-    private static final long FOLLOW_PERIOD_TICKS = 2L;
+    /** Takt der Verfolgung - jeden Tick, damit der Drache eng am Ziel bleibt. */
+    private static final long FOLLOW_PERIOD_TICKS = 1L;
     /** Abstand zwischen zwei TNT-Abwuerfen. */
     private static final int TNT_DROP_INTERVAL_TICKS = 10;
     /** Flughoehe des Drachen ueber dem Ziel. */
@@ -185,6 +185,9 @@ public class StealthBomberManager implements Listener {
         EnderDragon dragon = target.getWorld().spawn(spawnLoc, EnderDragon.class, spawned -> {
             spawned.setPhase(EnderDragon.Phase.HOVER);
             // Kein Angriffsverhalten: Der Drache soll ausschliesslich folgen und bomben.
+            // Hinweis: setAI(false) unterbindet beim EnderDragon die Flugbewegung NICHT,
+            // da er sie in aiStep() ueber sein Phasensystem abwickelt. Die Positionierung
+            // uebernimmt daher der Verfolgungs-Task per Teleport + Phasen-Reset.
             spawned.setAI(false);
             spawned.setAware(false);
             spawned.setInvulnerable(true);
@@ -228,12 +231,27 @@ public class StealthBomberManager implements Listener {
                 above.setYaw(target.getLocation().getYaw());
                 above.setPitch(0f);
 
+                Location before = dragon.getLocation();
+
                 // Bewusst synchron: Wir laufen bereits im GlobalRegionScheduler auf dem
                 // Main-Thread und der Zielchunk ist geladen, weil dort der Zielspieler steht.
-                // teleportAsync alle 2 Ticks neu anzustossen, bevor der vorherige Teleport
-                // aufgeloest ist, laesst den Drachen an Ort und Stelle stehen.
-                dragon.teleport(above);
+                boolean teleported = dragon.teleport(above);
                 dragon.setVelocity(new Vector(0, 0, 0));
+
+                // Entscheidend: Die HOVER-Phase merkt sich beim Betreten einen festen
+                // Schwebepunkt und steuert diesen jeden Tick wieder an - der Drache wuerde
+                // sonst sofort zu seiner Spawn-Position zurueckfliegen. setAI(false) hilft
+                // hier nicht, weil EnderDragon seine Flugbewegung in aiStep() abwickelt.
+                // Ein Phasenwechsel erzwingt einen neuen Schwebepunkt an der aktuellen Position.
+                dragon.setPhase(EnderDragon.Phase.CIRCLING);
+                dragon.setPhase(EnderDragon.Phase.HOVER);
+
+                if (elapsed <= 2) {
+                    plugin.getLogger().info("[OSOK] Bomber-Diagnose: teleport=" + teleported
+                            + " vorher=" + formatLoc(before)
+                            + " ziel=" + formatLoc(above)
+                            + " nachher=" + formatLoc(dragon.getLocation()));
+                }
 
                 if (elapsed % TNT_DROP_INTERVAL_TICKS == 0) {
                     dropBomb(above.clone().subtract(0, 2.0, 0), ownerId);
@@ -242,6 +260,10 @@ public class StealthBomberManager implements Listener {
                 elapsed += FOLLOW_PERIOD_TICKS;
             }
         }, 1L, FOLLOW_PERIOD_TICKS);
+    }
+
+    private static String formatLoc(Location loc) {
+        return String.format(java.util.Locale.US, "%.1f/%.1f/%.1f", loc.getX(), loc.getY(), loc.getZ());
     }
 
     private void dropBomb(Location loc, UUID ownerId) {
