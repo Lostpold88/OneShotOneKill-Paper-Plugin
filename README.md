@@ -105,20 +105,20 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 | Befehl | Beschreibung | Berechtigung |
 | :--- | :--- | :--- |
-| `/osok` | OSOK Hauptbefehl & Übersicht aller Unterbefehle | Jeder |
-| `/osok start` | Teleportiert alle Spieler zufällig in die Arena & startet ein neues Match | Operator |
-| `/osok pause` | Pausiert / Fortsetzt das aktuelle Match & teleportiert zur Lobby | Operator |
-| `/osok dauer kills <n>` | Setzt ein Kill-Ziel (z. B. `/osok dauer 20k`, aktiv ab `/osok start`) | Operator |
-| `/osok dauer minuten <n>` | Setzt ein Zeit-Limit in Minuten (z. B. `/osok dauer 10m`, aktiv ab `/osok start`) | Operator |
-| `/osok dauer sekunden <n>` | Setzt ein Zeit-Limit in Sekunden (z. B. `/osok dauer 45s`, aktiv ab `/osok start`) | Operator |
-| `/osok dauer off` | Deaktiviert Match-Limits | Operator |
-| `/osok itemmode <mode>` | Wechselt zwischen `STREAK`, `SPAWN` und `BOTH` | Operator |
-| `/osok killeffect` | Öffnet das GUI für Kill-Animationen | Jeder |
-| `/osok itemtest` | Öffnet Admin-Test-GUI für alle 11 Spezial-Items | Operator |
-| `/osok clearpfeile` | Entfernt herumliegende Pfeile in der Arena | Operator |
-| `/osok setspawn` | Setzt den aktuellen Spawnpunkt der Map | Operator |
-| `/osok resetstats` | Setzt Kills, Tode & Scoreboard-Statistiken zurück | Operator |
-| `/osok resetmap` | Entpackt die saubere Map aus der JAR & startet den Server neu | Operator |
+| `/osok` | OSOK Hauptbefehl & Übersicht aller Unterbefehle | Operator (OP) |
+| `/osok start` | Teleportiert alle Spieler zufällig in die Arena & startet ein neues Match | Operator (OP) |
+| `/osok pause` | Pausiert / Fortsetzt das aktuelle Match & teleportiert zur Lobby | Operator (OP) |
+| `/osok dauer kills <n>` | Setzt ein Kill-Ziel (z. B. `/osok dauer 20k`, aktiv ab `/osok start`) | Operator (OP) |
+| `/osok dauer minuten <n>` | Setzt ein Zeit-Limit in Minuten (z. B. `/osok dauer 10m`, aktiv ab `/osok start`) | Operator (OP) |
+| `/osok dauer sekunden <n>` | Setzt ein Zeit-Limit in Sekunden (z. B. `/osok dauer 45s`, aktiv ab `/osok start`) | Operator (OP) |
+| `/osok dauer off` | Deaktiviert Match-Limits | Operator (OP) |
+| `/osok itemmode <mode>` | Wechselt zwischen `STREAK`, `SPAWN` und `BOTH` | Operator (OP) |
+| `/osok killeffect` | Öffnet das GUI für Kill-Animationen | Operator (OP) |
+| `/osok itemtest` | Öffnet Admin-Test-GUI für alle 11 Spezial-Items | Operator (OP) |
+| `/osok clearpfeile` | Entfernt herumliegende Pfeile in der Arena | Operator (OP) |
+| `/osok setspawn` | Setzt den aktuellen Spawnpunkt der Map | Operator (OP) |
+| `/osok resetstats` | Setzt Kills, Tode & Scoreboard-Statistiken zurück | Operator (OP) |
+| `/osok resetmap` | Entpackt die saubere Map aus der JAR & startet den Server neu | Operator (OP) |
 
 ---
 

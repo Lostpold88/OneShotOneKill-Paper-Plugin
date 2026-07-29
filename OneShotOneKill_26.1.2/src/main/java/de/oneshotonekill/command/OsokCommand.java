@@ -35,8 +35,18 @@ public class OsokCommand implements BasicCommand {
     }
 
     @Override
+    public boolean canUse(CommandSender sender) {
+        return sender.isOp();
+    }
+
+    @Override
     public void execute(CommandSourceStack stack, String[] args) {
         CommandSender sender = stack.getSender();
+        if (!sender.isOp()) {
+            msg(sender, "<red>[OSOK] Dazu hast du keine Rechte. </red>");
+            return;
+        }
+
         if (!(sender instanceof Player player)) {
             msg(sender, "<red>Dieser Befehl ist nur für Spieler verfügbar.</red>");
             return;
@@ -46,16 +56,25 @@ public class OsokCommand implements BasicCommand {
             msg(player, "<yellow><b>=======================================</b></yellow>");
             msg(player, "<green><b>🎯 OSOK COMMANDS (/osok <befehl>)</b></green>");
             msg(player, "<yellow><b>=======================================</b></yellow>");
-            msg(player, "<gray>/osok start <dark_gray>-</dark_gray> <white>Match starten & alle zufällig in die Arena spawnen (Admin)</white></gray>");
-            msg(player, "<gray>/osok pause <dark_gray>-</dark_gray> <white>Match pausieren / fortsetzen (Admin)</white></gray>");
-            msg(player, "<gray>/osok dauer [kills|minuten|sekunden|off] [Anzahl] <dark_gray>-</dark_gray> <white>Match-Dauer/Ziel festlegen (Admin)</white></gray>");
-            msg(player, "<gray>/osok itemmode [streak|spawn|both] <dark_gray>-</dark_gray> <white>Item-Modus umschalten (Admin)</white></gray>");
+            msg(player,
+                    "<gray>/osok start <dark_gray>-</dark_gray> <white>Match starten & alle zufällig in die Arena spawnen (Admin)</white></gray>");
+            msg(player,
+                    "<gray>/osok pause <dark_gray>-</dark_gray> <white>Match pausieren / fortsetzen (Admin)</white></gray>");
+            msg(player,
+                    "<gray>/osok dauer [kills|minuten|sekunden|off] [Anzahl] <dark_gray>-</dark_gray> <white>Match-Dauer/Ziel festlegen (Admin)</white></gray>");
+            msg(player,
+                    "<gray>/osok itemmode [streak|spawn|both] <dark_gray>-</dark_gray> <white>Item-Modus umschalten (Admin)</white></gray>");
             msg(player, "<gray>/osok killeffect <dark_gray>-</dark_gray> <white>Killeffekte GUI öffnen</white></gray>");
-            msg(player, "<gray>/osok itemtest <dark_gray>-</dark_gray> <white>Spezial-Item Testmenü öffnen (Admin)</white></gray>");
-            msg(player, "<gray>/osok clearpfeile <dark_gray>-</dark_gray> <white>Alle Pfeile aus der Welt löschen (Admin)</white></gray>");
-            msg(player, "<gray>/osok setspawn <dark_gray>-</dark_gray> <white>Spawnpunkt auf der Map setzen (Admin)</white></gray>");
-            msg(player, "<gray>/osok resetstats <dark_gray>-</dark_gray> <white>Scoreboard & Statistiken zurücksetzen (Admin)</white></gray>");
-            msg(player, "<gray>/osok resetmap <dark_gray>-</dark_gray> <white>Map frisch aus der JAR wiederherstellen (Admin)</white></gray>");
+            msg(player,
+                    "<gray>/osok itemtest <dark_gray>-</dark_gray> <white>Spezial-Item Testmenü öffnen (Admin)</white></gray>");
+            msg(player,
+                    "<gray>/osok clearpfeile <dark_gray>-</dark_gray> <white>Alle Pfeile aus der Welt löschen (Admin)</white></gray>");
+            msg(player,
+                    "<gray>/osok setspawn <dark_gray>-</dark_gray> <white>Spawnpunkt auf der Map setzen (Admin)</white></gray>");
+            msg(player,
+                    "<gray>/osok resetstats <dark_gray>-</dark_gray> <white>Scoreboard & Statistiken zurücksetzen (Admin)</white></gray>");
+            msg(player,
+                    "<gray>/osok resetmap <dark_gray>-</dark_gray> <white>Map frisch aus der JAR wiederherstellen (Admin)</white></gray>");
             msg(player, "<yellow><b>=======================================</b></yellow>");
             return;
         }
@@ -142,7 +161,8 @@ public class OsokCommand implements BasicCommand {
             }
             broadcast("<yellow>[OSOK] Die Arena-Map wird zurückgesetzt! Server startet neu...</yellow>");
             for (Player p : Bukkit.getOnlinePlayers()) {
-                p.kick(MiniMessage.miniMessage().deserialize("<green>[OSOK] Arena-Map wird zurückgesetzt!</green>\n<gray>Der Server startet jetzt neu...</gray>"));
+                p.kick(MiniMessage.miniMessage().deserialize(
+                        "<green>[OSOK] Arena-Map wird zurückgesetzt!</green>\n<gray>Der Server startet jetzt neu...</gray>"));
             }
             Bukkit.shutdown();
             return;
@@ -159,8 +179,11 @@ public class OsokCommand implements BasicCommand {
 
         if (args.length == 0) {
             msg(player, "<yellow>[OSOK] Aktuelles Limit: <green>" +
-                    (plugin.getMatchManager().hasKillLimit() ? plugin.getMatchManager().getKillLimit() + " Kills" :
-                    plugin.getMatchManager().hasTimeLimit() ? plugin.getMatchManager().formatTime(plugin.getMatchManager().getTimeLimitSeconds()) + " (Zeit)" : "Kein Limit")
+                    (plugin.getMatchManager().hasKillLimit() ? plugin.getMatchManager().getKillLimit() + " Kills"
+                            : plugin.getMatchManager().hasTimeLimit()
+                                    ? plugin.getMatchManager()
+                                            .formatTime(plugin.getMatchManager().getTimeLimitSeconds()) + " (Zeit)"
+                                    : "Kein Limit")
                     + "</green></yellow>");
             msg(player, "<gray>Verwendung: /osok dauer [kills|minuten|sekunden|off] [wert]</gray>");
             msg(player, "<gray>Beispiele: /osok dauer 20k , /osok dauer 10m , /osok dauer 45s</gray>");
@@ -198,27 +221,31 @@ public class OsokCommand implements BasicCommand {
                 int kills = Integer.parseInt(type.substring(0, type.length() - 1));
                 plugin.getMatchManager().setKillLimit(kills);
                 return;
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         if (type.endsWith("m")) {
             try {
                 int minutes = Integer.parseInt(type.substring(0, type.length() - 1));
                 plugin.getMatchManager().setTimeLimitMinutes(minutes);
                 return;
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         if (type.endsWith("s")) {
             try {
                 int seconds = Integer.parseInt(type.substring(0, type.length() - 1));
                 plugin.getMatchManager().setTimeLimitSeconds(seconds);
                 return;
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         try {
             int val = Integer.parseInt(type);
             plugin.getMatchManager().setKillLimit(val);
             return;
-        } catch (NumberFormatException ignored) {}
+        } catch (NumberFormatException ignored) {
+        }
 
         msg(player, "<red>[OSOK] Ungültiger Parameter. Verwende: /osok dauer [kills|minuten|sekunden|off]</red>");
     }
@@ -233,25 +260,31 @@ public class OsokCommand implements BasicCommand {
             String modeArg = args[0].toLowerCase();
             if (modeArg.equals("spawn") || modeArg.equals("map") || modeArg.equals("ground")) {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.SPAWN);
-                broadcast("<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>MAP-SPAWN</b></green> <gray>(Items spawnen alle 30s als Mario Kart Boxen!)</gray></yellow>");
+                broadcast(
+                        "<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>MAP-SPAWN</b></green> <gray>(Items spawnen alle 30s als Mario Kart Boxen!)</gray></yellow>");
             } else if (modeArg.equals("both") || modeArg.equals("kombi") || modeArg.equals("all")) {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.BOTH);
-                broadcast("<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>KOMBI-MODUS</b></green> <gray>(Streaks + 30s Map-Spawns gleichzeitig!)</gray></yellow>");
+                broadcast(
+                        "<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>KOMBI-MODUS</b></green> <gray>(Streaks + 30s Map-Spawns gleichzeitig!)</gray></yellow>");
             } else {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.STREAK);
-                broadcast("<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>KILLSTREAK</b></green> <gray>(Items nur alle 3 Kills!)</gray></yellow>");
+                broadcast(
+                        "<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>KILLSTREAK</b></green> <gray>(Items nur alle 3 Kills!)</gray></yellow>");
             }
         } else {
             KillstreakManager.ItemMode current = plugin.getKillstreakManager().getItemMode();
             if (current == KillstreakManager.ItemMode.STREAK) {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.SPAWN);
-                broadcast("<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>MAP-SPAWN</b></green> <gray>(Items spawnen alle 30s als Mario Kart Boxen!)</gray></yellow>");
+                broadcast(
+                        "<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>MAP-SPAWN</b></green> <gray>(Items spawnen alle 30s als Mario Kart Boxen!)</gray></yellow>");
             } else if (current == KillstreakManager.ItemMode.SPAWN) {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.BOTH);
-                broadcast("<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>KOMBI-MODUS</b></green> <gray>(Streaks + 30s Map-Spawns gleichzeitig!)</gray></yellow>");
+                broadcast(
+                        "<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>KOMBI-MODUS</b></green> <gray>(Streaks + 30s Map-Spawns gleichzeitig!)</gray></yellow>");
             } else {
                 plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.STREAK);
-                broadcast("<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>KILLSTREAK</b></green> <gray>(Items nur alle 3 Kills!)</gray></yellow>");
+                broadcast(
+                        "<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>KILLSTREAK</b></green> <gray>(Items nur alle 3 Kills!)</gray></yellow>");
             }
         }
         for (Player p : Bukkit.getOnlinePlayers()) {
@@ -261,20 +294,26 @@ public class OsokCommand implements BasicCommand {
 
     @Override
     public Collection<String> suggest(CommandSourceStack stack, String[] args) {
+        if (!stack.getSender().isOp()) {
+            return Collections.emptyList();
+        }
         if (args.length <= 1) {
             String current = args.length == 1 ? args[0] : "";
             List<String> subCommands = Arrays.asList(
                     "start", "pause", "dauer", "limit", "itemmode",
                     "killeffect", "itemtest", "clearpfeile",
-                    "setspawn", "resetstats", "resetmap", "help"
-            );
+                    "setspawn", "resetstats", "resetmap", "help");
             return StringUtil.copyPartialMatches(current, subCommands, new ArrayList<>());
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit") || args[0].equalsIgnoreCase("timer"))) {
-            return StringUtil.copyPartialMatches(args[1], Arrays.asList("kills", "minuten", "sekunden", "off", "20k", "10m", "45s"), new ArrayList<>());
+        if (args.length == 2 && (args[0].equalsIgnoreCase("dauer") || args[0].equalsIgnoreCase("limit")
+                || args[0].equalsIgnoreCase("timer"))) {
+            return StringUtil.copyPartialMatches(args[1],
+                    Arrays.asList("kills", "minuten", "sekunden", "off", "20k", "10m", "45s"), new ArrayList<>());
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("itemmode") || args[0].equalsIgnoreCase("itemmodus") || args[0].equalsIgnoreCase("mode"))) {
-            return StringUtil.copyPartialMatches(args[1], Arrays.asList("streak", "spawn", "both", "kombi"), new ArrayList<>());
+        if (args.length == 2 && (args[0].equalsIgnoreCase("itemmode") || args[0].equalsIgnoreCase("itemmodus")
+                || args[0].equalsIgnoreCase("mode"))) {
+            return StringUtil.copyPartialMatches(args[1], Arrays.asList("streak", "spawn", "both", "kombi"),
+                    new ArrayList<>());
         }
         return Collections.emptyList();
     }
