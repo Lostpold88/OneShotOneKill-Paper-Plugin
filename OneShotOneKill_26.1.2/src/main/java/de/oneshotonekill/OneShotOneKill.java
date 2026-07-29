@@ -61,6 +61,9 @@ public class OneShotOneKill extends JavaPlugin {
         // Serverweit erzwungene GameRules (locator_bar) auf alle bereits geladenen Welten anwenden
         WorldManager.applyGlobalGameRulesToAllWorlds();
 
+        // Beim Start aufraeumen: Drachen und TNT aus einem vorherigen Lauf entfernen
+        this.stealthBomberManager.clearAll();
+
         // 4. Paper Dynamic Lifecycle Command Registration (Brigadier BasicCommand)
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             OsokCommand osokCommand = new OsokCommand(this);

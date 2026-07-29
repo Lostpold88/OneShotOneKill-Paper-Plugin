@@ -10,6 +10,8 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
+import org.bukkit.World;
+import org.bukkit.boss.BossBar;
 import org.bukkit.entity.EnderDragon;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -184,9 +186,16 @@ public class StealthBomberManager implements Listener {
             spawned.setSilent(false);
             spawned.getPersistentDataContainer().set(KEY_BOMBER_DRAGON, PersistentDataType.BYTE, (byte) 1);
         });
-        // Erst nach dem Spawn: die Bossleiste existiert vorher noch nicht
-        dragon.getBossBar().setVisible(false);
+        // Sofort registrieren, damit der Drache auch bei einem spaeteren Fehler aufraeumbar bleibt
         activeDragons.add(dragon.getUniqueId());
+
+        // Achtung: getBossBar() ist null, solange der Drache nicht in einer End-Welt mit
+        // Drachenkampf lebt. In der Arena ist das immer der Fall - hier gibt es also
+        // schlicht keine Leiste, die ausgeblendet werden muesste.
+        BossBar bossBar = dragon.getBossBar();
+        if (bossBar != null) {
+            bossBar.setVisible(false);
+        }
 
         Bukkit.broadcast(MiniMessage.miniMessage().deserialize(
                 "<dark_purple>[OSOK] 🐉 <white>" + owner.getName() + "</white> hat den <b>Tarnkappenbomber</b> auf <yellow>"
@@ -256,7 +265,14 @@ public class StealthBomberManager implements Listener {
         }
     }
 
-    /** Entfernt alle aktiven Drachen und Bomben (Plugin-Disable, Map-Wechsel, /osok stop). */
+    /**
+     * Entfernt alle aktiven Drachen und Bomben (Plugin-Enable/Disable, Map-Wechsel,
+     * /osok start und /osok stop).
+     * <p>
+     * Zusaetzlich zu den selbst verwalteten Referenzen werden alle Welten nach
+     * PDC-markierten Bomber-Entities durchsucht. So verschwinden auch Drachen, die durch
+     * einen Fehler oder einen Serverabsturz nie registriert wurden.
+     */
     public void clearAll() {
         for (UUID dragonId : new HashSet<>(activeDragons)) {
             Entity entity = Bukkit.getEntity(dragonId);
@@ -272,6 +288,25 @@ public class StealthBomberManager implements Listener {
             }
         }
         activeBombs.clear();
+
+        int orphans = 0;
+        for (World world : Bukkit.getWorlds()) {
+            for (EnderDragon dragon : world.getEntitiesByClass(EnderDragon.class)) {
+                if (dragon.getPersistentDataContainer().has(KEY_BOMBER_DRAGON, PersistentDataType.BYTE)) {
+                    dragon.remove();
+                    orphans++;
+                }
+            }
+            for (TNTPrimed tnt : world.getEntitiesByClass(TNTPrimed.class)) {
+                if (tnt.getPersistentDataContainer().has(KEY_BOMBER_TNT, PersistentDataType.BYTE)) {
+                    tnt.remove();
+                    orphans++;
+                }
+            }
+        }
+        if (orphans > 0) {
+            plugin.getLogger().info("[OSOK] " + orphans + " verwaiste Tarnkappenbomber-Entities entfernt.");
+        }
     }
 
     // ------------------------------------------------------------------
