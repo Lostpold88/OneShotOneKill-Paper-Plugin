@@ -32,6 +32,7 @@ public class MatchManager {
     private BukkitTask timerTask = null;
     private BukkitTask victoryMusicTask = null;
     private BukkitTask victoryEffectsTask = null;
+    private BukkitTask victoryTitleTask = null;
     private boolean matchStarted = false;
     private boolean matchPaused = false;
     private boolean matchEnded = false;
@@ -40,24 +41,28 @@ public class MatchManager {
         this.plugin = plugin;
     }
 
-    public boolean isMatchStarted() {
-        return matchStarted;
+    public int getKillLimit() {
+        return killLimit;
     }
 
-    public boolean isMatchPaused() {
-        return matchPaused;
+    public int getTimeLimitSeconds() {
+        return timeLimitSeconds;
+    }
+
+    public int getRemainingSeconds() {
+        return remainingSeconds;
     }
 
     public boolean isMatchEnded() {
         return matchEnded;
     }
 
-    public int getKillLimit() {
-        return killLimit;
+    public boolean isMatchStarted() {
+        return matchStarted;
     }
 
-    public int getRemainingSeconds() {
-        return remainingSeconds;
+    public boolean isMatchPaused() {
+        return matchPaused;
     }
 
     public boolean hasKillLimit() {
@@ -179,6 +184,10 @@ public class MatchManager {
             victoryEffectsTask.cancel();
             victoryEffectsTask = null;
         }
+        if (victoryTitleTask != null) {
+            victoryTitleTask.cancel();
+            victoryTitleTask = null;
+        }
     }
 
     public void checkKillWinner(Player killer, int currentKills) {
@@ -209,38 +218,66 @@ public class MatchManager {
 
         int winnerKills = plugin.getScoreboardManager().getKills(winner.getUniqueId());
 
-        Component mainTitle = MiniMessage.miniMessage().deserialize("<yellow><b>🏆 GEWINNER!</b></yellow>");
-        Component subTitle = MiniMessage.miniMessage().deserialize("<white>" + winner.getName() + "</white> <gray>hat gewonnen! (<green>" + winnerKills + " Kills</green>)</gray>");
-        Title.Times times = Title.Times.times(Ticks.duration(10), Ticks.duration(200), Ticks.duration(20));
-        Title winnerTitle = Title.title(mainTitle, subTitle, times);
-
-        // Bildschirm-Banner für ALLE Spieler
+        // Initialer Sound für alle Spieler
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.showTitle(winnerTitle);
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, SoundCategory.MASTER, 1.0f, 1.0f);
         }
 
-        // Chat Ankündigung & Rangliste
+        // Chat Ankündigung mit Regenbogen-Gradient
         broadcast(" ");
-        broadcast("<green><b>=======================================</b></green>");
-        broadcast("<yellow><b>   🏆 MATCH BEENDET - MATCH GEWINNER!   </b></yellow>");
+        broadcast("<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff><b>=======================================</b></gradient>");
+        broadcast("<rainbow><b>   🏆 MATCH BEENDET - MATCH GEWINNER!   </b></rainbow>");
         broadcast("<white>  Gewinner: <yellow><b>" + winner.getName() + "</b></yellow> <gray>mit <green><b>" + winnerKills + " Kills</b></green>!</gray></white>");
         broadcast("<gray>  Starte ein neues Match mit: <yellow>/start</yellow></gray>");
-        broadcast("<green><b>=======================================</b></green>");
+        broadcast("<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff><b>=======================================</b></gradient>");
         broadcast(" ");
 
         // Gewinner Effekte
         winner.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 7200, 0));
         winner.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 7200, 2));
 
-        // Megalovania Endlosschleife & Sieger-Spektakel starten!
-        playWinnerCelebrationLoop(winner);
+        // Megalovania Endlosschleife, Regenbogen-Title-Animation & Sieger-Spektakel starten!
+        playWinnerCelebrationLoop(winner, winnerKills);
     }
 
-    private void playWinnerCelebrationLoop(Player winner) {
+    private void playWinnerCelebrationLoop(Player winner, int winnerKills) {
         stopVictoryTasks();
+
+        // 1. Animierter Regenbogen-Titel auf dem Bildschirm!
+        victoryTitleTask = new BukkitRunnable() {
+            float phase = 0.0f;
+
+            @Override
+            public void run() {
+                if (!matchEnded) {
+                    cancel();
+                    return;
+                }
+
+                phase += 0.08f;
+                if (phase > 2.0f) phase -= 2.0f;
+
+                String phaseStr = String.format(java.util.Locale.US, "%.2f", phase);
+                Component mainTitle = MiniMessage.miniMessage().deserialize(
+                        "<rainbow:" + phaseStr + "><b>🏆 GEWINNER! 🏆</b></rainbow>"
+                );
+                Component subTitle = MiniMessage.miniMessage().deserialize(
+                        "<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff:" + phaseStr + "><b>" + winner.getName() + "</b></gradient> <gray>hat gewonnen! (<green>" + winnerKills + " Kills</green>)</gray>"
+                );
+
+                Title.Times times = Title.Times.times(Ticks.duration(0), Ticks.duration(30), Ticks.duration(10));
+                Title animatedTitle = Title.title(mainTitle, subTitle, times);
+
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    p.showTitle(animatedTitle);
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 2L);
+
+        // 2. Musik-Song (Undertale Megalovania)
         playMegalovaniaSong();
 
+        // 3. Feuerwerk & Partikel-Spektakel
         victoryEffectsTask = new BukkitRunnable() {
             int ticks = 0;
 
