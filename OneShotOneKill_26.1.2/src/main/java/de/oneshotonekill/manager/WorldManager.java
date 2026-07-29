@@ -16,8 +16,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -63,11 +61,15 @@ public class WorldManager {
         String worldName = "OSOK_" + activeMapConfig.getName();
         File containerDir = Bukkit.getWorldContainer();
         File mapFolder = new File(containerDir, worldName);
+        File migratedFolder = new File(containerDir, "world/dimensions/minecraft/" + worldName.toLowerCase());
 
         plugin.getLogger().info("Entpacke initiale Map " + worldName + " aus der JAR...");
         try {
             if (mapFolder.exists()) {
                 deleteDirectory(mapFolder);
+            }
+            if (migratedFolder.exists()) {
+                deleteDirectory(migratedFolder);
             }
             extractEmbeddedMap(activeMapConfig.getZipResource(), mapFolder);
             plugin.getLogger().info("Map " + worldName + " erfolgreich entpackt!");
@@ -127,12 +129,16 @@ public class WorldManager {
         }
         Bukkit.unloadWorld(targetWorldName, false);
 
-        // 4. Ziel-Ordner entpacken (frische Map aus JAR)
+        // 4. Ziel-Ordner & migrierte Dimension löschen (frische Map aus JAR)
         File containerDir = Bukkit.getWorldContainer();
         File mapFolder = new File(containerDir, targetWorldName);
+        File migratedFolder = new File(containerDir, "world/dimensions/minecraft/" + targetWorldName.toLowerCase());
 
         if (mapFolder.exists()) {
             deleteDirectory(mapFolder);
+        }
+        if (migratedFolder.exists()) {
+            deleteDirectory(migratedFolder);
         }
 
         try {
@@ -235,21 +241,6 @@ public class WorldManager {
                             int len;
                             while ((len = zis.read(buffer)) > 0) {
                                 fos.write(buffer, 0, len);
-                            }
-                        }
-
-                        // Dual Dimension Fallback für Paper 1.21
-                        if (name.startsWith("dimensions/minecraft/overworld/")) {
-                            String relName = name.substring("dimensions/minecraft/overworld/".length());
-                            if (!relName.isEmpty()) {
-                                File secondaryFile = new File(targetDir, relName);
-                                File secParent = secondaryFile.getParentFile();
-                                if (secParent != null && !secParent.exists()) {
-                                    secParent.mkdirs();
-                                }
-                                try {
-                                    Files.copy(file.toPath(), secondaryFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                                } catch (Exception ignored) {}
                             }
                         }
                     }
