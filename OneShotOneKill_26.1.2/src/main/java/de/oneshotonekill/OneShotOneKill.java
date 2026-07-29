@@ -60,12 +60,12 @@ public class OneShotOneKill extends JavaPlugin {
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
         getServer().getPluginManager().registerEvents(killEffectCommand, this);
 
-        // 4. Paper Dynamic Lifecycle Command Registration: Nur noch einziger Hauptbefehl /oneshot (Alias: /osok)
+        // 4. Paper Dynamic Lifecycle Command Registration: Nur noch einziger Hauptbefehl /osok
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             Commands registrar = event.registrar();
             OsokCommand osokCommand = new OsokCommand(this);
 
-            registerBasic(registrar, "oneshot", "OneShotOneKill Hauptbefehl", List.of("osok"), osokCommand, osokCommand);
+            registerBasic(registrar, "osok", "OneShotOneKill Hauptbefehl", List.of(), osokCommand, osokCommand);
         });
 
         // 5. Scoreboards für alle bereits verbundenen Spieler aktualisieren

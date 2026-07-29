@@ -59,7 +59,7 @@ Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin
 ## 🚀 Native Paper 26.1.2 Highlights
 
 1. **Native Paper Plugin Architecture**: Erstellt mit `paper-plugin.yml` (`api-version: '1.21'`) für direkte Einordnung unter **Paper Plugins** bei `/pl`.
-2. **Paper Lifecycle Commands API**: Dynamische, überschneidungsfreie Hauptbefehl-Registrierung über `LifecycleEvents.COMMANDS` (ausschließlich `/osok` / `/oneshot`).
+2. **Paper Lifecycle Commands API**: Dynamische, überschneidungsfreie Hauptbefehl-Registrierung über `LifecycleEvents.COMMANDS` (ausschließlich `/osok`).
 3. **Paper Persistent Data Container (PDC)**: Typsichere Identifizierung aller Spezial-Items und Entitäten via `NamespacedKey("oneshotonekill", "special_item_type")`.
 4. **Paper Entity & Region Schedulers**: Thread-safe Aufgabenverwaltung via `player.getScheduler()` und `GlobalRegionScheduler`.
 5. **Paper Spatial Entity Index Engine**: Blitzschnelle räumliche Suchen per `loc.getNearbyPlayers()` und `getNearbyEntitiesByType()`.
@@ -99,7 +99,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 | Befehl | Beschreibung | Berechtigung |
 | :--- | :--- | :--- |
-| `/osok` / `/oneshot` | OSOK Hauptbefehl & Übersicht aller Unterbefehle | Jeder |
+| `/osok` | OSOK Hauptbefehl & Übersicht aller Unterbefehle | Jeder |
 | `/osok start` | Teleportiert alle Spieler zufällig in die Arena & startet ein neues Match | Operator |
 | `/osok pause` | Pausiert / Fortsetzt das aktuelle Match & teleportiert zur Lobby | Operator |
 | `/osok dauer kills <n>` | Setzt ein Kill-Ziel (z. B. `/osok dauer 20k`, aktiv ab `/osok start`) | Operator |
