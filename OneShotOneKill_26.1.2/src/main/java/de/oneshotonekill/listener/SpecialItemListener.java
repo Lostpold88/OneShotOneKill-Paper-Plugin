@@ -23,16 +23,23 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 public class SpecialItemListener implements Listener {
 
+    /** Dauer des Radar-Puls Leuchtens (30 Sekunden). */
+    private static final long RADAR_GLOW_TICKS = 600L;
+
     private final OneShotOneKill plugin;
     private final Set<Location> activeBearTraps = new HashSet<>();
     private final Set<UUID> noFallPlayers = new HashSet<>();
     private final Set<UUID> vanishedPlayers = new HashSet<>();
+    /** Zaehler pro Spieler, damit ein neuer Radar-Puls das Leuchten des vorherigen verlaengert. */
+    private final Map<UUID, Integer> radarGlowGeneration = new HashMap<>();
 
     public SpecialItemListener(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -63,6 +70,7 @@ public class SpecialItemListener implements Listener {
     @EventHandler
     public void onPlayerQuit(org.bukkit.event.player.PlayerQuitEvent event) {
         Player leaver = event.getPlayer();
+        radarGlowGeneration.remove(leaver.getUniqueId());
         if (vanishedPlayers.remove(leaver.getUniqueId())) {
             for (Player other : Bukkit.getOnlinePlayers()) {
                 other.showPlayer(plugin, leaver);
@@ -159,8 +167,7 @@ public class SpecialItemListener implements Listener {
                 int count = 0;
                 for (Player enemy : player.getLocation().getNearbyPlayers(200.0)) {
                     if (!enemy.getUniqueId().equals(player.getUniqueId())) {
-                        // Paper API: particles=false, icon=false -> Das Opfer sieht WEDER Partikel NOCH ein Potion-Icon im HUD!
-                        enemy.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 600, 0, false, false, false));
+                        applyRadarGlow(enemy, RADAR_GLOW_TICKS);
                         count++;
                     }
                 }
@@ -326,6 +333,31 @@ public class SpecialItemListener implements Listener {
 
     private void consumeItem(Player player, ItemStack item) {
         item.subtract(1);
+    }
+
+    /**
+     * Markiert einen Gegner fuer den Radar-Puls.
+     * <p>
+     * Bewusst ueber das Glow-Flag der Entity statt ueber {@code PotionEffectType.GLOWING}:
+     * Ein Potion-Effekt taucht beim Betroffenen immer im Effekt-Fenster des Inventars auf,
+     * selbst mit {@code icon=false}. Ohne Potion-Effekt gibt es fuer ihn nichts zu sehen -
+     * nur die Gegner sehen den Leuchtrahmen.
+     */
+    private void applyRadarGlow(Player target, long durationTicks) {
+        UUID targetId = target.getUniqueId();
+        int generation = radarGlowGeneration.merge(targetId, 1, Integer::sum);
+        target.setGlowing(true);
+
+        // Paper Entity Scheduler: an den Tick des Ziels gebunden
+        target.getScheduler().runDelayed(plugin, task -> {
+            // Nur zuruecksetzen, wenn seither kein neuer Radar-Puls das Ziel erfasst hat
+            if (radarGlowGeneration.getOrDefault(targetId, 0) == generation) {
+                radarGlowGeneration.remove(targetId);
+                if (target.isOnline()) {
+                    target.setGlowing(false);
+                }
+            }
+        }, null, durationTicks);
     }
 
     @EventHandler

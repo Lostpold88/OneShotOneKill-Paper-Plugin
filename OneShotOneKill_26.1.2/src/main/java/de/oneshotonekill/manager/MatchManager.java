@@ -138,6 +138,20 @@ public class MatchManager {
         broadcast("<yellow>[OSOK] 🔄 Match-Limits (Kills & Zeit) wurden deaktiviert.</yellow>");
     }
 
+    /**
+     * Beendet ein laufendes Match ohne Sieger-Zeremonie und ohne Broadcast.
+     * Konfigurierte Limits (Kills/Zeit) bleiben erhalten und gelten beim naechsten /osok start.
+     * Wird u. a. beim Map-Wechsel verwendet.
+     */
+    public void stopMatch() {
+        stopTimer();
+        stopVictoryTasks();
+        this.matchStarted = false;
+        this.matchPaused = false;
+        this.matchEnded = false;
+        this.remainingSeconds = this.timeLimitSeconds;
+    }
+
     private void startTimer() {
         stopTimer();
         timerTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
@@ -366,16 +380,21 @@ public class MatchManager {
             return;
         }
 
-        matchPaused = !matchPaused;
+        Location lobbyLoc = plugin.getWorldManager().getSpawnLocation();
+        if (lobbyLoc == null) {
+            if (sender != null) {
+                sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Die Arena-Welt ist aktuell nicht geladen!</red>"));
+            }
+            return;
+        }
 
-        Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
-        Location fallback = (spawnLoc != null) ? spawnLoc : new Location(plugin.getWorldManager().getOsokWorld(), 223.5, 48.0, 55.5);
+        matchPaused = !matchPaused;
 
         if (matchPaused) {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_DIDGERIDOO, Sound.Source.MASTER, 1.0f, 0.8f));
                 plugin.getEquipmentManager().clearBaseEquipment(p);
-                p.teleportAsync(fallback);
+                p.teleportAsync(lobbyLoc);
             }
 
             broadcast(" ");
@@ -387,7 +406,7 @@ public class MatchManager {
         } else {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
-                Location targetLoc = (randomLoc != null) ? randomLoc : fallback;
+                Location targetLoc = (randomLoc != null) ? randomLoc : lobbyLoc;
                 p.teleportAsync(targetLoc).thenAccept(success -> {
                     if (success && p.isOnline()) {
                         plugin.getEquipmentManager().giveOneShotEquipment(p);
@@ -413,6 +432,10 @@ public class MatchManager {
         this.matchStarted = true;
         this.matchPaused = false;
         this.matchEnded = false;
+
+        // Standard-Item-Modus bei jedem Start: BOTH (Killstreak-Items + Boden-Item-Boxen).
+        // Gilt unabhaengig von der aktiven Arena.
+        plugin.getKillstreakManager().setItemMode(KillstreakManager.ItemMode.BOTH);
 
         Location spawn = plugin.getWorldManager().getSpawnLocation();
         int count = 0;

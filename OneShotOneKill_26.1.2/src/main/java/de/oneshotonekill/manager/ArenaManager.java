@@ -27,14 +27,35 @@ public class ArenaManager {
         return spawnLoc != null ? spawnLoc : osokWorld.getSpawnLocation();
     }
 
+    /**
+     * Spawnpunkt fuer Boden-Items: ausschliesslich auf dem Arena-Boden.
+     * Liefert {@code null}, wenn kein Bodenplatz gefunden wurde - dann wird kein Item gespawnt,
+     * statt es an einem falschen Ort (z. B. in der Lobby) abzulegen.
+     */
+    public Location getRandomFloorLocation() {
+        World osokWorld = plugin.getWorldManager().getOsokWorld();
+        if (osokWorld == null) return null;
+
+        MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
+        return activeMap != null ? activeMap.getRandomFloorLocation(osokWorld) : null;
+    }
+
+    /**
+     * Prueft die Welt-Zugehoerigkeit gegen die tatsaechlich aktive OSOK-Welt.
+     * Ein Vergleich gegen einen festen Weltnamen ist nicht moeglich, da die Welten
+     * je nach aktiver Map OSOK_Standard bzw. OSOK_DustPvP heissen.
+     */
     public boolean isInArenaArea(Location loc) {
-        if (loc == null || loc.getWorld() == null || !loc.getWorld().getName().equalsIgnoreCase("OSOK")) {
+        if (loc == null || loc.getWorld() == null) {
             return false;
         }
-        MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
-        if (activeMap != null) {
-            return activeMap.isInArenaArea(loc);
+
+        World osokWorld = plugin.getWorldManager().getOsokWorld();
+        if (osokWorld == null || !loc.getWorld().equals(osokWorld)) {
+            return false;
         }
-        return false;
+
+        MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
+        return activeMap != null && activeMap.isInArenaArea(loc);
     }
 }

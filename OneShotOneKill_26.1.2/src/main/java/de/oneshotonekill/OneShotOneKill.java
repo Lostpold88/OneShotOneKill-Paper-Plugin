@@ -5,6 +5,7 @@ import de.oneshotonekill.command.OsokCommand;
 import de.oneshotonekill.listener.CombatListener;
 import de.oneshotonekill.listener.PlayerConnectionListener;
 import de.oneshotonekill.listener.SpecialItemListener;
+import de.oneshotonekill.listener.WorldRuleListener;
 import de.oneshotonekill.manager.ArenaManager;
 import de.oneshotonekill.manager.EquipmentManager;
 import de.oneshotonekill.manager.KillEffectManager;
@@ -47,7 +48,11 @@ public class OneShotOneKill extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
         getServer().getPluginManager().registerEvents(new SpecialItemListener(this), this);
+        getServer().getPluginManager().registerEvents(new WorldRuleListener(), this);
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
+
+        // Serverweit erzwungene GameRules (locator_bar) auf alle bereits geladenen Welten anwenden
+        WorldManager.applyGlobalGameRulesToAllWorlds();
 
         // 4. Paper Dynamic Lifecycle Command Registration (Brigadier BasicCommand)
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
