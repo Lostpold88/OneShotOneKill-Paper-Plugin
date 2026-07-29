@@ -46,6 +46,8 @@ public class WorldManager {
                 new Location(null, 223.5, 48.0, 55.5),
                 221.0, 287.0, 58.0, 64.0, -106.0, -50.0
         );
+        // Boden-Item-Boxen duerfen auf Standard hoechstens auf Y=61 liegen
+        standardMap.setMaxItemSpawnY(61.0);
         availableMaps.put("standard", standardMap);
 
         // DustPvP Map (OSOK_DustPvP) - Arena-Ecken: (-25, 70, 33) / (25, 70, -33)
@@ -55,6 +57,8 @@ public class WorldManager {
                 new Location(null, 0.5, 90.0, 0.5),
                 -25.0, 25.0, 70.0, 70.0, -33.0, 33.0
         );
+        // DustPvP ist eine flache Ebene auf Y=70, die Box liegt also auf Y=71
+        dustPvPMap.setMaxItemSpawnY(71.0);
         availableMaps.put("dustpvp", dustPvPMap);
 
         this.activeMapConfig = standardMap;
@@ -229,6 +233,8 @@ public class WorldManager {
         world.setGameRule(GameRules.SPAWN_MOBS, false);
         world.setGameRule(GameRules.SPAWN_PATROLS, false);
         world.setGameRule(GameRules.SPAWN_WANDERING_TRADERS, false);
+        // Zusaetzlicher Schutz der Map: kein Entity soll Bloecke veraendern koennen
+        world.setGameRule(GameRules.MOB_GRIEFING, false);
         applyGlobalGameRules(world);
     }
 

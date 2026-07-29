@@ -304,6 +304,14 @@ public class SpecialItemListener implements Listener {
                 return;
             }
 
+            // Tarnkappenbomber: oeffnet nur die Zielauswahl.
+            // Der Verbrauch erfolgt erst bei der Auswahl des Ziels im Menue.
+            if (KillstreakManager.KEY_STEALTH_BOMBER.equals(typeId)) {
+                event.setCancelled(true);
+                plugin.getStealthBomberManager().openTargetMenu(player);
+                return;
+            }
+
             // Raketen-Sprung (20 Sekunden Fallschutz & Air-Sprint Geschwindigkeit)
             if (KillstreakManager.KEY_ROCKET_JUMP.equals(typeId)) {
                 event.setCancelled(true);
@@ -412,7 +420,7 @@ public class SpecialItemListener implements Listener {
                 int chained = 0;
                 for (Player victim : loc.getNearbyPlayers(8.0)) {
                     if (!victim.getUniqueId().equals(shooter.getUniqueId())) {
-                        victim.damage(1000.0, shooter);
+                        plugin.getEliminationManager().eliminate(victim, shooter);
                         victim.getWorld().strikeLightningEffect(victim.getLocation());
                         chained++;
                         if (chained >= 2) break;
@@ -431,7 +439,7 @@ public class SpecialItemListener implements Listener {
             if (arrow.getShooter() instanceof Player shooter) {
                 for (Player victim : loc.getNearbyPlayers(7.0)) {
                     if (!victim.getUniqueId().equals(shooter.getUniqueId())) {
-                        victim.damage(1000.0, shooter);
+                        plugin.getEliminationManager().eliminate(victim, shooter);
                     }
                 }
             }

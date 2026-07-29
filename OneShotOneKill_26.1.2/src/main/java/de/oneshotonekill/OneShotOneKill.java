@@ -7,7 +7,9 @@ import de.oneshotonekill.listener.PlayerConnectionListener;
 import de.oneshotonekill.listener.SpecialItemListener;
 import de.oneshotonekill.listener.WorldRuleListener;
 import de.oneshotonekill.manager.ArenaManager;
+import de.oneshotonekill.manager.EliminationManager;
 import de.oneshotonekill.manager.EquipmentManager;
+import de.oneshotonekill.manager.StealthBomberManager;
 import de.oneshotonekill.manager.KillEffectManager;
 import de.oneshotonekill.manager.KillstreakManager;
 import de.oneshotonekill.manager.MatchManager;
@@ -27,6 +29,8 @@ public class OneShotOneKill extends JavaPlugin {
     private KillstreakManager killstreakManager;
     private KillEffectManager killEffectManager;
     private MatchManager matchManager;
+    private EliminationManager eliminationManager;
+    private StealthBomberManager stealthBomberManager;
 
     @Override
     public void onEnable() {
@@ -38,6 +42,8 @@ public class OneShotOneKill extends JavaPlugin {
         this.killstreakManager = new KillstreakManager(this);
         this.killEffectManager = new KillEffectManager();
         this.matchManager = new MatchManager(this);
+        this.eliminationManager = new EliminationManager(this);
+        this.stealthBomberManager = new StealthBomberManager(this);
 
         // 2. Map & Welt laden
         this.worldManager.setupWorld();
@@ -49,6 +55,7 @@ public class OneShotOneKill extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
         getServer().getPluginManager().registerEvents(new SpecialItemListener(this), this);
         getServer().getPluginManager().registerEvents(new WorldRuleListener(), this);
+        getServer().getPluginManager().registerEvents(this.stealthBomberManager, this);
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
 
         // Serverweit erzwungene GameRules (locator_bar) auf alle bereits geladenen Welten anwenden
@@ -79,6 +86,17 @@ public class OneShotOneKill extends JavaPlugin {
         if (killstreakManager != null) {
             killstreakManager.clearAllGroundItems();
         }
+        if (stealthBomberManager != null) {
+            stealthBomberManager.clearAll();
+        }
+    }
+
+    public EliminationManager getEliminationManager() {
+        return eliminationManager;
+    }
+
+    public StealthBomberManager getStealthBomberManager() {
+        return stealthBomberManager;
     }
 
     public WorldManager getWorldManager() {

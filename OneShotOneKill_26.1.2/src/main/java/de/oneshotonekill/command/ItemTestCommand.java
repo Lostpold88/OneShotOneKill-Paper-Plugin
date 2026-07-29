@@ -1,6 +1,7 @@
 package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
+import de.oneshotonekill.manager.KillstreakManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
@@ -19,7 +20,7 @@ import org.bukkit.inventory.Inventory;
 public class ItemTestCommand implements Listener {
 
     private final OneShotOneKill plugin;
-    public static final Component GUI_TITLE = MiniMessage.miniMessage().deserialize("<yellow><b>🧪 Spezial-Item Test-Menü (11 Items)</b></yellow>");
+    public static final Component GUI_TITLE = MiniMessage.miniMessage().deserialize("<yellow><b>🧪 Spezial-Item Test-Menü (12 Items)</b></yellow>");
 
     public ItemTestCommand(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -28,7 +29,7 @@ public class ItemTestCommand implements Listener {
     public void openTestGui(Player player) {
         Inventory gui = Bukkit.createInventory(null, 18, GUI_TITLE);
 
-        for (int i = 0; i < 11; i++) {
+        for (int i = 0; i < KillstreakManager.SPECIAL_ITEM_COUNT; i++) {
             gui.setItem(i, getTestItemForSlot(i));
         }
 
@@ -46,7 +47,7 @@ public class ItemTestCommand implements Listener {
 
             if (event.getWhoClicked() instanceof Player player) {
                 int slot = event.getRawSlot();
-                if (slot >= 0 && slot < 11) {
+                if (slot >= 0 && slot < KillstreakManager.SPECIAL_ITEM_COUNT) {
                     plugin.getKillstreakManager().giveSpecificSpecialItem(player, slot, 0);
                 }
             }
