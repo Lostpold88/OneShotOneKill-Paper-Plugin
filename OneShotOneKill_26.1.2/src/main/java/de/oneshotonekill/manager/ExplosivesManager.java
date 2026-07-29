@@ -48,10 +48,10 @@ import java.util.function.Consumer;
  * Beide nutzen dieselbe Sprengung: {@code createExplosion(..., breakBlocks = false)} richtet
  * gewaltigen Schaden an, kann die Map aber grundsaetzlich nicht beschaedigen - es werden gar
  * keine Bloecke angetastet, statt eine Blockliste nachtraeglich zu leeren.
+ * Die C4 sprengt dabei mit groesserer Reichweite als eine Air-Strike-Bombe.
  * <p>
- * Als Verursacher wird der ausloesende Spieler uebergeben. Damit laeuft der Schaden durch die
- * normale Pipeline und {@code CombatListener#resolveKiller} schreibt einen toedlichen Treffer
- * korrekt dem Ausloeser zu.
+ * Getroffen wird <b>jeder</b> Spieler in Reichweite, auch der Ausloeser - Details siehe
+ * {@link #blast(Location, Player, float)}.
  */
 public class ExplosivesManager implements Listener {
 
@@ -65,8 +65,10 @@ public class ExplosivesManager implements Listener {
     private static final NamespacedKey KEY_TARGET_X = new NamespacedKey("oneshotonekill", "airstrike_target_x");
     private static final NamespacedKey KEY_TARGET_Z = new NamespacedKey("oneshotonekill", "airstrike_target_z");
 
-    /** Sprengkraft. Vanilla-TNT liegt bei 4.0 - das hier ist deutlich gewaltiger. */
-    private static final float BLAST_POWER = 8.0f;
+    /** Sprengkraft einer Air-Strike-Bombe. Vanilla-TNT liegt bei 4.0. */
+    private static final float AIRSTRIKE_BLAST_POWER = 8.0f;
+    /** Sprengkraft einer C4-Ladung - bewusst groesser, da sie gezielt platziert wird. */
+    private static final float C4_BLAST_POWER = 12.0f;
 
     private static final int GUI_COLS = 9;
     private static final int GUI_ROWS = 6;
@@ -116,21 +118,23 @@ public class ExplosivesManager implements Listener {
      * {@link #currentBlastOwner} hinterlegt. Das ist zuverlaessig, weil
      * {@code createExplosion} synchron laeuft und die Schadensevents unmittelbar ausloest.
      */
-    private void blast(Location loc, Player owner) {
+    private void blast(Location loc, Player owner, float power) {
         World world = loc.getWorld();
         if (world == null) return;
 
         // breakBlocks = false -> die Map kann nicht beschaedigt werden. setFire = false -> kein Feuer.
         this.currentBlastOwner = (owner != null && owner.isOnline()) ? owner : null;
         try {
-            world.createExplosion(loc, BLAST_POWER, false, false);
+            world.createExplosion(loc, power, false, false);
         } finally {
             this.currentBlastOwner = null;
         }
 
-        world.spawnParticle(Particle.EXPLOSION_EMITTER, loc, 8, 2.5, 1.5, 2.5, 0.0);
-        world.spawnParticle(Particle.FLAME, loc, 160, 3.5, 2.0, 3.5, 0.12);
-        world.spawnParticle(Particle.LARGE_SMOKE, loc, 90, 3.0, 2.0, 3.0, 0.08);
+        // Partikelradius skaliert mit der Sprengkraft, damit die Optik zur Reichweite passt
+        double spread = power / 3.0;
+        world.spawnParticle(Particle.EXPLOSION_EMITTER, loc, 8, spread, spread * 0.6, spread, 0.0);
+        world.spawnParticle(Particle.FLAME, loc, 160, spread * 1.4, 2.0, spread * 1.4, 0.12);
+        world.spawnParticle(Particle.LARGE_SMOKE, loc, 90, spread * 1.2, 2.0, spread * 1.2, 0.08);
         world.playSound(Sound.sound(org.bukkit.Sound.ENTITY_GENERIC_EXPLODE, Sound.Source.MASTER, 1.0f, 0.55f),
                 loc.x(), loc.y(), loc.z());
     }
@@ -330,7 +334,7 @@ public class ExplosivesManager implements Listener {
                 activeBombs.remove(bomb);
                 // Eigene Sprengung statt der Vanilla-Explosion des TNT: garantiert ohne Blockschaden
                 bomb.remove();
-                blast(impact, owner);
+                blast(impact, owner, AIRSTRIKE_BLAST_POWER);
             }
         }, 1L, 1L);
     }
@@ -410,7 +414,7 @@ public class ExplosivesManager implements Listener {
             if (!charge.isValid()) continue;
             Location loc = charge.getLocation().clone().add(0.5, 0.5, 0.5);
             charge.remove();
-            blast(loc, owner);
+            blast(loc, owner, C4_BLAST_POWER);
             detonated++;
         }
 

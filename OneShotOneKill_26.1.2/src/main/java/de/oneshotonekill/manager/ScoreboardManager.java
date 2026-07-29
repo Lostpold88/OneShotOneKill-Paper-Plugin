@@ -67,14 +67,29 @@ public class ScoreboardManager {
 
         lineId = addScoreLine(obj, SEPARATOR, scorePos--, lineId);
 
-        if (plugin != null && plugin.getMatchManager() != null && plugin.getMatchManager().isMatchStarted() && !plugin.getMatchManager().isMatchEnded()) {
-            if (plugin.getMatchManager().hasKillLimit()) {
+        // Match-Ziel: wird angezeigt, sobald ein Limit konfiguriert ist - nicht erst ab /osok start.
+        // Solange das Match nicht laeuft, weist ein Zusatz darauf hin.
+        MatchManager match = (plugin != null) ? plugin.getMatchManager() : null;
+        if (match != null && !match.isMatchEnded()) {
+            boolean running = match.isMatchStarted();
+            String pendingHint = running ? "" : " <dark_gray>(ab /osok start)</dark_gray>";
+
+            if (match.hasKillLimit()) {
                 lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize(
-                        "<yellow><b>🎯 MATCH ZIEL:</b></yellow> <white>" + plugin.getMatchManager().getKillLimit() + " Kills</white>"), scorePos--, lineId);
+                        "<yellow><b>🎯 MATCH ZIEL:</b></yellow> <white>" + match.getKillLimit() + " Kills</white>" + pendingHint), scorePos--, lineId);
+
+                if (running) {
+                    int remaining = Math.max(0, match.getKillLimit() - getKills(player.getUniqueId()));
+                    lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize(
+                            "<gold>➜ Du brauchst noch <yellow><b>" + remaining + "</b></yellow> "
+                                    + (remaining == 1 ? "Kill" : "Kills") + "</gold>"), scorePos--, lineId);
+                }
                 lineId = addScoreLine(obj, SEPARATOR, scorePos--, lineId);
-            } else if (plugin.getMatchManager().hasTimeLimit()) {
+
+            } else if (match.getTimeLimitSeconds() > 0) {
+                int shownSeconds = running ? match.getRemainingSeconds() : match.getTimeLimitSeconds();
                 lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize(
-                        "<yellow><b>⏱ VERBLEIBEND:</b></yellow> <white>" + plugin.getMatchManager().formatTime(plugin.getMatchManager().getRemainingSeconds()) + "</white>"), scorePos--, lineId);
+                        "<yellow><b>⏱ VERBLEIBEND:</b></yellow> <white>" + match.formatTime(shownSeconds) + "</white>" + pendingHint), scorePos--, lineId);
                 lineId = addScoreLine(obj, SEPARATOR, scorePos--, lineId);
             }
         }

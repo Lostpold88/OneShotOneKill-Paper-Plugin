@@ -25,6 +25,9 @@ import java.util.UUID;
  */
 public class EliminationManager {
 
+    /** Ab so vielen verbleibenden Kills wird der Spieler an sein Match-Ziel erinnert. */
+    private static final int KILL_LIMIT_WARN_THRESHOLD = 5;
+
     private final OneShotOneKill plugin;
     /** Verhindert Mehrfach-Eliminierung im selben Tick (z. B. Explosion + Pfeil gleichzeitig). */
     private final Set<UUID> inProgress = new HashSet<>();
@@ -42,6 +45,28 @@ public class EliminationManager {
         if (victim == null || !victim.isOnline()) return;
 
         UUID victimId = victim.getUniqueId();
+
+        // Reflektor-Schild: faengt JEDE Eliminierung ab, nicht nur direkte Treffer.
+        // Die Pruefung sitzt bewusst hier und nicht im CombatListener, denn Kettenblitz,
+        // Explosiv-Pfeil, Bomber-TNT, Air-Strike, C4 und Sturzschaden erreichen den
+        // CombatListener-Nahkampfzweig nie und wuerden das Schild sonst umgehen.
+        // Steht vor der inProgress-Sperre, damit ein zweiter Treffer im selben Tick
+        // korrekt toetet, statt ebenfalls blockiert zu werden.
+        if (plugin.getKillstreakManager().hasShield(victimId)) {
+            plugin.getKillstreakManager().removeShield(victimId);
+
+            victim.playSound(Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BREAK, Sound.Source.MASTER, 1.0f, 1.0f));
+            victim.sendMessage(MiniMessage.miniMessage().deserialize(
+                    "<aqua>[OSOK] [🛡] Dein Reflektor-Schild hat den tödlichen Treffer abgewehrt!</aqua>"));
+
+            if (killer != null && killer.isOnline() && !killer.getUniqueId().equals(victimId)) {
+                killer.playSound(Sound.sound(org.bukkit.Sound.ITEM_SHIELD_BLOCK, Sound.Source.MASTER, 1.0f, 0.8f));
+                killer.sendMessage(MiniMessage.miniMessage().deserialize(
+                        "<red>[OSOK] [🛡] Treffer abgeprallt! " + victim.getName() + " hatte ein Reflektor-Schild!</red>"));
+            }
+            return;
+        }
+
         if (!inProgress.add(victimId)) {
             return;
         }
@@ -85,6 +110,7 @@ public class EliminationManager {
                     "<red>🎯 " + victim.getName() + " <gray>wurde von <yellow>" + killer.getName() + "</yellow> ausgeschaltet!</gray></red>");
             Bukkit.broadcast(deathMessage);
 
+            notifyKillLimitProgress(killer, kills);
             plugin.getMatchManager().checkKillWinner(killer, kills);
         } else {
             Bukkit.broadcast(MiniMessage.miniMessage().deserialize(
@@ -93,6 +119,28 @@ public class EliminationManager {
 
         returnToPlay(victim);
         scoreboard.updateAllScoreboards();
+    }
+
+    /**
+     * Erinnert den Killer daran, wie viele Kills ihm noch zum Sieg fehlen.
+     * Greift nur, wenn Kills das aktive Match-Limit sind, und ab
+     * {@link #KILL_LIMIT_WARN_THRESHOLD} verbleibenden Kills abwaerts.
+     */
+    private void notifyKillLimitProgress(Player killer, int kills) {
+        MatchManager match = plugin.getMatchManager();
+        if (match == null || !match.hasKillLimit()) return;
+
+        int remaining = match.getKillLimit() - kills;
+        if (remaining <= 0 || remaining > KILL_LIMIT_WARN_THRESHOLD) return;
+
+        String killWord = (remaining == 1) ? "Kill" : "Kills";
+        Component message = MiniMessage.miniMessage().deserialize(
+                "<gold>[OSOK] 🎯 Nur noch <yellow><b>" + remaining + "</b></yellow> " + killWord + " bis zum <b>Sieg</b>!</gold>");
+
+        killer.sendMessage(message);
+        killer.sendActionBar(MiniMessage.miniMessage().deserialize(
+                "<gold><b>" + remaining + " " + killWord + " bis zum Sieg!</b></gold>"));
+        killer.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_BELL, Sound.Source.MASTER, 1.0f, 1.6f));
     }
 
     /**
@@ -124,7 +172,9 @@ public class EliminationManager {
                 } else {
                     plugin.getEquipmentManager().clearBaseEquipment(victim);
                 }
-                victim.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, Sound.Source.MASTER, 0.8f, 1.4f));
+                // Sterbe-Sound statt Teleport-Sound: Der Spieler wurde eliminiert,
+                // nicht teleportiert - auch wenn technisch ein Teleport dahintersteckt.
+                victim.playSound(Sound.sound(org.bukkit.Sound.ENTITY_PLAYER_DEATH, Sound.Source.MASTER, 1.0f, 1.0f));
             }
         });
     }
