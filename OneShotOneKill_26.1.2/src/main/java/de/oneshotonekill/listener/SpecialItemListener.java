@@ -222,7 +222,7 @@ public class SpecialItemListener implements Listener {
 
                 Location randomLoc = plugin.getArenaManager().getRandomArenaLocation();
                 if (randomLoc != null) {
-                    player.teleport(randomLoc);
+                    player.teleportAsync(randomLoc);
                     plugin.getEquipmentManager().giveOneShotEquipment(player);
                     plugin.getScoreboardManager().updateAllScoreboards();
                     player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, SoundCategory.MASTER, 1.0f, 1.2f);
