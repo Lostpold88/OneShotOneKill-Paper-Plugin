@@ -184,11 +184,12 @@ public class StealthBomberManager implements Listener {
 
         EnderDragon dragon = target.getWorld().spawn(spawnLoc, EnderDragon.class, spawned -> {
             spawned.setPhase(EnderDragon.Phase.HOVER);
-            // Kein Angriffsverhalten: Der Drache soll ausschliesslich folgen und bomben.
-            // Hinweis: setAI(false) unterbindet beim EnderDragon die Flugbewegung NICHT,
-            // da er sie in aiStep() ueber sein Phasensystem abwickelt. Die Positionierung
-            // uebernimmt daher der Verfolgungs-Task per Teleport + Phasen-Reset.
-            spawned.setAI(false);
+            // Bewusst KEIN setAI(false): Das NoAI-Flag wird zum Client synchronisiert und
+            // der Drache ist ein mehrteiliges Modell, dessen Segmente clientseitig in
+            // aiStep() nachgefuehrt werden. Mit NoAI bleibt das Modell optisch stehen,
+            // obwohl die Entity serverseitig nachweislich mitwandert.
+            // Aggression wird stattdessen ueber setAware(false), Unverwundbarkeit und das
+            // Cancelling saemtlichen Drachenschadens unterbunden.
             spawned.setAware(false);
             spawned.setInvulnerable(true);
             spawned.setGravity(false);
@@ -246,11 +247,14 @@ public class StealthBomberManager implements Listener {
                 dragon.setPhase(EnderDragon.Phase.CIRCLING);
                 dragon.setPhase(EnderDragon.Phase.HOVER);
 
-                if (elapsed <= 2) {
-                    plugin.getLogger().info("[OSOK] Bomber-Diagnose: teleport=" + teleported
-                            + " vorher=" + formatLoc(before)
-                            + " ziel=" + formatLoc(above)
-                            + " nachher=" + formatLoc(dragon.getLocation()));
+                // Diagnose ueber die volle Dauer (1x pro Sekunde), inklusive Spielerposition:
+                // nur so laesst sich erkennen, ob der Drache einem BEWEGTEN Ziel folgt.
+                if (elapsed % 20 == 0) {
+                    plugin.getLogger().info("[OSOK] Bomber-Diagnose t=" + (elapsed / 20) + "s"
+                            + " teleport=" + teleported
+                            + " spieler=" + formatLoc(target.getLocation())
+                            + " drache_vorher=" + formatLoc(before)
+                            + " drache_nachher=" + formatLoc(dragon.getLocation()));
                 }
 
                 if (elapsed % TNT_DROP_INTERVAL_TICKS == 0) {
