@@ -77,11 +77,24 @@ public class EliminationManager {
 
         plugin.getKillEffectManager().playKillEffect(deathLoc);
 
+        // /osok pausestats: Der Treffer wirkt normal (Effekt, Respawn), wird aber nicht gewertet.
+        boolean tracking = !plugin.getMatchManager().isStatsPaused();
+
+        boolean hasKiller = killer != null && killer.isOnline() && !killer.getUniqueId().equals(victimId);
+
+        if (!tracking) {
+            if (hasKiller) {
+                killer.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ARROW_HIT_PLAYER, Sound.Source.MASTER, 1.0f, 1.2f));
+                killer.sendMessage(MiniMessage.miniMessage().deserialize(
+                        "<gray>[OSOK] Du hast <yellow>" + victim.getName() + "</yellow> eliminiert - <b>wird aktuell nicht gewertet</b> (Statistik eingefroren).</gray>"));
+            }
+            returnToPlay(victim);
+            return;
+        }
+
         boolean wasBounty = scoreboard.removeBountyTarget(victimId);
         scoreboard.addDeath(victimId);
         scoreboard.resetStreak(victimId);
-
-        boolean hasKiller = killer != null && killer.isOnline() && !killer.getUniqueId().equals(victimId);
 
         if (hasKiller) {
             int kills = scoreboard.addKill(killer.getUniqueId());

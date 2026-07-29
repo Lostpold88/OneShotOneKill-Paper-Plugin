@@ -68,12 +68,20 @@ public class ScoreboardManager {
     }
 
     public void updateAllScoreboards() {
+        MatchManager match = plugin.getMatchManager();
+        boolean frozen = match != null && match.isStatsPaused();
+
         // Rangliste einmal berechnen statt pro Spieler erneut
         List<Player> ranking = Bukkit.getOnlinePlayers().stream()
                 .sorted(Comparator.comparingInt((Player p) -> getKills(p.getUniqueId())).reversed())
                 .collect(Collectors.toList());
 
         for (Player p : Bukkit.getOnlinePlayers()) {
+            // Eingefroren (/osok pausestats): bestehende Boards bleiben unangetastet.
+            // Wer erst jetzt verbindet, bekommt aber eines - sonst haette er keine Sidebar.
+            if (frozen && boards.containsKey(p.getUniqueId())) {
+                continue;
+            }
             updateScoreboard(p, ranking);
             updateTabListName(p);
             p.sendPlayerListHeaderAndFooter(TAB_HEADER, TAB_FOOTER);
@@ -145,23 +153,14 @@ public class ScoreboardManager {
 
         MatchManager match = plugin.getMatchManager();
         if (match != null && !match.isMatchEnded()) {
-            boolean running = match.isMatchStarted();
-            String pendingHint = running ? "" : " <dark_gray>(ab /osok start)</dark_gray>";
-
             if (match.hasKillLimit()) {
                 lines.add(MiniMessage.miniMessage().deserialize(
-                        "<yellow><b>🎯 MATCH ZIEL:</b></yellow> <white>" + match.getKillLimit() + " Kills</white>" + pendingHint));
-                if (running) {
-                    int remaining = Math.max(0, match.getKillLimit() - getKills(player.getUniqueId()));
-                    lines.add(MiniMessage.miniMessage().deserialize(
-                            "<gold>➜ Du brauchst noch <yellow><b>" + remaining + "</b></yellow> "
-                                    + (remaining == 1 ? "Kill" : "Kills") + "</gold>"));
-                }
+                        "<yellow><b>🎯 MATCH ZIEL:</b></yellow> <white>" + match.getKillLimit() + " Kills</white>"));
                 lines.add(SEPARATOR);
             } else if (match.getTimeLimitSeconds() > 0) {
-                int shownSeconds = running ? match.getRemainingSeconds() : match.getTimeLimitSeconds();
+                int shownSeconds = match.isMatchStarted() ? match.getRemainingSeconds() : match.getTimeLimitSeconds();
                 lines.add(MiniMessage.miniMessage().deserialize(
-                        "<yellow><b>⏱ VERBLEIBEND:</b></yellow> <white>" + match.formatTime(shownSeconds) + "</white>" + pendingHint));
+                        "<yellow><b>⏱ VERBLEIBEND:</b></yellow> <white>" + match.formatTime(shownSeconds) + "</white>"));
                 lines.add(SEPARATOR);
             }
         }

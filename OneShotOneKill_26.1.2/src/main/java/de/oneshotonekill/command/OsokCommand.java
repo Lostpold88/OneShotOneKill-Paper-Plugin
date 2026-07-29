@@ -56,6 +56,7 @@ public class OsokCommand implements BasicCommand {
             msg(sender, "<gray>/osok start <dark_gray>-</dark_gray> <white>Match starten, Scoreboard zurücksetzen & alle zufällig in die Arena spawnen (Admin)</white></gray>");
             msg(sender, "<gray>/osok stop <dark_gray>-</dark_gray> <white>Spiel beenden, Scoreboard zurücksetzen & alle in die Lobby teleportieren (Admin)</white></gray>");
             msg(sender, "<gray>/osok pause <dark_gray>-</dark_gray> <white>Match pausieren / fortsetzen (Admin)</white></gray>");
+            msg(sender, "<gray>/osok pausestats <dark_gray>-</dark_gray> <white>Kill- und Zeitwertung einfrieren / fortsetzen, Scoreboard bleibt stehen (Admin)</white></gray>");
             msg(sender, "<gray>/osok map <Standard|DustPvP> <dark_gray>-</dark_gray> <white>Dynamisch zwischen Arenen wechseln (Admin)</white></gray>");
             msg(sender, "<gray>/osok dauer [kills|minuten|sekunden|off] [Anzahl] <dark_gray>-</dark_gray> <white>Match-Dauer/Ziel festlegen (Admin)</white></gray>");
             msg(sender, "<gray>/osok itemmode [streak|spawn|both] <dark_gray>-</dark_gray> <white>Item-Modus umschalten (Admin)</white></gray>");
@@ -77,6 +78,11 @@ public class OsokCommand implements BasicCommand {
 
         if (sub.equals("stop") || sub.equals("beenden")) {
             plugin.getMatchManager().stopGame(player);
+            return;
+        }
+
+        if (sub.equals("pausestats") || sub.equals("statspause")) {
+            plugin.getMatchManager().toggleStatsPause(sender);
             return;
         }
 
@@ -235,7 +241,7 @@ public class OsokCommand implements BasicCommand {
         if (args.length <= 1) {
             String current = args.length == 1 ? args[0] : "";
             List<String> subCommands = Arrays.asList(
-                    "start", "stop", "pause", "map", "dauer", "limit", "itemmode",
+                    "start", "stop", "pause", "pausestats", "map", "dauer", "limit", "itemmode",
                     "itemtest", "clearpfeile", "setspawn",
                     "resetstats", "resetmap", "help"
             );

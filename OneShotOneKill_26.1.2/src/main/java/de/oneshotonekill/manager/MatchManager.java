@@ -8,6 +8,7 @@ import net.kyori.adventure.title.Title;
 import net.kyori.adventure.util.Ticks;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.command.CommandSender;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -35,6 +36,12 @@ public class MatchManager {
     private boolean matchStarted = false;
     private boolean matchPaused = false;
     private boolean matchEnded = false;
+    /**
+     * Statistik-Erfassung eingefroren (/osok pausestats). Kills, Tode und Streaks werden
+     * nicht gezaehlt, der Match-Timer laeuft nicht weiter und das Scoreboard aktualisiert
+     * nicht mehr. Gekaempft werden darf weiterhin - die Treffer zaehlen nur nicht.
+     */
+    private boolean statsPaused = false;
 
     public MatchManager(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -62,6 +69,35 @@ public class MatchManager {
 
     public boolean isMatchPaused() {
         return matchPaused;
+    }
+
+    public boolean isStatsPaused() {
+        return statsPaused;
+    }
+
+    /**
+     * Schaltet die Statistik-Erfassung um. Im eingefrorenen Zustand zaehlen Kills, Tode und
+     * Streaks nicht, der Timer laeuft nicht weiter und das Scoreboard bleibt stehen.
+     * Anders als /osok pause bleibt das Match spielbar - es wird nur nichts gewertet.
+     */
+    public void toggleStatsPause(CommandSender sender) {
+        statsPaused = !statsPaused;
+
+        if (statsPaused) {
+            broadcast("<gold>[OSOK] ⏸ <b>STATISTIK EINGEFROREN!</b> <gray>Kills und Zeit werden nicht mehr gewertet, das Scoreboard bleibt stehen.</gray></gold>");
+            Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, Sound.Source.MASTER, 1.0f, 0.7f));
+        } else {
+            broadcast("<green>[OSOK] ▶ <b>STATISTIK LÄUFT WEITER!</b> <gray>Kills und Zeit werden wieder gewertet.</gray></green>");
+            Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f));
+            // Nach dem Auftauen einmal nachziehen, damit die Anzeige wieder stimmt
+            plugin.getScoreboardManager().updateAllScoreboards();
+        }
+
+        if (sender != null) {
+            sender.sendMessage(MiniMessage.miniMessage().deserialize(statsPaused
+                    ? "<gray>[OSOK] Mit <yellow>/osok pausestats</yellow> wieder fortsetzen.</gray>"
+                    : "<gray>[OSOK] Statistik-Erfassung ist wieder aktiv.</gray>"));
+        }
     }
 
     public boolean hasKillLimit() {
@@ -148,6 +184,7 @@ public class MatchManager {
         stopVictoryTasks();
         this.matchStarted = false;
         this.matchPaused = false;
+        this.statsPaused = false;
         this.matchEnded = false;
         this.remainingSeconds = this.timeLimitSeconds;
     }
@@ -206,7 +243,8 @@ public class MatchManager {
                 return;
             }
 
-            if (matchPaused) {
+            // Eingefroren durch /osok pause ODER /osok pausestats: Zeit laeuft nicht weiter
+            if (matchPaused || statsPaused) {
                 return;
             }
 
@@ -473,6 +511,7 @@ public class MatchManager {
         stopTimer();
         this.matchStarted = true;
         this.matchPaused = false;
+        this.statsPaused = false;
         this.matchEnded = false;
 
         // Standard-Item-Modus bei jedem Start: BOTH (Killstreak-Items + Boden-Item-Boxen).
