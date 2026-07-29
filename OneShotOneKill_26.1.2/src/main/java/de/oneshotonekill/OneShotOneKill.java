@@ -9,6 +9,7 @@ import de.oneshotonekill.listener.WorldRuleListener;
 import de.oneshotonekill.manager.ArenaManager;
 import de.oneshotonekill.manager.EliminationManager;
 import de.oneshotonekill.manager.EquipmentManager;
+import de.oneshotonekill.manager.ExplosivesManager;
 import de.oneshotonekill.manager.StealthBomberManager;
 import de.oneshotonekill.manager.KillEffectManager;
 import de.oneshotonekill.manager.KillstreakManager;
@@ -31,6 +32,7 @@ public class OneShotOneKill extends JavaPlugin {
     private MatchManager matchManager;
     private EliminationManager eliminationManager;
     private StealthBomberManager stealthBomberManager;
+    private ExplosivesManager explosivesManager;
 
     @Override
     public void onEnable() {
@@ -44,6 +46,7 @@ public class OneShotOneKill extends JavaPlugin {
         this.matchManager = new MatchManager(this);
         this.eliminationManager = new EliminationManager(this);
         this.stealthBomberManager = new StealthBomberManager(this);
+        this.explosivesManager = new ExplosivesManager(this);
 
         // 2. Map & Welt laden
         this.worldManager.setupWorld();
@@ -56,6 +59,7 @@ public class OneShotOneKill extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new SpecialItemListener(this), this);
         getServer().getPluginManager().registerEvents(new WorldRuleListener(), this);
         getServer().getPluginManager().registerEvents(this.stealthBomberManager, this);
+        getServer().getPluginManager().registerEvents(this.explosivesManager, this);
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
 
         // Serverweit erzwungene GameRules (locator_bar) auf alle bereits geladenen Welten anwenden
@@ -63,6 +67,7 @@ public class OneShotOneKill extends JavaPlugin {
 
         // Beim Start aufraeumen: Drachen und TNT aus einem vorherigen Lauf entfernen
         this.stealthBomberManager.clearAll();
+        this.explosivesManager.clearAll();
 
         // 4. Paper Dynamic Lifecycle Command Registration (Brigadier BasicCommand)
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
@@ -92,6 +97,9 @@ public class OneShotOneKill extends JavaPlugin {
         if (stealthBomberManager != null) {
             stealthBomberManager.clearAll();
         }
+        if (explosivesManager != null) {
+            explosivesManager.clearAll();
+        }
     }
 
     public EliminationManager getEliminationManager() {
@@ -100,6 +108,10 @@ public class OneShotOneKill extends JavaPlugin {
 
     public StealthBomberManager getStealthBomberManager() {
         return stealthBomberManager;
+    }
+
+    public ExplosivesManager getExplosivesManager() {
+        return explosivesManager;
     }
 
     public WorldManager getWorldManager() {
