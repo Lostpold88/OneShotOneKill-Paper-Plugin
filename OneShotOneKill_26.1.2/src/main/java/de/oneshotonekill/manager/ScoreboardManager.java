@@ -17,7 +17,41 @@ import org.bukkit.scoreboard.Team;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Verwaltet Statistiken, Sidebar und Tabliste.
+ * <p>
+ * <b>Performance:</b> Das Scoreboard wird pro Spieler <b>einmal</b> angelegt und danach nur noch
+ * inhaltlich aktualisiert. Ein kompletter Neuaufbau pro Update (neues {@code Scoreboard}, neues
+ * Objective, alle Zeilen neu geparst, alle Team-Entries neu gesetzt) war der teuerste Pfad im
+ * Plugin - er lief bis zu fuenfmal pro Kill fuer jeden Online-Spieler.
+ * <p>
+ * Statische Zeilen liegen als vorgeparste {@link Component}-Konstanten bereit, damit MiniMessage
+ * nicht bei jedem Update erneut denselben String zerlegt.
+ */
 public class ScoreboardManager {
+
+    private static final String OBJECTIVE_NAME = "oneshot";
+    private static final String NAMETAG_TEAM = "no_nametag";
+    /** Feste Entry-Schluessel; nie sichtbar, da die Zeile ueber Score#customName gerendert wird. */
+    private static final String LINE_ENTRY_PREFIX = "osok_line_";
+    private static final int MAX_LINES = 16;
+    private static final int MAX_RANKING_ENTRIES = 10;
+
+    // Vorgeparste Komponenten - MiniMessage laeuft dafuer nur einmal beim Klassenladen.
+    private static final Component TITLE =
+            MiniMessage.miniMessage().deserialize("<red><b>🎯 OSOK</b></red>");
+    private static final Component SEPARATOR =
+            MiniMessage.miniMessage().deserialize("<gray>-------------------</gray>");
+    private static final Component HEADING_RANKING =
+            MiniMessage.miniMessage().deserialize("<yellow><b>🏆 TOP RANKING:</b></yellow>");
+    private static final Component NO_PLAYERS =
+            MiniMessage.miniMessage().deserialize("<gray>Keine Spieler online</gray>");
+    private static final Component TAB_HEADER =
+            MiniMessage.miniMessage().deserialize("\n<red><b>🎯 OSOK</b></red> <gray>|</gray> <red>MATCH STATS</red>\n");
+    private static final Component TAB_FOOTER =
+            MiniMessage.miniMessage().deserialize("\n<gray>Scoreboard & Leaderboard</gray>\n");
+
+    private static final String[] RANK_COLORS = {"yellow", "gray", "red"};
 
     private final OneShotOneKill plugin;
     private final Map<UUID, Integer> killsMap = new HashMap<>();
@@ -26,20 +60,29 @@ public class ScoreboardManager {
     private final Map<UUID, Integer> highestStreakMap = new HashMap<>();
     private final Set<UUID> bountyTargets = new HashSet<>();
 
-    private static final Component SEPARATOR = MiniMessage.miniMessage().deserialize("<gray>-------------------</gray>");
+    /** Pro Spieler ein dauerhaft wiederverwendetes Board. */
+    private final Map<UUID, Scoreboard> boards = new HashMap<>();
 
     public ScoreboardManager(OneShotOneKill plugin) {
         this.plugin = plugin;
     }
 
     public void updateAllScoreboards() {
+        // Rangliste einmal berechnen statt pro Spieler erneut
+        List<Player> ranking = Bukkit.getOnlinePlayers().stream()
+                .sorted(Comparator.comparingInt((Player p) -> getKills(p.getUniqueId())).reversed())
+                .collect(Collectors.toList());
+
         for (Player p : Bukkit.getOnlinePlayers()) {
-            updateScoreboard(p);
+            updateScoreboard(p, ranking);
             updateTabListName(p);
+            p.sendPlayerListHeaderAndFooter(TAB_HEADER, TAB_FOOTER);
         }
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            updateTabListHeaderFooter(p);
-        }
+    }
+
+    /** Gibt das gecachte Board eines Spielers frei (bei Quit aufzurufen). */
+    public void removePlayer(UUID uuid) {
+        boards.remove(uuid);
     }
 
     public boolean isBountyTarget(UUID uuid) {
@@ -51,105 +94,149 @@ public class ScoreboardManager {
     }
 
     public void updateScoreboard(Player player) {
+        updateScoreboard(player, null);
+    }
+
+    private void updateScoreboard(Player player, List<Player> presortedRanking) {
+        Objective objective = obtainObjective(player);
+        if (objective == null) return;
+
+        List<Player> ranking = (presortedRanking != null) ? presortedRanking
+                : Bukkit.getOnlinePlayers().stream()
+                        .sorted(Comparator.comparingInt((Player p) -> getKills(p.getUniqueId())).reversed())
+                        .collect(Collectors.toList());
+
+        List<Component> lines = buildLines(player, ranking);
+        applyLines(objective, lines);
+        syncNameTagTeam(objective.getScoreboard());
+    }
+
+    /**
+     * Holt das Board des Spielers oder legt es einmalig an. Danach wird es nur noch befuellt,
+     * nicht mehr neu erzeugt.
+     */
+    private Objective obtainObjective(Player player) {
         org.bukkit.scoreboard.ScoreboardManager mgr = Bukkit.getScoreboardManager();
-        if (mgr == null) return;
+        if (mgr == null) return null;
 
-        Scoreboard board = mgr.getNewScoreboard();
-        Component titleComponent = MiniMessage.miniMessage().deserialize("<red><b>🎯 OSOK</b></red>");
+        Scoreboard board = boards.get(player.getUniqueId());
+        if (board == null) {
+            board = mgr.getNewScoreboard();
+            boards.put(player.getUniqueId(), board);
+        }
 
-        // Paper 26.1.2 Scoreboard API: Native Criteria & Kyori Component Titel (0% deprecated String-Criteria)
-        Objective obj = board.registerNewObjective("oneshot", Criteria.DUMMY, titleComponent);
-        obj.setDisplaySlot(DisplaySlot.SIDEBAR);
-        obj.numberFormat(NumberFormat.blank());
+        Objective objective = board.getObjective(OBJECTIVE_NAME);
+        if (objective == null) {
+            objective = board.registerNewObjective(OBJECTIVE_NAME, Criteria.DUMMY, TITLE);
+            objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+            objective.numberFormat(NumberFormat.blank());
+        }
 
-        int scorePos = 15;
-        int lineId = 0;
+        // Nur setzen, wenn der Spieler noch ein anderes Board hat - sonst unnoetige Pakete
+        if (!board.equals(player.getScoreboard())) {
+            player.setScoreboard(board);
+        }
+        return objective;
+    }
 
-        lineId = addScoreLine(obj, SEPARATOR, scorePos--, lineId);
+    private List<Component> buildLines(Player player, List<Player> ranking) {
+        List<Component> lines = new ArrayList<>(MAX_LINES);
+        lines.add(SEPARATOR);
 
-        // Match-Ziel: wird angezeigt, sobald ein Limit konfiguriert ist - nicht erst ab /osok start.
-        // Solange das Match nicht laeuft, weist ein Zusatz darauf hin.
-        MatchManager match = (plugin != null) ? plugin.getMatchManager() : null;
+        MatchManager match = plugin.getMatchManager();
         if (match != null && !match.isMatchEnded()) {
             boolean running = match.isMatchStarted();
             String pendingHint = running ? "" : " <dark_gray>(ab /osok start)</dark_gray>";
 
             if (match.hasKillLimit()) {
-                lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize(
-                        "<yellow><b>🎯 MATCH ZIEL:</b></yellow> <white>" + match.getKillLimit() + " Kills</white>" + pendingHint), scorePos--, lineId);
-
+                lines.add(MiniMessage.miniMessage().deserialize(
+                        "<yellow><b>🎯 MATCH ZIEL:</b></yellow> <white>" + match.getKillLimit() + " Kills</white>" + pendingHint));
                 if (running) {
                     int remaining = Math.max(0, match.getKillLimit() - getKills(player.getUniqueId()));
-                    lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize(
+                    lines.add(MiniMessage.miniMessage().deserialize(
                             "<gold>➜ Du brauchst noch <yellow><b>" + remaining + "</b></yellow> "
-                                    + (remaining == 1 ? "Kill" : "Kills") + "</gold>"), scorePos--, lineId);
+                                    + (remaining == 1 ? "Kill" : "Kills") + "</gold>"));
                 }
-                lineId = addScoreLine(obj, SEPARATOR, scorePos--, lineId);
-
+                lines.add(SEPARATOR);
             } else if (match.getTimeLimitSeconds() > 0) {
                 int shownSeconds = running ? match.getRemainingSeconds() : match.getTimeLimitSeconds();
-                lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize(
-                        "<yellow><b>⏱ VERBLEIBEND:</b></yellow> <white>" + match.formatTime(shownSeconds) + "</white>" + pendingHint), scorePos--, lineId);
-                lineId = addScoreLine(obj, SEPARATOR, scorePos--, lineId);
+                lines.add(MiniMessage.miniMessage().deserialize(
+                        "<yellow><b>⏱ VERBLEIBEND:</b></yellow> <white>" + match.formatTime(shownSeconds) + "</white>" + pendingHint));
+                lines.add(SEPARATOR);
             }
         }
 
-        lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize("<yellow><b>🏆 TOP RANKING:</b></yellow>"), scorePos--, lineId);
+        lines.add(HEADING_RANKING);
 
-        // Alle Online-Spieler nach Kills sortieren
-        List<Player> sortedPlayers = Bukkit.getOnlinePlayers().stream()
-                .sorted((p1, p2) -> Integer.compare(getKills(p2.getUniqueId()), getKills(p1.getUniqueId())))
-                .collect(Collectors.toList());
-
-        String[] rankColors = new String[]{"yellow", "gray", "red"};
-
-        for (int i = 0; i < Math.min(10, sortedPlayers.size()); i++) {
-            Player p = sortedPlayers.get(i);
-            int k = getKills(p.getUniqueId());
-            int s = getStreak(p.getUniqueId());
-            int hs = getHighestStreak(p.getUniqueId());
-            String kd = getKDRatio(p.getUniqueId());
-
-            String rankColor = (i < rankColors.length) ? rankColors[i] : "white";
-            String bountyTag = isBountyTarget(p.getUniqueId()) ? "<yellow>[👑] </yellow>" : "";
-            Component playerLine = MiniMessage.miniMessage().deserialize(
-                    "<" + rankColor + ">#" + (i + 1) + " </" + rankColor + ">" + bountyTag
-                            + "<white>" + p.getName() + "</white> <gray>»</gray> <green>" + k + "K</green> <gray>|</gray> <aqua>" + kd
-                            + "</aqua> <gray>|</gray> <yellow>⚡" + s + "</yellow> <gold>(★" + hs + ")</gold>");
-
-            lineId = addScoreLine(obj, playerLine, scorePos--, lineId);
+        int shown = Math.min(MAX_RANKING_ENTRIES, ranking.size());
+        for (int i = 0; i < shown && lines.size() < MAX_LINES - 1; i++) {
+            lines.add(rankingLine(i, ranking.get(i)));
+        }
+        if (ranking.isEmpty()) {
+            lines.add(NO_PLAYERS);
         }
 
-        if (sortedPlayers.isEmpty()) {
-            lineId = addScoreLine(obj, MiniMessage.miniMessage().deserialize("<gray>Keine Spieler online</gray>"), scorePos--, lineId);
-        }
+        lines.add(SEPARATOR);
+        return lines;
+    }
 
-        addScoreLine(obj, SEPARATOR, 0, lineId);
+    private Component rankingLine(int index, Player p) {
+        int kills = getKills(p.getUniqueId());
+        int streak = getStreak(p.getUniqueId());
+        int highest = getHighestStreak(p.getUniqueId());
+        String kd = getKDRatio(p.getUniqueId());
 
-        // Nametags über den Köpfen aller Spieler komplett ausblenden
-        Team noTagTeam = board.getTeam("no_nametag");
-        if (noTagTeam == null) {
-            noTagTeam = board.registerNewTeam("no_nametag");
-        }
-        noTagTeam.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER);
+        String color = (index < RANK_COLORS.length) ? RANK_COLORS[index] : "white";
+        String bountyTag = isBountyTarget(p.getUniqueId()) ? "<yellow>[👑] </yellow>" : "";
 
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            noTagTeam.addEntry(p.getName());
-        }
-
-        player.setScoreboard(board);
+        return MiniMessage.miniMessage().deserialize(
+                "<" + color + ">#" + (index + 1) + " </" + color + ">" + bountyTag
+                        + "<white>" + p.getName() + "</white> <gray>»</gray> <green>" + kills + "K</green> <gray>|</gray> <aqua>" + kd
+                        + "</aqua> <gray>|</gray> <yellow>⚡" + streak + "</yellow> <gold>(★" + highest + ")</gold>");
     }
 
     /**
-     * Paper Native Scoreboard API: Die Zeile wird ausschliesslich ueber {@link Score#customName(Component)}
-     * als Kyori Component gerendert. Der Entry-String dient nur als eindeutiger, nie sichtbarer Schluessel.
+     * Schreibt die Zeilen in feste Entry-Schluessel. Ueberzaehlige Zeilen aus einem
+     * vorherigen Update werden entfernt, statt das Board zu verwerfen.
      */
-    private int addScoreLine(Objective obj, Component text, int scoreVal, int lineId) {
-        Score score = obj.getScore("osok_line_" + lineId);
-        score.setScore(scoreVal);
-        score.customName(text);
-        score.numberFormat(NumberFormat.blank());
-        return lineId + 1;
+    private void applyLines(Objective objective, List<Component> lines) {
+        Scoreboard board = objective.getScoreboard();
+
+        for (int i = 0; i < lines.size(); i++) {
+            Score score = objective.getScore(LINE_ENTRY_PREFIX + i);
+            score.setScore(lines.size() - i);
+            score.customName(lines.get(i));
+            score.numberFormat(NumberFormat.blank());
+        }
+
+        for (int i = lines.size(); i < MAX_LINES; i++) {
+            String entry = LINE_ENTRY_PREFIX + i;
+            if (objective.getScore(entry).isScoreSet()) {
+                board.resetScores(entry);
+            }
+        }
+    }
+
+    /** Blendet Nametags aus. Entries werden nur bei Aenderung angefasst, nicht bei jedem Update. */
+    private void syncNameTagTeam(Scoreboard board) {
+        Team team = board.getTeam(NAMETAG_TEAM);
+        if (team == null) {
+            team = board.registerNewTeam(NAMETAG_TEAM);
+            team.setOption(Team.Option.NAME_TAG_VISIBILITY, Team.OptionStatus.NEVER);
+        }
+
+        Set<String> online = new HashSet<>();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            online.add(p.getName());
+            if (!team.hasEntry(p.getName())) {
+                team.addEntry(p.getName());
+            }
+        }
+        for (String entry : new HashSet<>(team.getEntries())) {
+            if (!online.contains(entry)) {
+                team.removeEntry(entry);
+            }
+        }
     }
 
     public void resetAllStats() {
@@ -161,9 +248,7 @@ public class ScoreboardManager {
         updateAllScoreboards();
     }
 
-    /**
-     * Kyori Component Tabliste: Setzt den Anzeigenamen des Spielers inkl. Live-Stats.
-     */
+    /** Kyori Component Tabliste: Anzeigename des Spielers inkl. Live-Stats. */
     public void updateTabListName(Player player) {
         int k = getKills(player.getUniqueId());
         int d = getDeaths(player.getUniqueId());
@@ -172,32 +257,30 @@ public class ScoreboardManager {
         String kd = getKDRatio(player.getUniqueId());
 
         String bountyTag = isBountyTarget(player.getUniqueId()) ? "<yellow>[👑] </yellow>" : "";
-        Component tabName = MiniMessage.miniMessage().deserialize(
+        player.playerListName(MiniMessage.miniMessage().deserialize(
                 bountyTag + "<white>" + player.getName() + "</white>"
                         + " <gray>|</gray> <green>K: " + k + "</green> <gray>|</gray> <red>D: " + d + "</red>"
-                        + " <gray>|</gray> <aqua>K/D: " + kd + "</aqua> <gray>|</gray> <yellow>⚡" + s + "</yellow> <gold>(★" + hs + ")</gold>");
-
-        player.playerListName(tabName);
+                        + " <gray>|</gray> <aqua>K/D: " + kd + "</aqua> <gray>|</gray> <yellow>⚡" + s + "</yellow> <gold>(★" + hs + ")</gold>"));
     }
 
     public void updateTabListHeaderFooter(Player player) {
-        Component header = MiniMessage.miniMessage().deserialize("\n<red><b>🎯 OSOK</b></red> <gray>|</gray> <red>MATCH STATS</red>\n");
-        Component footer = MiniMessage.miniMessage().deserialize("\n<gray>Scoreboard & Leaderboard</gray>\n");
-
-        player.sendPlayerListHeaderAndFooter(header, footer);
+        player.sendPlayerListHeaderAndFooter(TAB_HEADER, TAB_FOOTER);
     }
+
+    // ------------------------------------------------------------------
+    // Statistiken. Bewusst OHNE internes updateAllScoreboards: Der Aufrufer
+    // aktualisiert einmal, nachdem alle Werte gesetzt sind.
+    // ------------------------------------------------------------------
 
     public int addKill(UUID uuid) {
         int k = killsMap.getOrDefault(uuid, 0) + 1;
         killsMap.put(uuid, k);
-        updateAllScoreboards();
         return k;
     }
 
     public int addDeath(UUID uuid) {
         int d = deathsMap.getOrDefault(uuid, 0) + 1;
         deathsMap.put(uuid, d);
-        updateAllScoreboards();
         return d;
     }
 
@@ -214,22 +297,19 @@ public class ScoreboardManager {
             bountyTargets.add(uuid);
             Player p = Bukkit.getPlayer(uuid);
             String name = (p != null) ? p.getName() : "Ein Spieler";
-            Component msg = MiniMessage.miniMessage().deserialize("<red><b>[👑 KOPFGELD]</b> <yellow><b>" + name + "</b> hat eine <b>5er Streak!</b> Wer ihn tötet erhält 2 Bonus-Items!</yellow></red>");
-            Bukkit.broadcast(msg);
+            Bukkit.broadcast(MiniMessage.miniMessage().deserialize(
+                    "<red><b>[👑 KOPFGELD]</b> <yellow><b>" + name + "</b> hat eine <b>5er Streak!</b> Wer ihn tötet erhält 2 Bonus-Items!</yellow></red>"));
             if (p != null) {
                 p.getWorld().strikeLightningEffect(p.getLocation());
                 p.playSound(Sound.sound(org.bukkit.Sound.ENTITY_LIGHTNING_BOLT_THUNDER, Sound.Source.MASTER, 0.6f, 1.8f));
             }
         }
-
-        updateAllScoreboards();
         return s;
     }
 
     public void resetStreak(UUID uuid) {
         streakMap.put(uuid, 0);
         bountyTargets.remove(uuid);
-        updateAllScoreboards();
     }
 
     public int getKills(UUID uuid) {

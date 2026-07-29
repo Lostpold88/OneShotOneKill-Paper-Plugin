@@ -5,38 +5,53 @@ import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.ArrayList;
+
+/**
+ * Vergibt und entfernt die Grundausruestung.
+ * <p>
+ * <b>Performance:</b> Die Ausruestung wird als unveraenderliche Vorlage <b>einmal</b> beim
+ * Klassenladen aufgebaut und danach nur noch geklont. Zuvor entstanden bei jedem Respawn
+ * drei ItemStacks samt ItemMeta-Kopien und zwei MiniMessage-Parses - auf einem Server mit
+ * Sofort-Respawn ist das ein heisser Pfad.
+ */
 public class EquipmentManager {
+
+    private static final ItemStack SWORD_TEMPLATE = createSword();
+    private static final ItemStack BOW_TEMPLATE = createBow();
+    private static final ItemStack ARROW_TEMPLATE = ItemStack.of(Material.ARROW, 1);
+
+    private static ItemStack createSword() {
+        ItemStack sword = ItemStack.of(Material.IRON_SWORD);
+        // Paper editMeta: kein getItemMeta/setItemMeta Umweg, also eine Kopie weniger
+        sword.editMeta(meta -> {
+            meta.displayName(MiniMessage.miniMessage().deserialize("<red><b>⚔ OneShot Dolch</b></red>"));
+            meta.setUnbreakable(true);
+        });
+        return sword;
+    }
+
+    private static ItemStack createBow() {
+        ItemStack bow = ItemStack.of(Material.BOW);
+        bow.editMeta(meta -> {
+            meta.displayName(MiniMessage.miniMessage().deserialize("<yellow><b>⚡ OneShot Bogen</b></yellow>"));
+            meta.setUnbreakable(true);
+            meta.addEnchant(Enchantment.INFINITY, 1, true);
+        });
+        return bow;
+    }
 
     public void giveOneShotEquipment(Player player) {
         // Alle aktiven Trankeffekte & Einfrierung aufheben
-        new java.util.ArrayList<>(player.getActivePotionEffects()).forEach(effect -> player.removePotionEffect(effect.getType()));
+        new ArrayList<>(player.getActivePotionEffects()).forEach(effect -> player.removePotionEffect(effect.getType()));
         player.setFreezeTicks(0);
 
-        // OneShot Bogen (Unendlich Pfeil)
-        ItemStack bow = new ItemStack(Material.BOW);
-        ItemMeta bowMeta = bow.getItemMeta();
-        if (bowMeta != null) {
-            bowMeta.displayName(MiniMessage.miniMessage().deserialize("<yellow><b>⚡ OneShot Bogen</b></yellow>"));
-            bowMeta.setUnbreakable(true);
-            bowMeta.addEnchant(Enchantment.INFINITY, 1, true);
-            bow.setItemMeta(bowMeta);
-        }
-
-        // OneShot Schwert
-        ItemStack sword = new ItemStack(Material.IRON_SWORD);
-        ItemMeta swordMeta = sword.getItemMeta();
-        if (swordMeta != null) {
-            swordMeta.displayName(MiniMessage.miniMessage().deserialize("<red><b>⚔ OneShot Dolch</b></red>"));
-            swordMeta.setUnbreakable(true);
-            sword.setItemMeta(swordMeta);
-        }
-
-        // Nur Grundausrüstung in Slot 0, 1 und 8 sicherstellen (Spezial-Items bleiben durch keepInventory nativ erhalten!)
-        player.getInventory().setItem(0, sword);
-        player.getInventory().setItem(1, bow);
-        player.getInventory().setItem(8, new ItemStack(Material.ARROW, 1));
+        // Nur Grundausrüstung in Slot 0, 1 und 8 sicherstellen
+        // (Spezial-Items bleiben durch keepInventory nativ erhalten!)
+        player.getInventory().setItem(0, SWORD_TEMPLATE.clone());
+        player.getInventory().setItem(1, BOW_TEMPLATE.clone());
+        player.getInventory().setItem(8, ARROW_TEMPLATE.clone());
 
         player.setHealth(20.0);
         player.setFoodLevel(20);

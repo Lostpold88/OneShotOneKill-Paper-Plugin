@@ -115,7 +115,7 @@ public class StealthBomberManager implements Listener {
     }
 
     private ItemStack createTargetHead(Player target) {
-        ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+        ItemStack head = ItemStack.of(Material.PLAYER_HEAD);
         ItemMeta meta = head.getItemMeta();
         if (meta instanceof SkullMeta skullMeta) {
             skullMeta.setOwningPlayer(target);
@@ -141,7 +141,7 @@ public class StealthBomberManager implements Listener {
         ItemStack clicked = event.getCurrentItem();
         if (clicked == null || !clicked.hasItemMeta()) return;
 
-        String targetId = clicked.getItemMeta().getPersistentDataContainer()
+        String targetId = clicked.getPersistentDataContainer()
                 .get(KEY_GUI_TARGET, PersistentDataType.STRING);
         if (targetId == null) return;
 
@@ -167,7 +167,7 @@ public class StealthBomberManager implements Listener {
         NamespacedKey typeKey = plugin.getKillstreakManager().getSpecialItemKey();
         for (ItemStack stack : user.getInventory().getContents()) {
             if (stack == null || !stack.hasItemMeta()) continue;
-            String type = stack.getItemMeta().getPersistentDataContainer().get(typeKey, PersistentDataType.STRING);
+            String type = stack.getPersistentDataContainer().get(typeKey, PersistentDataType.STRING);
             if (KillstreakManager.KEY_STEALTH_BOMBER.equals(type)) {
                 stack.subtract(1);
                 return true;
@@ -281,6 +281,14 @@ public class StealthBomberManager implements Listener {
             spawned.setVelocity(new Vector(0, -0.2, 0));
             spawned.getPersistentDataContainer().set(KEY_BOMBER_TNT, PersistentDataType.BYTE, (byte) 1);
             spawned.getPersistentDataContainer().set(KEY_BOMBER_OWNER, PersistentDataType.STRING, ownerId.toString());
+            // Native Verursacher-Zuordnung: Damit liefert DamageSource#getCausingEntity() den
+            // Ausloeser, ohne dass der CombatListener die PDC durchsuchen muss.
+            // Betrifft nur die Zuordnung - der Ausloeser nimmt weiterhin Schaden, denn die
+            // Explosion schliesst nur die TNT-Entity selbst aus, nicht ihren Verursacher.
+            Player owner = Bukkit.getPlayer(ownerId);
+            if (owner != null) {
+                spawned.setSource(owner);
+            }
         });
         activeBombs.add(tnt);
 
@@ -369,7 +377,8 @@ public class StealthBomberManager implements Listener {
      * Das Bomber-TNT bleibt bewusst unangetastet: Es richtet regulaeren Explosionsschaden an
      * und toetet ausdruecklich <b>nicht</b> mit einem Treffer. Wird der Schaden toedlich,
      * uebernimmt {@code CombatListener#onEntityDamage} die Eliminierung und holt sich ueber
-     * {@link #resolveBombOwner(Entity)} den Verursacher fuer die Kill-Gutschrift.
+     * {@code DamageSource#getCausingEntity()} den Verursacher fuer die Kill-Gutschrift -
+     * das TNT setzt ihn beim Spawn per {@code setSource}.
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBomberDamage(EntityDamageByEntityEvent event) {
@@ -388,15 +397,6 @@ public class StealthBomberManager implements Listener {
         // Der Deckel sorgt dafuer, dass aus voller Gesundheit immer mehrere Treffer noetig sind.
         // Laeuft auf HIGH, also bevor CombatListener auf HIGHEST den toedlichen Schaden prueft.
         event.setDamage(Math.min(event.getDamage(), BOMB_MAX_DAMAGE));
-    }
-
-    /** Liefert den Spieler, der das Bomber-TNT ausgeloest hat, oder {@code null}. */
-    public Player resolveBombOwner(Entity entity) {
-        if (!entity.getPersistentDataContainer().has(KEY_BOMBER_TNT, PersistentDataType.BYTE)) {
-            return null;
-        }
-        String ownerId = entity.getPersistentDataContainer().get(KEY_BOMBER_OWNER, PersistentDataType.STRING);
-        return ownerId != null ? Bukkit.getPlayer(UUID.fromString(ownerId)) : null;
     }
 
     private boolean isBomberEntity(Entity entity) {

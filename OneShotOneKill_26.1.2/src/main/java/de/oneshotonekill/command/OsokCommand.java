@@ -46,27 +46,25 @@ public class OsokCommand implements BasicCommand {
             return;
         }
 
-        if (!(sender instanceof Player player)) {
-            msg(sender, "<red>Dieser Befehl ist nur für Spieler verfügbar.</red>");
-            return;
-        }
+        // Spieler ist optional: Nur itemtest und setspawn brauchen zwingend einen.
+        Player player = (sender instanceof Player p) ? p : null;
 
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
-            msg(player, "<yellow><b>=======================================</b></yellow>");
-            msg(player, "<green><b>🎯 OSOK COMMANDS (/osok <befehl>)</b></green>");
-            msg(player, "<yellow><b>=======================================</b></yellow>");
-            msg(player, "<gray>/osok start <dark_gray>-</dark_gray> <white>Match starten, Scoreboard zurücksetzen & alle zufällig in die Arena spawnen (Admin)</white></gray>");
-            msg(player, "<gray>/osok stop <dark_gray>-</dark_gray> <white>Spiel beenden, Scoreboard zurücksetzen & alle in die Lobby teleportieren (Admin)</white></gray>");
-            msg(player, "<gray>/osok pause <dark_gray>-</dark_gray> <white>Match pausieren / fortsetzen (Admin)</white></gray>");
-            msg(player, "<gray>/osok map <Standard|DustPvP> <dark_gray>-</dark_gray> <white>Dynamisch zwischen Arenen wechseln (Admin)</white></gray>");
-            msg(player, "<gray>/osok dauer [kills|minuten|sekunden|off] [Anzahl] <dark_gray>-</dark_gray> <white>Match-Dauer/Ziel festlegen (Admin)</white></gray>");
-            msg(player, "<gray>/osok itemmode [streak|spawn|both] <dark_gray>-</dark_gray> <white>Item-Modus umschalten (Admin)</white></gray>");
-            msg(player, "<gray>/osok itemtest <dark_gray>-</dark_gray> <white>Spezial-Item Testmenü öffnen (Admin)</white></gray>");
-            msg(player, "<gray>/osok clearpfeile <dark_gray>-</dark_gray> <white>Alle Pfeile aus der Welt löschen (Admin)</white></gray>");
-            msg(player, "<gray>/osok setspawn <dark_gray>-</dark_gray> <white>Spawnpunkt auf der Map setzen (Admin)</white></gray>");
-            msg(player, "<gray>/osok resetstats <dark_gray>-</dark_gray> <white>Scoreboard & Statistiken zurücksetzen (Admin)</white></gray>");
-            msg(player, "<gray>/osok resetmap <dark_gray>-</dark_gray> <white>Map frisch aus der JAR wiederherstellen (Admin)</white></gray>");
-            msg(player, "<yellow><b>=======================================</b></yellow>");
+            msg(sender, "<yellow><b>=======================================</b></yellow>");
+            msg(sender, "<green><b>🎯 OSOK COMMANDS (/osok <befehl>)</b></green>");
+            msg(sender, "<yellow><b>=======================================</b></yellow>");
+            msg(sender, "<gray>/osok start <dark_gray>-</dark_gray> <white>Match starten, Scoreboard zurücksetzen & alle zufällig in die Arena spawnen (Admin)</white></gray>");
+            msg(sender, "<gray>/osok stop <dark_gray>-</dark_gray> <white>Spiel beenden, Scoreboard zurücksetzen & alle in die Lobby teleportieren (Admin)</white></gray>");
+            msg(sender, "<gray>/osok pause <dark_gray>-</dark_gray> <white>Match pausieren / fortsetzen (Admin)</white></gray>");
+            msg(sender, "<gray>/osok map <Standard|DustPvP> <dark_gray>-</dark_gray> <white>Dynamisch zwischen Arenen wechseln (Admin)</white></gray>");
+            msg(sender, "<gray>/osok dauer [kills|minuten|sekunden|off] [Anzahl] <dark_gray>-</dark_gray> <white>Match-Dauer/Ziel festlegen (Admin)</white></gray>");
+            msg(sender, "<gray>/osok itemmode [streak|spawn|both] <dark_gray>-</dark_gray> <white>Item-Modus umschalten (Admin)</white></gray>");
+            msg(sender, "<gray>/osok itemtest <dark_gray>-</dark_gray> <white>Spezial-Item Testmenü öffnen (Admin)</white></gray>");
+            msg(sender, "<gray>/osok clearpfeile <dark_gray>-</dark_gray> <white>Alle Pfeile aus der Welt löschen (Admin)</white></gray>");
+            msg(sender, "<gray>/osok setspawn <dark_gray>-</dark_gray> <white>Spawnpunkt auf der Map setzen (Admin)</white></gray>");
+            msg(sender, "<gray>/osok resetstats <dark_gray>-</dark_gray> <white>Scoreboard & Statistiken zurücksetzen (Admin)</white></gray>");
+            msg(sender, "<gray>/osok resetmap <dark_gray>-</dark_gray> <white>Map frisch aus der JAR wiederherstellen (Admin)</white></gray>");
+            msg(sender, "<yellow><b>=======================================</b></yellow>");
             return;
         }
 
@@ -83,48 +81,40 @@ public class OsokCommand implements BasicCommand {
         }
 
         if (sub.equals("pause")) {
-            if (!player.isOp()) {
-                msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return;
-            }
             plugin.getMatchManager().togglePause(player);
             return;
         }
 
         if (sub.equals("map") || sub.equals("arena") || sub.equals("welt")) {
-            if (!player.isOp()) {
-                msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return;
-            }
             if (args.length < 2) {
                 String activeName = plugin.getWorldManager().getActiveMapConfig() != null ? plugin.getWorldManager().getActiveMapConfig().getName() : "Unbekannt";
-                msg(player, "<yellow>[OSOK] Aktuelle Map: <green><b>" + activeName + "</b></green></yellow>");
-                msg(player, "<gray>Verwendung: /osok map <Standard|DustPvP></gray>");
+                msg(sender, "<yellow>[OSOK] Aktuelle Map: <green><b>" + activeName + "</b></green></yellow>");
+                msg(sender, "<gray>Verwendung: /osok map <Standard|DustPvP></gray>");
                 return;
             }
             String targetMap = args[1];
             boolean switched = plugin.getWorldManager().switchMap(targetMap);
             if (!switched) {
-                msg(player, "<red>[OSOK] Map '" + targetMap + "' wurde nicht gefunden! Verfügbar: Standard, DustPvP</red>");
+                msg(sender, "<red>[OSOK] Map '" + targetMap + "' wurde nicht gefunden! Verfügbar: Standard, DustPvP</red>");
             }
             return;
         }
 
         if (sub.equals("dauer") || sub.equals("limit") || sub.equals("timer")) {
             String[] subArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
-            handleDauerCommand(player, subArgs);
+            handleDauerCommand(sender, subArgs);
             return;
         }
 
         if (sub.equals("itemmode") || sub.equals("itemmodus") || sub.equals("mode")) {
             String[] subArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
-            handleItemModeCommand(player, subArgs);
+            handleItemModeCommand(sender, subArgs);
             return;
         }
 
         if (sub.equals("itemtest") || sub.equals("testgui")) {
-            if (!player.isOp()) {
-                msg(player, "<red>Dazu hast du keine Rechte.</red>");
+            if (player == null) {
+                msg(sender, "<red>[OSOK] Das Testmenü kann nur ein Spieler öffnen.</red>");
                 return;
             }
             new ItemTestCommand(plugin).openTestGui(player);
@@ -132,43 +122,29 @@ public class OsokCommand implements BasicCommand {
         }
 
         if (sub.equals("clearpfeile") || sub.equals("cleararrows")) {
-            if (!player.isOp()) {
-                msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return;
-            }
-            new ClearPfeileCommand().clearArrows(player);
+            new ClearPfeileCommand().clearArrows(sender);
             return;
         }
 
         if (sub.equals("setspawn")) {
-            if (!player.isOp()) {
-                msg(player, "<red>Dazu hast du keine Rechte.</red>");
+            if (player == null) {
+                msg(sender, "<red>[OSOK] Der Spawnpunkt kann nur von einem Spieler gesetzt werden (er nutzt dessen Position).</red>");
                 return;
             }
             plugin.getWorldManager().setSpawnLocation(player.getLocation());
-            msg(player, "<green>[OSOK] Neuer Arena-Spawnpunkt gesetzt!</green>");
+            msg(sender, "<green>[OSOK] Neuer Arena-Spawnpunkt gesetzt!</green>");
             player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 2.0f));
             return;
         }
 
         if (sub.equals("resetstats") || sub.equals("resetboard")) {
-            if (!player.isOp()) {
-                msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return;
-            }
             plugin.getScoreboardManager().resetAllStats();
             broadcast("<yellow>[OSOK] 🔄 Die Statistiken und das Scoreboard wurden zurückgesetzt!</yellow>");
-            for (Player p : Bukkit.getOnlinePlayers()) {
-                p.playSound(Sound.sound(org.bukkit.Sound.UI_BUTTON_CLICK, Sound.Source.MASTER, 1.0f, 1.0f));
-            }
+            Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.UI_BUTTON_CLICK, Sound.Source.MASTER, 1.0f, 1.0f));
             return;
         }
 
         if (sub.equals("resetmap")) {
-            if (!player.isOp()) {
-                msg(player, "<red>Dazu hast du keine Rechte.</red>");
-                return;
-            }
             broadcast("<yellow>[OSOK] Die Arena-Map wird zurückgesetzt! Server startet neu...</yellow>");
             for (Player p : Bukkit.getOnlinePlayers()) {
                 p.kick(MiniMessage.miniMessage().deserialize("<green>[OSOK] Arena-Map wird zurückgesetzt!</green>\n<gray>Der Server startet jetzt neu...</gray>"));
@@ -177,24 +153,19 @@ public class OsokCommand implements BasicCommand {
             return;
         }
 
-        msg(player, "<red>[OSOK] Unbekannter Unterbefehl. Nutze /osok help für eine Liste aller Befehle.</red>");
+        msg(sender, "<red>[OSOK] Unbekannter Unterbefehl. Nutze /osok help für eine Liste aller Befehle.</red>");
     }
 
-    private void handleDauerCommand(Player player, String[] args) {
-        if (!player.isOp()) {
-            msg(player, "<red>Dazu hast du keine Rechte.</red>");
-            return;
-        }
-
+    private void handleDauerCommand(CommandSender sender, String[] args) {
         if (args.length == 0) {
-            msg(player, "<yellow>[OSOK] Aktuelles Limit: <green>" +
+            msg(sender, "<yellow>[OSOK] Aktuelles Limit: <green>" +
                     (plugin.getMatchManager().hasKillLimit() ? plugin.getMatchManager().getKillLimit() + " Kills"
                             : plugin.getMatchManager().hasTimeLimit()
                                     ? plugin.getMatchManager()
                                             .formatTime(plugin.getMatchManager().getTimeLimitSeconds()) + " (Zeit)"
                                     : "Kein Limit")
                     + "</green></yellow>");
-            msg(player, "<gray>Verwendung: /osok dauer [kills|minuten|sekunden|off] [wert]</gray>");
+            msg(sender, "<gray>Verwendung: /osok dauer [kills|minuten|sekunden|off] [wert]</gray>");
             return;
         }
 
@@ -219,20 +190,15 @@ public class OsokCommand implements BasicCommand {
                     return;
                 }
             } catch (NumberFormatException e) {
-                msg(player, "<red>[OSOK] Ungültiger Zahlenwert: " + valueStr + "</red>");
+                msg(sender, "<red>[OSOK] Ungültiger Zahlenwert: " + valueStr + "</red>");
                 return;
             }
         }
 
-        msg(player, "<red>[OSOK] Ungültiger Parameter. Verwende: /osok dauer [kills|minuten|sekunden|off] [wert]</red>");
+        msg(sender, "<red>[OSOK] Ungültiger Parameter. Verwende: /osok dauer [kills|minuten|sekunden|off] [wert]</red>");
     }
 
-    private void handleItemModeCommand(Player player, String[] args) {
-        if (!player.isOp()) {
-            msg(player, "<red>Dazu hast du keine Rechte.</red>");
-            return;
-        }
-
+    private void handleItemModeCommand(CommandSender sender, String[] args) {
         if (args.length >= 1) {
             String modeArg = args[0].toLowerCase();
             if (modeArg.equals("spawn") || modeArg.equals("map") || modeArg.equals("ground")) {
@@ -258,9 +224,7 @@ public class OsokCommand implements BasicCommand {
                 broadcast("<yellow>[OSOK] ⚙ Spezial-Item Modus gewechselt zu: <green><b>KILLSTREAK</b></green> <gray>(Items nur alle 3 Kills!)</gray></yellow>");
             }
         }
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            p.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f));
-        }
+        Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f));
     }
 
     @Override

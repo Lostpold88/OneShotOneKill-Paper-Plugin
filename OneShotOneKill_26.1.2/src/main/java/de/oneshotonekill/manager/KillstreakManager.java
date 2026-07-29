@@ -53,6 +53,8 @@ public class KillstreakManager {
     private final Set<UUID> activeMiniguns = new HashSet<>();
     private final Set<UUID> arrowMagnets = new HashSet<>();
 
+    private static final Random RANDOM = new Random();
+
     private final Set<Item> activeGroundItems = new HashSet<>();
     private ItemMode currentItemMode = ItemMode.BOTH;
 
@@ -145,8 +147,7 @@ public class KillstreakManager {
             return;
         }
 
-        Random random = new Random();
-        int itemType = random.nextInt(SPECIAL_ITEM_COUNT);
+        int itemType = RANDOM.nextInt(SPECIAL_ITEM_COUNT);
         ItemStack itemStack = createSpecificSpecialItem(itemType);
 
         spawnLoc.getWorld().addPluginChunkTicket(spawnLoc.getBlockX() >> 4, spawnLoc.getBlockZ() >> 4, plugin);
@@ -178,8 +179,7 @@ public class KillstreakManager {
     }
 
     public void awardRandomKillstreakItem(Player player, int streak) {
-        Random random = new Random();
-        int itemType = random.nextInt(SPECIAL_ITEM_COUNT);
+        int itemType = RANDOM.nextInt(SPECIAL_ITEM_COUNT);
         giveSpecificSpecialItem(player, itemType, streak);
     }
 
@@ -228,16 +228,15 @@ public class KillstreakManager {
     }
 
     public ItemStack createSpecialItem(Material mat, String miniMessageName, String miniMessageLore, String itemTypeId) {
-        ItemStack stack = new ItemStack(mat);
-        ItemMeta meta = stack.getItemMeta();
-        if (meta != null) {
+        ItemStack stack = ItemStack.of(mat);
+        // Paper editMeta: eine Kopie statt getItemMeta/setItemMeta
+        stack.editMeta(meta -> {
             meta.displayName(MiniMessage.miniMessage().deserialize(miniMessageName));
             meta.lore(Collections.singletonList(MiniMessage.miniMessage().deserialize(miniMessageLore)));
             if (itemTypeId != null) {
                 meta.getPersistentDataContainer().set(specialItemKey, PersistentDataType.STRING, itemTypeId);
             }
-            stack.setItemMeta(meta);
-        }
+        });
         return stack;
     }
 

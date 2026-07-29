@@ -86,6 +86,7 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 - **📊 Native Paper Scoreboard & Tabliste**:
   - Live Leaderboard mit Kills, K/D Ratio, Streak, Highscore und Kopfgeld-Marker.
   - Zeilen werden vollständig als Kyori `Component` über `Score#customName(Component)` gerendert (0% Legacy-`§`-Codes).
+  - **Board wird pro Spieler gecacht** und nur inhaltlich aktualisiert, statt bei jedem Update neu aufgebaut zu werden. Statische Zeilen liegen als vorgeparste `Component`-Konstanten bereit, die Rangliste wird pro Update einmal sortiert statt pro Spieler.
   - Ausblendung der roten Sidebar-Zahlen nativ über `Objective#numberFormat(NumberFormat.blank())` (0% NMS-Reflection).
   - Tablisten-Namen mit Live-Stats über `Player#playerListName(Component)`.
 
