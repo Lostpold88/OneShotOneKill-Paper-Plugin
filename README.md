@@ -108,9 +108,9 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 | `/osok` | OSOK Hauptbefehl & Übersicht aller Unterbefehle | Operator (OP) |
 | `/osok start` | Teleportiert alle Spieler zufällig in die Arena & startet ein neues Match | Operator (OP) |
 | `/osok pause` | Pausiert / Fortsetzt das aktuelle Match & teleportiert zur Lobby | Operator (OP) |
-| `/osok dauer kills <n>` | Setzt ein Kill-Ziel (z. B. `/osok dauer 20k`, aktiv ab `/osok start`) | Operator (OP) |
-| `/osok dauer minuten <n>` | Setzt ein Zeit-Limit in Minuten (z. B. `/osok dauer 10m`, aktiv ab `/osok start`) | Operator (OP) |
-| `/osok dauer sekunden <n>` | Setzt ein Zeit-Limit in Sekunden (z. B. `/osok dauer 45s`, aktiv ab `/osok start`) | Operator (OP) |
+| `/osok dauer kills <n>` | Setzt ein Kill-Ziel (z. B. `/osok dauer kills 20`, aktiv ab `/osok start`) | Operator (OP) |
+| `/osok dauer minuten <n>` | Setzt ein Zeit-Limit in Minuten (z. B. `/osok dauer minuten 10`, aktiv ab `/osok start`) | Operator (OP) |
+| `/osok dauer sekunden <n>` | Setzt ein Zeit-Limit in Sekunden (z. B. `/osok dauer sekunden 45`, aktiv ab `/osok start`) | Operator (OP) |
 | `/osok dauer off` | Deaktiviert Match-Limits | Operator (OP) |
 | `/osok itemmode <mode>` | Wechselt zwischen `STREAK`, `SPAWN` und `BOTH` | Operator (OP) |
 | `/osok killeffect` | Öffnet das GUI für Kill-Animationen | Operator (OP) |
