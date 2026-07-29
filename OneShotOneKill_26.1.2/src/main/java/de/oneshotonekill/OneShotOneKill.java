@@ -1,10 +1,8 @@
 package de.oneshotonekill;
 
-import de.oneshotonekill.command.ClearPfeileCommand;
 import de.oneshotonekill.command.ItemTestCommand;
 import de.oneshotonekill.command.KillEffectCommand;
 import de.oneshotonekill.command.OsokCommand;
-import de.oneshotonekill.command.StartCommand;
 import de.oneshotonekill.listener.CombatListener;
 import de.oneshotonekill.listener.PlayerConnectionListener;
 import de.oneshotonekill.listener.SpecialItemListener;
@@ -62,21 +60,12 @@ public class OneShotOneKill extends JavaPlugin {
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
         getServer().getPluginManager().registerEvents(killEffectCommand, this);
 
-        // 4. Paper Dynamic Lifecycle Command Registration (paper-plugin.yml)
+        // 4. Paper Dynamic Lifecycle Command Registration: Nur noch einziger Hauptbefehl /oneshot (Alias: /osok)
         this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             Commands registrar = event.registrar();
             OsokCommand osokCommand = new OsokCommand(this);
-            StartCommand startCommand = new StartCommand(this);
-            ClearPfeileCommand clearPfeileCommand = new ClearPfeileCommand(this);
 
-            registerBasic(registrar, "oneshot", "OSOK Hauptbefehl", List.of("osok"), osokCommand, osokCommand);
-            registerBasic(registrar, "pause", "OSOK Match pausieren/fortsetzen", List.of(), osokCommand, osokCommand);
-            registerBasic(registrar, "itemmode", "OSOK Item-Modus", List.of("itemmodus", "mode"), osokCommand, osokCommand);
-            registerBasic(registrar, "resetstats", "OSOK Statistiken zurücksetzen", List.of("resetboard"), osokCommand, osokCommand);
-            registerBasic(registrar, "start", "OSOK Match starten", List.of(), startCommand, startCommand);
-            registerBasic(registrar, "itemtest", "OSOK Spezial-Item Testmenü", List.of("testgui"), itemTestCommand, null);
-            registerBasic(registrar, "clearpfeile", "OSOK Pfeile entfernen", List.of(), clearPfeileCommand, null);
-            registerBasic(registrar, "killeffect", "OSOK Killeffekte Menü", List.of("effects"), killEffectCommand, killEffectCommand);
+            registerBasic(registrar, "oneshot", "OneShotOneKill Hauptbefehl", List.of("osok"), osokCommand, osokCommand);
         });
 
         // 5. Scoreboards für alle bereits verbundenen Spieler aktualisieren
@@ -103,32 +92,31 @@ public class OneShotOneKill extends JavaPlugin {
             @Override
             public Collection<String> suggest(CommandSourceStack stack, String[] args) {
                 if (completer != null) {
-                    String[] effectiveArgs = (args == null || args.length == 0) ? new String[]{""} : args;
                     Command dummyCmd = new Command(name) {
                         @Override
                         public boolean execute(CommandSender sender, String commandLabel, String[] args) {
                             return false;
                         }
                     };
-                    List<String> list = completer.onTabComplete(stack.getSender(), dummyCmd, name, effectiveArgs);
-                    return list != null ? list : List.of();
+                    List<String> list = completer.onTabComplete(stack.getSender(), dummyCmd, name, args);
+                    if (list != null) return list;
                 }
-                return List.of();
-            }
-
-            @Override
-            public boolean canUse(CommandSender sender) {
-                return true;
+                return BasicCommand.super.suggest(stack, args);
             }
         });
     }
 
     @Override
     public void onDisable() {
+        if (scoreboardManager != null) {
+            scoreboardManager.resetAllStats();
+        }
+        if (matchManager != null) {
+            matchManager.stopVictoryTasks();
+        }
         if (killstreakManager != null) {
             killstreakManager.clearAllGroundItems();
         }
-        getLogger().info("OneShotOneKill Plugin wurde deaktiviert.");
     }
 
     public WorldManager getWorldManager() {
