@@ -1,17 +1,16 @@
 package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
-import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 
-import java.util.Collections;
-import java.util.List;
-
-public class StartCommand implements CommandExecutor, TabCompleter {
+/**
+ * Startlogik fuer <code>/osok start</code>.
+ * <p>
+ * Bewusst ohne Bukkit {@code CommandExecutor}/{@code TabCompleter}: Die Registrierung erfolgt
+ * ausschliesslich ueber die Paper Lifecycle Commands API (Brigadier {@code BasicCommand}) in
+ * {@link OsokCommand}. Diese Klasse kapselt nur noch die eigentliche Aktion.
+ */
+public class StartCommand {
 
     private final OneShotOneKill plugin;
 
@@ -19,26 +18,9 @@ public class StartCommand implements CommandExecutor, TabCompleter {
         this.plugin = plugin;
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dieser Befehl ist nur für Spieler verfügbar.</red>"));
-            return true;
-        }
-
-        if (!player.isOp()) {
-            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>Dazu hast du keine Rechte.</red>"));
-            return true;
-        }
-
+    public void start(Player player) {
         if (plugin.getMatchManager() != null) {
             plugin.getMatchManager().restartMatch(player);
         }
-        return true;
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        return Collections.emptyList();
     }
 }

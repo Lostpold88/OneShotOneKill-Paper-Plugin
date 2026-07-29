@@ -4,8 +4,7 @@ import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
+import net.kyori.adventure.sound.Sound;
 
 public class KillEffectManager {
 
@@ -25,7 +24,7 @@ public class KillEffectManager {
         deathLoc.getWorld().spawnParticle(Particle.BLOCK, particleLoc, 50, 0.3, 0.5, 0.3, 0.1, Material.REDSTONE_BLOCK.createBlockData());
 
         // 3. Native Audio-Feedback
-        deathLoc.getWorld().playSound(deathLoc, Sound.ENTITY_SQUID_SQUIRT, SoundCategory.MASTER, 1.0f, 0.7f);
-        deathLoc.getWorld().playSound(deathLoc, Sound.ENTITY_PLAYER_HURT, SoundCategory.MASTER, 0.8f, 0.6f);
+        deathLoc.getWorld().playSound(Sound.sound(org.bukkit.Sound.ENTITY_SQUID_SQUIRT, Sound.Source.MASTER, 1.0f, 0.7f), deathLoc.x(), deathLoc.y(), deathLoc.z());
+        deathLoc.getWorld().playSound(Sound.sound(org.bukkit.Sound.ENTITY_PLAYER_HURT, Sound.Source.MASTER, 0.8f, 0.6f), deathLoc.x(), deathLoc.y(), deathLoc.z());
     }
 }
