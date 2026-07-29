@@ -1,23 +1,24 @@
 # Projekt-Regeln für Minecraft Plugins (OneShotOneKill)
 
-## 📌 Server-Plattform & Native Paper Plugin Vorgaben
+## 📌 Strikte Server-Plattform & Native Paper API Vorgaben (100% Paper)
 - Das Plugin ist ein **100% natives Paper Plugin** (`paper-plugin.yml` mit `api-version: '1.21'`) speziell für **Paper Server** (Paper 26.1.2+ / Minecraft 1.21.x).
-- **CRITICAL**: Alle zukünftigen Erweiterungen, Refactorings, Befehle und Korrekturen **MÜSSEN strikt in nativer Paper Plugin Syntax** verfasst werden:
-  - **Paper Plugin Bootstrap & Configuration**: Ausschließlich via `paper-plugin.yml` (keine alte `plugin.yml`).
-  - **Paper Lifecycle Commands API**: Registrierung aller Befehle dynamisch über `this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, ...)` und Paper's `BasicCommand` Interface.
-  - **PersistentDataContainer (PDC)**: `NamespacedKey` zur Item- und Entitäts-Markierung (0% String-Name-Vergleiche oder Bukkit Metadata).
-  - **Paper Entity & Region Schedulers**: `player.getScheduler().runDelayed` / `Bukkit.getGlobalRegionScheduler()` anstelle veralteter `Bukkit.getScheduler()` Aufrufe.
-  - **Native Paper Scoreboard API**: (`Objective#numberFormat(NumberFormat.blank())`) ohne NMS-Reflection.
-  - **Asynchrone Teleportation**: (`player.teleportAsync(location)`) zur Vermeidung von Main-Thread Lagspikes.
-  - **Paper Spatial Entity Search**: (`loc.getNearbyPlayers(radius)`, `location.getNearbyEntitiesByType(...)`, `world.getEntitiesByClass(...)`) anstelle von Schleifen über alle Server-Spieler.
-  - **Paper Plugin Chunk Tickets**: (`addPluginChunkTicket` / `removePluginChunkTicket`) zur sauberen Speicher- und Chunk-Verwaltung.
-  - **Kyori Adventure Component API**: Für alle Chatnachrichten, Titles, Tablisten, Kicks & GUIs.
+- **MANDATORY**: Jede Erweiterung, Refactoring, Befehl, Listener und Korrektur **MUSS ausnahmslos in 100% nativer Paper API & Syntax** verfasst werden. Wann immer eine Paper-Methode oder ein Paper-Feature existiert, **MUSS** diese gegenüber der alten Bukkit/Spigot-Lösung bevorzugt werden:
+  1. **Paper Plugin Bootstrap & Configuration**: Ausschließlich via `paper-plugin.yml` (keine alte `plugin.yml`).
+  2. **Paper Lifecycle Commands API & Brigadier**: Registrierung aller Befehle dynamisch über `this.getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, ...)` und Paper's `BasicCommand` / `CommandSourceStack` Interface (inkl. `canUse` und `suggest` für Instant-Client-Autovervollständigung).
+  3. **Paper Entity & Region Schedulers**: Thread-safe Aufgabenverwaltung ausschließlich über `player.getScheduler()`, `Bukkit.getGlobalRegionScheduler()` und `Bukkit.getRegionScheduler()` (0% veraltete `Bukkit.getScheduler()` / `BukkitRunnable` Aufrufe).
+  4. **PersistentDataContainer (PDC)**: `NamespacedKey` zur Item- und Entitäts-Markierung (0% String-Name-Vergleiche, 0% Bukkit Metadata API, 0% NBT-Reflection).
+  5. **Native Paper Scoreboard API**: Formatspezifisches Rendering via `Objective#numberFormat(NumberFormat.blank())` und `Score#numberFormat(NumberFormat.blank())` (0% NMS-Reflection, 0% veraltete Score-Tricks).
+  6. **Asynchrone Teleportation**: Preloading und Teleportation ausschließlich via `player.teleportAsync(location)` zur Vermeidung von Main-Thread Lagspikes.
+  7. **Paper Spatial Entity Index Engine**: Räumliche Abfragen ausschließlich via `loc.getNearbyPlayers(radius)`, `location.getNearbyEntitiesByType(...)` und `world.getEntitiesByClass(...)` (0% Schleifen über alle Server-Spieler).
+  8. **Paper Plugin Chunk Tickets**: Speicher- und Chunk-Verwaltung via `world.addPluginChunkTicket` / `removePluginChunkTicket`.
+  9. **Kyori Adventure & MiniMessage Component API**: Alle Chatnachrichten, Titles, Tablisten, Kicks, GUI-Namen & Emojis ausschließlich via Kyori `Component`, `MiniMessage.miniMessage().deserialize(...)` und `Audience` (0% `ChatColor`, 0% legacy `§` Paragraphen-Zeichen in Java-Strings).
 
 ## 🎯 Plugin-Funktion (OneShotOneKill)
 - **1-Hit Kill Minigame**: Dolch (Eisenschwert) & Bogen-Treffer eliminieren Spieler mit 1 Treffer. Nahkampf mit anderen Items verursacht normalen Schaden. Reflektor-Schild wehrt den nächsten tödlichen Treffer ab.
+- **Hunger & Sättigung**: Spieler erleiden 0 Hunger (`FoodLevelChangeEvent` ist nativ gecancelt; Food Level und Saturation bleiben auf Maximum).
 - **11 Spezial-Items**: Radar-Puls, Explosiv-Schuss, Reflektor-Schild, Rauchbombe, Frost-Trap, Minigun, Teleport-Granate, Unsichtbarkeits-Mantel (Vanish), Pfeil-Magnetfeld, Kettenblitz-Schuss, Raketen-Sprung.
-- **Item-Modi & Kopfgeld**: `STREAK`, `SPAWN` (Mario-Kart-Boxen), `BOTH`. 5er Streak setzt ein Kopfgeld `[👑]`.
-- **Match-Manager & Leaderboard**: Live-Scoreboard, Match-Limits (Kills/Zeit), Siegeshymne & Feuerwerk.
+- **Item-Modi & Kopfgeld**: `STREAK`, `SPAWN` (30s Mario-Kart-Boxen), `BOTH`. 5er Streak setzt ein Kopfgeld `[👑]`.
+- **Konsolidierter Hauptbefehl (`/osok`)**: Sämtliche Minigame-Funktionen sind als Unterbefehle unter `/osok <start|pause|dauer|itemmode|killeffect|itemtest|clearpfeile|setspawn|resetstats|resetmap|help>` gebündelt (ausnahmslos OP-geschützt).
 
 ## 🛠️ Build- & Verpackungsprozess
 - Nach jeder Änderung an einem Plugin wird der Code **direkt kompiliert (`javac`)**, als `.jar` verpackt und im Server-Plugins-Ordner platziert.
