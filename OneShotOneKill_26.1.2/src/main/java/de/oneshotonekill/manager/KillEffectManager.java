@@ -1,5 +1,7 @@
 package de.oneshotonekill.manager;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -14,20 +16,20 @@ import java.util.UUID;
 public class KillEffectManager {
 
     public enum KillEffect {
-        LIGHTNING("§e[⚡] Blitzschlag"),
-        FIREWORK("§c[🎆] Feuerwerks-Explosion"),
-        BLOOD("§4[🩸] Blut-Splash"),
-        ENDER("§d[🔮] Ender-Portal"),
-        TOTEM("§a[✨] Totem-Aura"),
-        NONE("§7[❌] Keine Animation");
+        LIGHTNING("<yellow>[⚡] Blitzschlag</yellow>"),
+        FIREWORK("<red>[🎆] Feuerwerks-Explosion</red>"),
+        BLOOD("<dark_red>[🩸] Blut-Splash</dark_red>"),
+        ENDER("<light_purple>[🔮] Ender-Portal</light_purple>"),
+        TOTEM("<green>[✨] Totem-Aura</green>"),
+        NONE("<gray>[❌] Keine Animation</gray>");
 
-        private final String displayName;
+        private final Component displayName;
 
-        KillEffect(String displayName) {
-            this.displayName = displayName;
+        KillEffect(String miniMessageFormat) {
+            this.displayName = MiniMessage.miniMessage().deserialize(miniMessageFormat);
         }
 
-        public String getDisplayName() {
+        public Component getDisplayName() {
             return displayName;
         }
     }

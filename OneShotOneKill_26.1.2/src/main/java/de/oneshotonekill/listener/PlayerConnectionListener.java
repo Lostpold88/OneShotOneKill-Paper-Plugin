@@ -1,7 +1,7 @@
 package de.oneshotonekill.listener;
 
 import de.oneshotonekill.OneShotOneKill;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -27,7 +27,7 @@ public class PlayerConnectionListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        event.joinMessage(LegacyComponentSerializer.legacySection().deserialize("§a[✦] §f" + player.getName() + " §7hat §e§lOSOK §7betreten!"));
+        event.joinMessage(MiniMessage.miniMessage().deserialize("<green>[✦] <white>" + player.getName() + "</white> <gray>hat <yellow><b>OSOK</b></yellow> betreten!</gray></green>"));
 
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.playSound(p.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, SoundCategory.MASTER, 1.0f, 1.5f);
@@ -58,7 +58,7 @@ public class PlayerConnectionListener implements Listener {
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
-        event.quitMessage(LegacyComponentSerializer.legacySection().deserialize("§c[❌] §f" + player.getName() + " §7hat §e§lOSOK §7verlassen."));
+        event.quitMessage(MiniMessage.miniMessage().deserialize("<red>[❌] <white>" + player.getName() + "</white> <gray>hat <yellow><b>OSOK</b></yellow> verlassen.</gray></red>"));
 
         Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
             plugin.getScoreboardManager().updateAllScoreboards();
@@ -93,7 +93,7 @@ public class PlayerConnectionListener implements Listener {
                 Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
                 Location fallback = (spawnLoc != null) ? spawnLoc : new Location(plugin.getWorldManager().getOsokWorld(), 223.5, 48.0, 55.5);
                 player.teleportAsync(fallback);
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ⏸ Das Match ist pausiert! Du kannst die Arena aktuell nicht betreten."));
+                player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⏸ Das Match ist pausiert! Du kannst die Arena aktuell nicht betreten.</red>"));
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
         }
@@ -105,19 +105,19 @@ public class PlayerConnectionListener implements Listener {
         Player player = event.getPlayer();
 
         if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Warte auf /start."));
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Warte auf /start.</red>"));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
 
         if (plugin.getMatchManager().isMatchPaused()) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ⏸ Das Match ist aktuell pausiert!"));
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⏸ Das Match ist aktuell pausiert!</red>"));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
 
         if (plugin.getArenaManager().isInArenaArea(player.getLocation())) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Du bist bereits in der Arena!"));
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Du bist bereits in der Arena!</red>"));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             return;
         }
@@ -133,7 +133,7 @@ public class PlayerConnectionListener implements Listener {
                 }
             });
         } else {
-            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] Arena-Welt ist aktuell nicht geladen."));
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] Arena-Welt ist aktuell nicht geladen.</red>"));
         }
     }
 }

@@ -3,7 +3,7 @@ package de.oneshotonekill.listener;
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.manager.KillstreakManager;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -39,9 +39,9 @@ public class CombatListener implements Listener {
             }
             if (damager != null) {
                 if (plugin.getMatchManager().isMatchPaused()) {
-                    damager.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ⏸ Das Match ist aktuell pausiert! Kämpfen ist deaktiviert."));
+                    damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⏸ Das Match ist aktuell pausiert! Kämpfen ist deaktiviert.</red>"));
                 } else if (!plugin.getMatchManager().isMatchStarted()) {
-                    damager.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Kämpfen ist deaktiviert. Warte auf /start."));
+                    damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Kämpfen ist deaktiviert. Warte auf /start.</red>"));
                 }
                 damager.playSound(damager.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
             }
@@ -72,9 +72,9 @@ public class CombatListener implements Listener {
                 plugin.getKillstreakManager().removeShield(target.getUniqueId());
                 event.setCancelled(true);
                 target.playSound(target.getLocation(), Sound.ITEM_SHIELD_BREAK, SoundCategory.MASTER, 1.0f, 1.0f);
-                target.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§b[OSOK] [🛡] Dein Reflektor-Schild hat den tödlichen Treffer abgewehrt!"));
+                target.sendMessage(MiniMessage.miniMessage().deserialize("<aqua>[OSOK] [🛡] Dein Reflektor-Schild hat den tödlichen Treffer abgewehrt!</aqua>"));
                 damager.playSound(damager.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER, 1.0f, 0.8f);
-                damager.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] [🛡] Treffer abgeprallt! " + target.getName() + " hatte ein Reflektor-Schild!"));
+                damager.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] [🛡] Treffer abgeprallt! " + target.getName() + " hatte ein Reflektor-Schild!</red>"));
                 return;
             }
 
@@ -101,25 +101,25 @@ public class CombatListener implements Listener {
         boolean wasBounty = plugin.getScoreboardManager().removeBountyTarget(victim.getUniqueId());
 
         // Deaths erhöhen
-        int d = plugin.getScoreboardManager().incrementDeaths(victim.getUniqueId());
+        int d = plugin.getScoreboardManager().addDeath(victim.getUniqueId());
         plugin.getScoreboardManager().resetStreak(victim.getUniqueId());
 
         if (killer != null && !killer.getUniqueId().equals(victim.getUniqueId())) {
-            int k = plugin.getScoreboardManager().incrementKills(killer.getUniqueId());
-            int s = plugin.getScoreboardManager().incrementStreak(killer.getUniqueId());
+            int k = plugin.getScoreboardManager().addKill(killer.getUniqueId());
+            int s = plugin.getScoreboardManager().addStreak(killer.getUniqueId());
 
             // Gewählten Kill-Effekt des Täters beim Opfer abspielen
             plugin.getKillEffectManager().playKillEffect(killer, victim.getLocation());
 
             killer.playSound(killer.getLocation(), Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER, 1.0f, 1.2f);
-            killer.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] Du hast §e" + victim.getName() + " §aeliminiert! §7(Streak: §e" + s + "§7)"));
+            killer.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] Du hast <yellow>" + victim.getName() + "</yellow> eliminiert! <gray>(Streak: <yellow>" + s + "</yellow>)</gray></green>"));
 
             // Kopfgeld Belohnung: 2 Spezial-Items für den Killer!
             if (wasBounty) {
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
                 killer.playSound(killer.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 1.0f, 1.5f);
-                Component bcMsg = LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 💰 KOPFGELD KASSIERT! §f" + killer.getName() + " §7hat das Kopfgeld auf §e" + victim.getName() + " §7geholt und 2 Spezial-Items kassiert!");
+                Component bcMsg = MiniMessage.miniMessage().deserialize("<green>[OSOK] 💰 KOPFGELD KASSIERT! <white>" + killer.getName() + "</white> <gray>hat das Kopfgeld auf <yellow>" + victim.getName() + "</yellow> geholt und 2 Spezial-Items kassiert!</gray></green>");
                 Bukkit.broadcast(bcMsg);
             }
 
@@ -129,12 +129,12 @@ public class CombatListener implements Listener {
                 plugin.getKillstreakManager().awardRandomKillstreakItem(killer, s);
             }
 
-            event.deathMessage(LegacyComponentSerializer.legacySection().deserialize("§c🎯 " + victim.getName() + " §7wurde von §e" + killer.getName() + " §7ausgeschaltet!"));
+            event.deathMessage(MiniMessage.miniMessage().deserialize("<red>🎯 " + victim.getName() + " <gray>wurde von <yellow>" + killer.getName() + "</yellow> ausgeschaltet!</gray></red>"));
 
             // Prüfen, ob dieser Kill den Match-Sieg auslöst
             plugin.getMatchManager().checkKillWinner(killer, k);
         } else {
-            event.deathMessage(LegacyComponentSerializer.legacySection().deserialize("§c☠ " + victim.getName() + " §7ist gestorben."));
+            event.deathMessage(MiniMessage.miniMessage().deserialize("<red>☠ " + victim.getName() + " <gray>ist gestorben.</gray></red>"));
         }
 
         // Live-Scoreboard und Tab-Liste für ALLE Online-Spieler aktualisieren

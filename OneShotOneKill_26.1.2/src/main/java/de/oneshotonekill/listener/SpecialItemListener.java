@@ -3,6 +3,7 @@ package de.oneshotonekill.listener;
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.manager.KillstreakManager;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -94,9 +95,9 @@ public class SpecialItemListener implements Listener {
             Location loc = item.getLocation();
             loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 30, 0.3, 0.3, 0.3, 0.1);
 
-            Component msg = LegacyComponentSerializer.legacySection().deserialize("§e[OSOK] 🎁 §lITEM-BOX GEÖFFNET! §7Du hast ")
+            Component msg = MiniMessage.miniMessage().deserialize("<yellow>[OSOK] 🎁 <b>ITEM-BOX GEÖFFNET!</b> <gray>Du hast </gray></yellow>")
                     .append(nameComp)
-                    .append(LegacyComponentSerializer.legacySection().deserialize(" §7erhalten!"));
+                    .append(MiniMessage.miniMessage().deserialize("<gray> erhalten!</gray>"));
             player.sendMessage(msg);
         }
     }
@@ -107,7 +108,7 @@ public class SpecialItemListener implements Listener {
         if (getSpecialItemType(item) != null) {
             event.setCancelled(true);
             Player player = event.getPlayer();
-            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Spezial-Items können nicht weggeworfen werden!"));
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Spezial-Items können nicht weggeworfen werden!</red>"));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
         }
     }
@@ -124,7 +125,7 @@ public class SpecialItemListener implements Listener {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 140, 10));
                 player.setFreezeTicks(140);
                 player.playSound(player.getLocation(), Sound.BLOCK_GLASS_BREAK, SoundCategory.MASTER, 1.0f, 0.5f);
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❄ Du bist in eine Frost-Trap getreten und für 7s eingefroren!"));
+                player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❄ Du bist in eine Frost-Trap getreten und für 7s eingefroren!</red>"));
 
                 // Nach 7 Sekunden (140 Ticks) verschwindet die Druckplatte
                 Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
@@ -145,9 +146,9 @@ public class SpecialItemListener implements Listener {
             if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchPaused() || plugin.getMatchManager().isMatchEnded()) {
                 event.setCancelled(true);
                 if (plugin.getMatchManager().isMatchPaused()) {
-                    player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ⏸ Das Match ist aktuell pausiert!"));
+                    player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⏸ Das Match ist aktuell pausiert!</red>"));
                 } else {
-                    player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Warte auf /start."));
+                    player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Das Spiel wurde noch nicht gestartet! Warte auf /start.</red>"));
                 }
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                 return;
@@ -155,7 +156,7 @@ public class SpecialItemListener implements Listener {
 
             if (!plugin.getArenaManager().isInArenaArea(player.getLocation())) {
                 event.setCancelled(true);
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ❌ Spezial-Items können nur innerhalb der Arena genutzt werden!"));
+                player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❌ Spezial-Items können nur innerhalb der Arena genutzt werden!</red>"));
                 player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, SoundCategory.MASTER, 1.0f, 1.0f);
                 return;
             }
@@ -175,7 +176,7 @@ public class SpecialItemListener implements Listener {
                         count++;
                     }
                 }
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] ✦ Radar-Puls ausgeführt! §e" + count + " §aGegner in der Arena für 30s enthüllt!"));
+                player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ✦ Radar-Puls ausgeführt! <yellow>" + count + "</yellow> Gegner in der Arena für 30s enthüllt!</green>"));
                 return;
             }
 
@@ -186,7 +187,7 @@ public class SpecialItemListener implements Listener {
 
                 plugin.getKillstreakManager().addExplosiveShot(player.getUniqueId());
                 player.playSound(player.getLocation(), Sound.ENTITY_TNT_PRIMED, SoundCategory.MASTER, 1.0f, 1.2f);
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] ★ Explosiv-Schuss geladen! Dein nächster Schuss erzeugt eine große Explosion."));
+                player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ★ Explosiv-Schuss geladen! Dein nächster Schuss erzeugt eine große Explosion.</green>"));
                 return;
             }
 
@@ -197,7 +198,7 @@ public class SpecialItemListener implements Listener {
 
                 plugin.getKillstreakManager().addShield(player.getUniqueId());
                 player.playSound(player.getLocation(), Sound.ITEM_SHIELD_BLOCK, SoundCategory.MASTER, 1.0f, 1.2f);
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🛡 Reflektor-Schild ist aktiv! Blockiert deinen nächsten Treffer."));
+                player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🛡 Reflektor-Schild ist aktiv! Blockiert deinen nächsten Treffer.</green>"));
                 return;
             }
 
@@ -238,7 +239,7 @@ public class SpecialItemListener implements Listener {
                     activeBearTraps.add(targetBlock.getLocation());
                     consumeItem(player, item);
                     player.playSound(player.getLocation(), Sound.BLOCK_GLASS_PLACE, SoundCategory.MASTER, 1.0f, 1.0f);
-                    player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] ❄ Frost-Trap platziert!"));
+                    player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ❄ Frost-Trap platziert!</green>"));
                 }
                 return;
             }
@@ -251,7 +252,7 @@ public class SpecialItemListener implements Listener {
                 EnderPearl pearl = player.launchProjectile(EnderPearl.class, player.getEyeLocation().getDirection().multiply(1.8));
                 pearl.getPersistentDataContainer().set(KillstreakManager.KEY_TP_GRENADE_PDC, PersistentDataType.BYTE, (byte) 1);
                 player.playSound(player.getLocation(), Sound.ENTITY_ENDER_PEARL_THROW, SoundCategory.MASTER, 1.0f, 1.0f);
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🌀 Teleport-Granate geworfen!"));
+                player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🌀 Teleport-Granate geworfen!</green>"));
                 return;
             }
 
@@ -270,7 +271,7 @@ public class SpecialItemListener implements Listener {
                 }
 
                 player.playSound(player.getLocation(), Sound.ENTITY_PHANTOM_FLAP, SoundCategory.MASTER, 1.0f, 1.5f);
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] ✦ Unsichtbarkeits-Mantel aktiviert! Du bist für 15s komplett unsichtbar (Vanish)."));
+                player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ✦ Unsichtbarkeits-Mantel aktiviert! Du bist für 15s komplett unsichtbar (Vanish).</green>"));
 
                 player.getScheduler().runDelayed(plugin, task -> {
                     if (vanishedPlayers.remove(player.getUniqueId())) {
@@ -278,7 +279,7 @@ public class SpecialItemListener implements Listener {
                             for (Player other : Bukkit.getOnlinePlayers()) {
                                 other.showPlayer(plugin, player);
                             }
-                            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ✦ Unsichtbarkeits-Mantel abgelaufen."));
+                            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ✦ Unsichtbarkeits-Mantel abgelaufen.</red>"));
                         }
                     }
                 }, null, 300L); // 15 Sekunden
@@ -301,7 +302,7 @@ public class SpecialItemListener implements Listener {
 
                 plugin.getKillstreakManager().addChainLightningShot(player.getUniqueId());
                 player.playSound(player.getLocation(), Sound.ITEM_TRIDENT_THUNDER, SoundCategory.MASTER, 1.0f, 1.5f);
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] ⚡ Kettenblitz-Schuss geladen! Dein nächster Treffer beschwört Blitze."));
+                player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ⚡ Kettenblitz-Schuss geladen! Dein nächster Treffer beschwört Blitze.</green>"));
                 return;
             }
 
@@ -314,7 +315,7 @@ public class SpecialItemListener implements Listener {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 400, 2, false, false));
                 player.getWorld().spawnParticle(Particle.FIREWORK, player.getLocation(), 30, 0.5, 0.5, 0.5, 0.1);
                 player.playSound(player.getLocation(), Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, SoundCategory.MASTER, 1.0f, 1.2f);
-                player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] ★ Raketen-Sprung! Du hast 20 Sekunden Air-Sprint & Fallschutz."));
+                player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ★ Raketen-Sprung! Du hast 20 Sekunden Air-Sprint & Fallschutz.</green>"));
 
                 noFallPlayers.add(player.getUniqueId());
                 player.getScheduler().runDelayed(plugin, task -> noFallPlayers.remove(player.getUniqueId()), null, 400L); // 20 Sekunden
@@ -372,7 +373,7 @@ public class SpecialItemListener implements Listener {
                         org.bukkit.util.Vector push = victim.getLocation().toVector().subtract(loc.toVector()).normalize().multiply(1.5).setY(0.5);
                         victim.setVelocity(push);
                         victim.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 40, 2));
-                        victim.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] 🌀 Du wurdest von einer Teleport-Granate weggeschleudert!"));
+                        victim.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] 🌀 Du wurdest von einer Teleport-Granate weggeschleudert!</red>"));
                     }
                 }
             }

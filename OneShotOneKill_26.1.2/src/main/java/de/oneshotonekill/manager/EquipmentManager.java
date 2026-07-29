@@ -1,6 +1,6 @@
 package de.oneshotonekill.manager;
 
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -18,7 +18,7 @@ public class EquipmentManager {
         ItemStack bow = new ItemStack(Material.BOW);
         ItemMeta bowMeta = bow.getItemMeta();
         if (bowMeta != null) {
-            bowMeta.displayName(LegacyComponentSerializer.legacySection().deserialize("§e§l⚡ OneShot Bogen"));
+            bowMeta.displayName(MiniMessage.miniMessage().deserialize("<yellow><b>⚡ OneShot Bogen</b></yellow>"));
             bowMeta.setUnbreakable(true);
             bowMeta.addEnchant(Enchantment.INFINITY, 1, true);
             bow.setItemMeta(bowMeta);
@@ -28,7 +28,7 @@ public class EquipmentManager {
         ItemStack sword = new ItemStack(Material.IRON_SWORD);
         ItemMeta swordMeta = sword.getItemMeta();
         if (swordMeta != null) {
-            swordMeta.displayName(LegacyComponentSerializer.legacySection().deserialize("§c§l⚔ OneShot Dolch"));
+            swordMeta.displayName(MiniMessage.miniMessage().deserialize("<red><b>⚔ OneShot Dolch</b></red>"));
             swordMeta.setUnbreakable(true);
             sword.setItemMeta(swordMeta);
         }

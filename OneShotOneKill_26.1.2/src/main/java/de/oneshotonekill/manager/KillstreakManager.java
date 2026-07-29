@@ -2,6 +2,7 @@ package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.entity.Arrow;
@@ -207,17 +208,17 @@ public class KillstreakManager {
 
     public ItemStack createSpecificSpecialItem(int itemType) {
         return switch (itemType) {
-            case 0 -> createSpecialItem(Material.ENDER_EYE, "§e§l[✦] Radar-Puls (Rechtsklick)", "§7Enthüllt alle Gegner in der Arena für 30 Sekunden!", KEY_RADAR);
-            case 1 -> createSpecialItem(Material.TNT, "§c§l[★] Explosiv-Schuss (Rechtsklick)", "§7Dein nächster Pfeil erzeugt eine Explosion!", KEY_EXPLOSIVE);
-            case 2 -> createSpecialItem(Material.NETHER_STAR, "§b§l[🛡] Reflektor-Schild (Rechtsklick)", "§7Blockiert den nächsten tödlichen Treffer!", KEY_REFLECTOR);
-            case 3 -> createSpecialItem(Material.SNOWBALL, "§f§l[☁] Rauchbombe (Werfen)", "§7Erzeugt eine dichte Rauchwolke!", KEY_SMOKE);
-            case 4 -> createSpecialItem(Material.HEAVY_WEIGHTED_PRESSURE_PLATE, "§b§l[❄] Frost-Trap (Plazieren)", "§7Friert betretende Gegner für 7s fest!", KEY_FROST);
-            case 5 -> createSpecialItem(Material.BLAZE_ROD, "§6§l[🔥] Krass Minigun (Rechtsklick)", "§7Feuert 8 Sekunden lang automatisch Pfeile ab!", KEY_MINIGUN);
-            case 6 -> createSpecialItem(Material.ENDER_PEARL, "§d§l[🌀] Teleport-Granate (Werfen)", "§7Teleportiert & erzeugt eine Druckwelle!", KEY_TELEPORT);
-            case 7 -> createSpecialItem(Material.PHANTOM_MEMBRANE, "§7§l[✦] Unsichtbarkeits-Mantel (Rechtsklick)", "§7Macht dich für 15s komplett unsichtbar!", KEY_INVISIBILITY);
-            case 8 -> createSpecialItem(Material.HEART_OF_THE_SEA, "§9§l[⚓] Pfeil-Magnetfeld (Rechtsklick)", "§7Lenkt herannahende Pfeile für 15s ab!", KEY_MAGNET);
-            case 9 -> createSpecialItem(Material.LIGHTNING_ROD, "§e§l[⚡] Kettenblitz-Schuss (Rechtsklick)", "§7Dein nächster Schuss erzeugt Blitze!", KEY_CHAIN_LIGHTNING);
-            default -> createSpecialItem(Material.FIREWORK_ROCKET, "§c§l[★] Raketen-Sprung (Rechtsklick)", "§7Schleudert dich 15 Blöcke in die Höhe!", KEY_ROCKET_JUMP);
+            case 0 -> createSpecialItem(Material.ENDER_EYE, "<yellow><b>[✦] Radar-Puls (Rechtsklick)</b></yellow>", "<gray>Enthüllt alle Gegner in der Arena für 30 Sekunden!</gray>", KEY_RADAR);
+            case 1 -> createSpecialItem(Material.TNT, "<red><b>[★] Explosiv-Schuss (Rechtsklick)</b></red>", "<gray>Dein nächster Pfeil erzeugt eine Explosion!</gray>", KEY_EXPLOSIVE);
+            case 2 -> createSpecialItem(Material.NETHER_STAR, "<aqua><b>[🛡] Reflektor-Schild (Rechtsklick)</b></aqua>", "<gray>Blockiert den nächsten tödlichen Treffer!</gray>", KEY_REFLECTOR);
+            case 3 -> createSpecialItem(Material.SNOWBALL, "<white><b>[☁] Rauchbombe (Werfen)</b></white>", "<gray>Erzeugt eine dichte Rauchwolke!</gray>", KEY_SMOKE);
+            case 4 -> createSpecialItem(Material.HEAVY_WEIGHTED_PRESSURE_PLATE, "<aqua><b>[❄] Frost-Trap (Plazieren)</b></aqua>", "<gray>Friert betretende Gegner für 7s fest!</gray>", KEY_FROST);
+            case 5 -> createSpecialItem(Material.BLAZE_ROD, "<gold><b>[🔥] Krass Minigun (Rechtsklick)</b></gold>", "<gray>Feuert 8 Sekunden lang automatisch Pfeile ab!</gray>", KEY_MINIGUN);
+            case 6 -> createSpecialItem(Material.ENDER_PEARL, "<light_purple><b>[🌀] Teleport-Granate (Werfen)</b></light_purple>", "<gray>Teleportiert & erzeugt eine Druckwelle!</gray>", KEY_TELEPORT);
+            case 7 -> createSpecialItem(Material.PHANTOM_MEMBRANE, "<gray><b>[✦] Unsichtbarkeits-Mantel (Rechtsklick)</b></gray>", "<gray>Macht dich für 15s komplett unsichtbar!</gray>", KEY_INVISIBILITY);
+            case 8 -> createSpecialItem(Material.HEART_OF_THE_SEA, "<blue><b>[⚓] Pfeil-Magnetfeld (Rechtsklick)</b></blue>", "<gray>Lenkt herannahende Pfeile für 15s ab!</gray>", KEY_MAGNET);
+            case 9 -> createSpecialItem(Material.LIGHTNING_ROD, "<yellow><b>[⚡] Kettenblitz-Schuss (Rechtsklick)</b></yellow>", "<gray>Dein nächster Schuss erzeugt Blitze!</gray>", KEY_CHAIN_LIGHTNING);
+            default -> createSpecialItem(Material.FIREWORK_ROCKET, "<red><b>[★] Raketen-Sprung (Rechtsklick)</b></red>", "<gray>Schleudert dich 15 Blöcke in die Höhe!</gray>", KEY_ROCKET_JUMP);
         };
     }
 
@@ -229,30 +230,30 @@ public class KillstreakManager {
         player.getInventory().addItem(item);
         player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, SoundCategory.MASTER, 1.0f, 1.8f);
         if (streak > 0) {
-            Component msg = LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🎁 §l" + streak + "er Killstreak! §7Du hast den Spezial-Item erhalten: ")
+            Component msg = MiniMessage.miniMessage().deserialize("<green>[OSOK] 🎁 <b>" + streak + "er Killstreak!</b> <gray>Du hast den Spezial-Item erhalten: </gray></green>")
                     .append(itemNameComponent);
             player.sendMessage(msg);
 
-            Component bc = LegacyComponentSerializer.legacySection().deserialize("§e[OSOK] 🔥 §f" + player.getName() + " §ehat eine §l" + streak + "er Killstreak §eerreicht!");
+            Component bc = MiniMessage.miniMessage().deserialize("<yellow>[OSOK] 🔥 <white>" + player.getName() + "</white> hat eine <b>" + streak + "er Killstreak</b> erreicht!</yellow>");
             Bukkit.broadcast(bc);
         } else {
-            Component msg = LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🧪 Itemtest: ")
+            Component msg = MiniMessage.miniMessage().deserialize("<green>[OSOK] 🧪 Itemtest: </green>")
                     .append(itemNameComponent)
-                    .append(LegacyComponentSerializer.legacySection().deserialize(" §aerhalten!"));
+                    .append(MiniMessage.miniMessage().deserialize("<green> erhalten!</green>"));
             player.sendMessage(msg);
         }
     }
 
-    public ItemStack createSpecialItem(Material mat, String name, String loreLine) {
-        return createSpecialItem(mat, name, loreLine, null);
+    public ItemStack createSpecialItem(Material mat, String miniMessageName, String miniMessageLore) {
+        return createSpecialItem(mat, miniMessageName, miniMessageLore, null);
     }
 
-    public ItemStack createSpecialItem(Material mat, String name, String loreLine, String itemTypeId) {
+    public ItemStack createSpecialItem(Material mat, String miniMessageName, String miniMessageLore, String itemTypeId) {
         ItemStack stack = new ItemStack(mat);
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
-            meta.displayName(LegacyComponentSerializer.legacySection().deserialize(name));
-            meta.lore(Collections.singletonList(LegacyComponentSerializer.legacySection().deserialize(loreLine)));
+            meta.displayName(MiniMessage.miniMessage().deserialize(miniMessageName));
+            meta.lore(Collections.singletonList(MiniMessage.miniMessage().deserialize(miniMessageLore)));
             if (itemTypeId != null) {
                 meta.getPersistentDataContainer().set(specialItemKey, PersistentDataType.STRING, itemTypeId);
             }
@@ -263,12 +264,12 @@ public class KillstreakManager {
 
     public void activateMinigun(Player player) {
         if (activeMiniguns.contains(player.getUniqueId())) {
-            player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] 🔥 Minigun ist bereits aktiv!"));
+            player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] 🔥 Minigun ist bereits aktiv!</red>"));
             return;
         }
 
         activeMiniguns.add(player.getUniqueId());
-        player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] 🔥 §lMINIGUN AKTIVIERT! §78 Sekunden Dauerfeuer!"));
+        player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🔥 <b>MINIGUN AKTIVIERT!</b> <gray>8 Sekunden Dauerfeuer!</gray></green>"));
         player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, SoundCategory.MASTER, 0.8f, 1.5f);
 
         List<Arrow> minigunArrows = new ArrayList<>();
@@ -290,7 +291,7 @@ public class KillstreakManager {
                     minigunArrows.clear();
 
                     if (player.isOnline()) {
-                        player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] 🔥 Minigun abgelaufen. Pfeile wurden entfernt!"));
+                        player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] 🔥 Minigun abgelaufen. Pfeile wurden entfernt!</red>"));
                         player.playSound(player.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, SoundCategory.MASTER, 1.0f, 1.0f);
                     }
                     return;
@@ -312,7 +313,7 @@ public class KillstreakManager {
     public void activateArrowMagnet(Player player) {
         if (arrowMagnets.contains(player.getUniqueId())) return;
         arrowMagnets.add(player.getUniqueId());
-        player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§a[OSOK] ⚓ Pfeil-Magnetfeld für 15 Sekunden aktiv!"));
+        player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ⚓ Pfeil-Magnetfeld für 15 Sekunden aktiv!</green>"));
         player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, SoundCategory.MASTER, 1.0f, 1.5f);
 
         new BukkitRunnable() {
@@ -324,7 +325,7 @@ public class KillstreakManager {
                     arrowMagnets.remove(player.getUniqueId());
                     cancel();
                     if (player.isOnline()) {
-                        player.sendMessage(LegacyComponentSerializer.legacySection().deserialize("§c[OSOK] ⚓ Pfeil-Magnetfeld abgelaufen."));
+                        player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ⚓ Pfeil-Magnetfeld abgelaufen.</red>"));
                         player.playSound(player.getLocation(), Sound.BLOCK_BEACON_DEACTIVATE, SoundCategory.MASTER, 1.0f, 1.0f);
                     }
                     return;
