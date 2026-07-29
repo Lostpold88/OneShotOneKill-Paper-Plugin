@@ -13,13 +13,6 @@
   8. **Paper Plugin Chunk Tickets**: Speicher- und Chunk-Verwaltung via `world.addPluginChunkTicket` / `removePluginChunkTicket`.
   9. **Kyori Adventure & MiniMessage Component API**: Alle Chatnachrichten, Titles, Tablisten, Kicks, GUI-Namen & Emojis ausschließlich via Kyori `Component`, `MiniMessage.miniMessage().deserialize(...)` und `Audience` (0% `ChatColor`, 0% legacy `§` Paragraphen-Zeichen in Java-Strings).
 
-## 🎯 Plugin-Funktion (OneShotOneKill)
-- **1-Hit Kill Minigame**: Dolch (Eisenschwert) & Bogen-Treffer eliminieren Spieler mit 1 Treffer. Nahkampf mit anderen Items verursacht normalen Schaden. Reflektor-Schild wehrt den nächsten tödlichen Treffer ab.
-- **Hunger & Sättigung**: Spieler erleiden 0 Hunger (`FoodLevelChangeEvent` ist nativ gecancelt; Food Level und Saturation bleiben auf Maximum).
-- **11 Spezial-Items**: Radar-Puls, Explosiv-Schuss, Reflektor-Schild, Rauchbombe, Frost-Trap, Minigun, Teleport-Granate, Unsichtbarkeits-Mantel (Vanish), Pfeil-Magnetfeld, Kettenblitz-Schuss, Raketen-Sprung.
-- **Item-Modi & Kopfgeld**: `STREAK`, `SPAWN` (30s Mario-Kart-Boxen), `BOTH`. 5er Streak setzt ein Kopfgeld `[👑]`.
-- **Konsolidierter Hauptbefehl (`/osok`)**: Sämtliche Minigame-Funktionen sind als Unterbefehle unter `/osok <start|pause|dauer|itemmode|killeffect|itemtest|clearpfeile|setspawn|resetstats|resetmap|help>` gebündelt (ausnahmslos OP-geschützt).
-
 ## 🛠️ Build- & Verpackungsprozess
 - Nach jeder Änderung an einem Plugin wird der Code **direkt kompiliert (`javac`)**, als `.jar` verpackt und im Server-Plugins-Ordner platziert.
 - Der Build erfolgt über das PowerShell-Skript:
