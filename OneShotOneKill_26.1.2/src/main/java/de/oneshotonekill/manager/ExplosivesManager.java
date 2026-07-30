@@ -80,6 +80,14 @@ public class ExplosivesManager implements Listener {
     /** Abwurfhoehe ueber der Arena-Oberkante, sofern keine Decke im Weg ist. */
     private static final double AIRSTRIKE_HEIGHT_ABOVE_ARENA = 15.0;
     private static final int BOMB_SAFETY_FUSE_TICKS = 400;
+    /**
+     * Startgeschwindigkeit der fallenden Bombe nach unten.
+     * <p>
+     * Die Schwerkraft allein liess die Bombe traege heruntertrudeln - auf der Standard-Map
+     * sind es wegen der Decke ohnehin nur rund zehn Bloecke Fallhoehe. Der Anschub verkuerzt
+     * die Wartezeit zwischen Zielmarkierung und Einschlag spuerbar.
+     */
+    private static final double BOMB_DROP_VELOCITY = -0.9;
 
     private static final Random RANDOM = new Random();
 
@@ -317,7 +325,7 @@ public class ExplosivesManager implements Listener {
             // Lange Zuendschnur: Gezuendet wird bei Bodenkontakt, nicht per Timer.
             spawned.setFuseTicks(BOMB_SAFETY_FUSE_TICKS);
             spawned.setIsIncendiary(false);
-            spawned.setVelocity(new Vector(0, -0.35, 0));
+            spawned.setVelocity(new Vector(0, BOMB_DROP_VELOCITY, 0));
             spawned.getPersistentDataContainer().set(KEY_AIRSTRIKE_BOMB, PersistentDataType.BYTE, (byte) 1);
             spawned.getPersistentDataContainer().set(KEY_OWNER, PersistentDataType.STRING, owner.getUniqueId().toString());
         });
@@ -400,8 +408,14 @@ public class ExplosivesManager implements Listener {
      * <p>
      * Es lassen sich nur <b>eigene</b> Ladungen aufnehmen. Mit der letzten Ladung verschwindet
      * auch der Fernzuender - ohne Ladung hat er keine Funktion mehr.
+     * <p>
+     * <b>{@code LOWEST} ist Pflicht.</b> Der {@code SpecialItemListener} platziert die C4 auf
+     * {@code NORMAL} und verbraucht sie danach per {@code subtract(1)}. Bei genau einer C4 im
+     * Stapel ist {@code event.getItem()} anschliessend leer - die Pruefung unten haette den
+     * Platzierungsvorgang dann nicht mehr als solchen erkannt und die eben gesetzte Ladung
+     * im selben Klick wieder eingesammelt.
      */
-    @EventHandler(priority = EventPriority.NORMAL)
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onC4Pickup(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) return;
 
