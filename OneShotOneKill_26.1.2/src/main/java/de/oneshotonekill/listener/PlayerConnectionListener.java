@@ -9,6 +9,9 @@ import org.bukkit.World;
 import org.bukkit.potion.PotionEffect;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -23,6 +26,8 @@ import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 public class PlayerConnectionListener implements Listener {
 
     private final OneShotOneKill plugin;
+    /** Laufende Void-Rettungen - verhindert, dass jeder Fall-Tick einen neuen Teleport ausloest. */
+    private final Set<UUID> voidRescues = new HashSet<>();
 
     public PlayerConnectionListener(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -101,21 +106,41 @@ public class PlayerConnectionListener implements Listener {
         Player player = event.getPlayer();
         event.quitMessage(MiniMessage.miniMessage().deserialize("<red>[❌] <white>" + player.getName() + "</white> <gray>hat <yellow><b>OSOK</b></yellow> verlassen.</gray></red>"));
 
-        // Gecachtes Board freigeben, damit es nicht bis zum Serverstop im Speicher bleibt
+        // Gecachtes Board und alle spielerbezogenen Zustaende freigeben, damit nichts
+        // bis zum Serverstop im Speicher bleibt
         plugin.getScoreboardManager().removePlayer(player.getUniqueId());
+        plugin.getGlowManager().removePlayer(player.getUniqueId());
+        plugin.getAntiCampManager().removePlayer(player.getUniqueId());
+        plugin.getTacticalItemsManager().stopGlide(player, false);
+        voidRescues.remove(player.getUniqueId());
 
         Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
             plugin.getScoreboardManager().updateAllScoreboards();
         }, 2L);
     }
 
+    /**
+     * Respawn nach einem echten Tod.
+     * <p>
+     * Laeuft ein Match, geht es direkt zurueck in die Arena - genau wie bei einer regulaeren
+     * Eliminierung. Ohne diesen Gleichlauf landete man nach {@code /kill} in der Lobby, waehrend
+     * ein normaler Treffer sofort wieder ins Spiel bringt.
+     */
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent event) {
         World osokWorld = plugin.getWorldManager().getOsokWorld();
         Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
 
-        if (osokWorld != null && spawnLoc != null) {
-            event.setRespawnLocation(spawnLoc);
+        boolean matchRunning = plugin.getMatchManager().isMatchStarted()
+                && !plugin.getMatchManager().isMatchPaused()
+                && !plugin.getMatchManager().isMatchEnded();
+
+        Location respawnLoc = matchRunning ? plugin.getArenaManager().getRandomArenaLocation() : null;
+        if (respawnLoc == null) {
+            respawnLoc = spawnLoc;
+        }
+        if (osokWorld != null && respawnLoc != null) {
+            event.setRespawnLocation(respawnLoc);
         }
 
         Player player = event.getPlayer();
@@ -131,8 +156,18 @@ public class PlayerConnectionListener implements Listener {
 
     @EventHandler
     public void onPlayerMove(org.bukkit.event.player.PlayerMoveEvent event) {
+        // Paper: reine Blickrichtungsaenderungen gar nicht erst weiterverarbeiten
+        if (!event.hasChangedPosition()) return;
+
+        Player player = event.getPlayer();
+
+        // Rettung aus dem Void - siehe rescueFromVoid
+        if (plugin.getArenaManager().isBelowWorld(event.getTo())) {
+            rescueFromVoid(player);
+            return;
+        }
+
         if (plugin.getMatchManager().isMatchPaused()) {
-            Player player = event.getPlayer();
             Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
             if (spawnLoc != null && plugin.getArenaManager().isInArenaArea(event.getTo())) {
                 player.teleportAsync(spawnLoc);
@@ -140,6 +175,50 @@ public class PlayerConnectionListener implements Listener {
                 player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
             }
         }
+    }
+
+    /**
+     * Holt einen Spieler zurueck, der unter die Welt gefallen ist.
+     * <p>
+     * Notwendig, weil der {@code CombatListener} jeden Schaden ausserhalb der Arena cancelt -
+     * einschliesslich Void-Schaden. Die Lobby liegt bewusst ausserhalb der Arena-Grenzen; ein
+     * Fehltritt neben die Plattform fuehrte deshalb in einen endlosen Fall, aus dem nur ein
+     * Rejoin half. Der Sturz zaehlt bewusst <b>nicht</b> als Tod - ausserhalb der Arena wird
+     * ohnehin nicht gewertet.
+     */
+    private void rescueFromVoid(Player player) {
+        if (!voidRescues.add(player.getUniqueId())) {
+            return; // Rettung laeuft bereits, der Spieler faellt nur noch bis zum Teleport
+        }
+
+        boolean matchRunning = plugin.getMatchManager().isMatchStarted()
+                && !plugin.getMatchManager().isMatchPaused()
+                && !plugin.getMatchManager().isMatchEnded();
+
+        Location target = matchRunning ? plugin.getArenaManager().getRandomArenaLocation() : null;
+        if (target == null) {
+            target = plugin.getWorldManager().getSpawnLocation();
+        }
+        if (target == null) {
+            voidRescues.remove(player.getUniqueId());
+            return;
+        }
+
+        player.setFallDistance(0.0f);
+        player.teleportAsync(target).thenAccept(success -> {
+            voidRescues.remove(player.getUniqueId());
+            if (!success || !player.isOnline()) return;
+
+            player.setFallDistance(0.0f);
+            if (matchRunning) {
+                plugin.getEquipmentManager().giveOneShotEquipment(player);
+            } else {
+                plugin.getEquipmentManager().clearBaseEquipment(player);
+            }
+            player.sendMessage(MiniMessage.miniMessage().deserialize(
+                    "<yellow>[OSOK] 🪂 Du bist aus der Welt gefallen und wurdest zurückgeholt.</yellow>"));
+            player.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ENDERMAN_TELEPORT, Sound.Source.MASTER, 1.0f, 0.8f));
+        });
     }
 
     @EventHandler

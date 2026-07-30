@@ -58,6 +58,10 @@ public class ScoreboardManager {
     private final Map<UUID, Integer> deathsMap = new HashMap<>();
     private final Map<UUID, Integer> streakMap = new HashMap<>();
     private final Map<UUID, Integer> highestStreakMap = new HashMap<>();
+    /** Eingesammelte Spezial-Items (Boden-Boxen, Killstreak- und Kopfgeld-Belohnungen). */
+    private final Map<UUID, Integer> itemsCollectedMap = new HashMap<>();
+    /** Zurueckgelegte Strecke in Bloecken, gemessen vom AntiCampManager. */
+    private final Map<UUID, Double> distanceMap = new HashMap<>();
     private final Set<UUID> bountyTargets = new HashSet<>();
 
     /** Pro Spieler ein dauerhaft wiederverwendetes Board. */
@@ -163,6 +167,12 @@ public class ScoreboardManager {
                         "<yellow><b>⏱ VERBLEIBEND:</b></yellow> <white>" + match.formatTime(shownSeconds) + "</white>"));
                 lines.add(SEPARATOR);
             }
+
+            SuddenDeathManager suddenDeath = plugin.getSuddenDeathManager();
+            if (suddenDeath != null && suddenDeath.isActive()) {
+                lines.add(suddenDeath.sidebarLine());
+                lines.add(SEPARATOR);
+            }
         }
 
         lines.add(HEADING_RANKING);
@@ -243,6 +253,8 @@ public class ScoreboardManager {
         deathsMap.clear();
         streakMap.clear();
         highestStreakMap.clear();
+        itemsCollectedMap.clear();
+        distanceMap.clear();
         bountyTargets.clear();
         updateAllScoreboards();
     }
@@ -327,10 +339,35 @@ public class ScoreboardManager {
         return highestStreakMap.getOrDefault(uuid, 0);
     }
 
+    /** Zaehlt eingesammelte Spezial-Items fuer die Match-Zusammenfassung. */
+    public int addItemsCollected(UUID uuid, int amount) {
+        int total = itemsCollectedMap.getOrDefault(uuid, 0) + amount;
+        itemsCollectedMap.put(uuid, total);
+        return total;
+    }
+
+    public int getItemsCollected(UUID uuid) {
+        return itemsCollectedMap.getOrDefault(uuid, 0);
+    }
+
+    /** Summiert zurueckgelegte Bloecke fuer die Match-Zusammenfassung. */
+    public void addDistance(UUID uuid, double blocks) {
+        distanceMap.merge(uuid, blocks, Double::sum);
+    }
+
+    public double getDistance(UUID uuid) {
+        return distanceMap.getOrDefault(uuid, 0.0);
+    }
+
     public String getKDRatio(UUID uuid) {
+        return String.format(Locale.US, "%.1f", getKDRatioValue(uuid));
+    }
+
+    /** K/D als Zahl - fuer Vergleiche in der Match-Zusammenfassung. */
+    public double getKDRatioValue(UUID uuid) {
         int k = getKills(uuid);
         int d = getDeaths(uuid);
-        if (d == 0) return String.format(Locale.US, "%.1f", (double) k);
-        return String.format(Locale.US, "%.1f", (double) k / (double) d);
+        if (d == 0) return k;
+        return (double) k / (double) d;
     }
 }
