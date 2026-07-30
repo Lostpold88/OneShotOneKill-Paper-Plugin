@@ -69,6 +69,8 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 
   16. 🦅 **Gleitflug** *(Elytra)*: **8 Sekunden** Flug mit Startschub und regelmäßigen Schubstößen. Für die Flugdauer erhält der Spieler Leih-Schwingen im Brustslot, die danach restlos wieder eingesammelt werden. Die Flughöhe respektiert die **Decke der Map** und die Arena-Oberkante – auf der offenen DustPvP-Map könnte man sonst über die Arena hinaussteigen, und außerhalb der Arena ist jeder Kampf deaktiviert. Am Ende gibt es **Sanfter Fall** für die Landung, denn Sturzschaden wäre in der Arena tödlich.
 
+  > **Der Flug endet bei der Landung, nicht erst nach acht Sekunden.** Ohne diese Prüfung liefen Partikel und Flugsound am Boden weiter. Zusätzlich wird `item.elytra.flying` beim Beenden ausdrücklich per `Audience#stopSound` abgewürgt: Der Client spielt den Flugsound als eigene, laufende Soundinstanz, solange er den Spieler für gleitend hält – ein bloßes `setGliding(false)` ließ ihn noch sekundenlang nachklingen, sowohl bei der Landung als auch nach Ablauf der Flugzeit.
+
   > **Das Gleitflug-Item lässt sich nicht anziehen.** Die Elytra in der Hotbar bekommt über die Paper Data Components ausdrücklich `EQUIPPABLE` und `GLIDER` **entfernt** (`ItemStack#unsetData`). Ohne das könnte man sie einfach in den Brustslot ziehen und hätte unbegrenzten Flug statt der acht Sekunden. Die eigentlichen Schwingen setzen `GLIDER` umgekehrt **explizit**, damit das Flugverhalten nicht von der Standardbelegung des Materials abhängt.
 
   > **Sprengkraft von Air-Strike und C4**: Beide nutzen `createExplosion(…, breakBlocks = false)` mit Stärke `8.0` für eine Air-Strike-Bombe und `12.0` für eine C4-Ladung (Vanilla-TNT liegt bei `4.0`). Die Explosion ist damit gewaltig und im Zentrum tödlich, kann die Map aber **grundsätzlich nicht** beschädigen – es werden gar keine Blöcke angetastet, statt eine Blockliste nachträglich zu leeren.
@@ -90,6 +92,13 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - `BOTH`: Beides kombiniert.
   - **`BOTH` ist der Standard und wird bei jedem `/osok start` erzwungen** – für beide Arenen gleichermaßen. Ein manueller Moduswechsel gilt damit nur bis zum nächsten Match-Start.
 
+- **🎲 Item-Gewichtung (`/osok itemgewichtung`)**:
+  - Jedes der 16 Spezial-Items hat ein **Spawngewicht** (Standard `10`). Die Ziehung ist gewichtet: Ein Item mit Gewicht `20` kommt doppelt so oft wie eines mit `10`.
+  - Gewicht **`0` nimmt ein Item vollständig aus dem Spiel**, ohne es aus dem Code zu entfernen – praktisch, um einzelne Items für eine Runde zu sperren.
+  - Die Gewichte gelten für **beide Quellen**: Boden-Item-Boxen *und* Killstreak-/Kopfgeld-Belohnungen.
+  - Stehen alle Gewichte auf `0`, wird weder eine Box gespawnt noch eine Streak-Belohnung vergeben; der Befehl warnt davor.
+  - Die Auflistung ohne Argumente zeigt Gewicht, resultierende Prozentchance und den Anzeigenamen jedes Items. Die Item-IDs sind tabvervollständigt.
+
 - **👑 Kopfgeld-System**:
   - Ab einer 5er Killstreak erhält der Spieler ein Kopfgeld `[👑]` mit Blitzschlag-Ankündigung.
   - Wer das Kopfgeld holt, erhält 2 zufällige Spezial-Items als Belohnung.
@@ -103,10 +112,12 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - **Respawns landen garantiert im Ring**: `getRandomArenaLocation` beschränkt die Suchfläche auf den aktuellen Ring. Ohne das könnte ein Respawn direkt in der Todeszone landen und eine Endlosschleife auslösen.
   - Der Ring friert bei `/osok pause` und `/osok pausestats` mit dem Timer ein.
 
-- **🏕 Anti-Camping**:
-  - Wer **20 Sekunden** im Umkreis von 5 Blöcken bleibt, leuchtet für alle auf – bis er sich wieder bewegt.
+- **🏕 Anti-Camping (`/osok camper`)**:
+  - Wer **20 Sekunden** (einstellbar) im Umkreis von **5 Blöcken** (einstellbar) bleibt, leuchtet für alle auf – bis er sich wieder bewegt.
   - **5 Sekunden vorher** gibt es eine Actionbar-Vorwarnung mit Signalton.
   - Zählt nur innerhalb der Arena und nur bei laufendem Match.
+  - Zeit, Radius und An/Aus lassen sich im laufenden Betrieb ändern. Eine Änderung setzt laufende Zähler zurück – sie gelten für den alten Wert und wären sonst falsch.
+  - **Die Streckenmessung für die Match-Zusammenfassung läuft unabhängig weiter**, auch wenn die Markierung ausgeschaltet ist: Das ist eine eigene Aufgabe und hängt nicht an dieser Einstellung.
 
 - **📋 Match-Zusammenfassung**:
   - Wird nach dem Sieger und bei `/osok stop` ausgegeben – jeweils **vor** dem Zurücksetzen der Statistiken.
@@ -204,6 +215,13 @@ also beliebig verschoben oder umbenannt werden. Bricht `javac` oder `jar` ab, sc
 | `/osok dauer sekunden <n>` | Setzt ein Zeit-Limit in Sekunden (aktiv ab `/osok start`) | Operator (OP) |
 | `/osok dauer off` | Deaktiviert Match-Limits | Operator (OP) |
 | `/osok itemmode <mode>` | Wechselt zwischen `STREAK`, `SPAWN` und `BOTH` (gilt bis zum nächsten `/osok start`) | Operator (OP) |
+| `/osok itemgewichtung` | Listet alle 16 Items mit Gewicht und resultierender Spawnchance in Prozent | Operator (OP) |
+| `/osok itemgewichtung <item> <gewicht>` | Setzt das Spawngewicht eines Items (`0` = spawnt nie, max. `1000`) | Operator (OP) |
+| `/osok itemgewichtung reset` | Setzt alle Gewichte auf den Standard (`10`) zurück | Operator (OP) |
+| `/osok camper` | Zeigt Status, Zeit und Radius der Camper-Markierung | Operator (OP) |
+| `/osok camper <an\|aus>` | Schaltet die Camper-Markierung ein oder aus | Operator (OP) |
+| `/osok camper zeit <sekunden>` | Zeit auf der Stelle bis zur Markierung (3–600 s, Standard 20) | Operator (OP) |
+| `/osok camper radius <blöcke>` | Radius, innerhalb dessen man als „steht noch da" gilt (1–64, Standard 5) | Operator (OP) |
 | `/osok itemtest` | Öffnet Admin-Test-GUI für alle 16 Spezial-Items | Operator (OP) |
 | `/osok clearpfeile` | Entfernt herumliegende Pfeile in allen Welten | Operator (OP) |
 | `/osok setspawn` | Setzt den Lobby-Spawnpunkt der aktiven Map | Operator (OP) |

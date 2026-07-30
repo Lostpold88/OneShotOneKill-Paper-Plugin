@@ -34,11 +34,15 @@ import java.util.UUID;
  */
 public class AntiCampManager implements Listener {
 
-    /** Radius, innerhalb dessen ein Spieler als "steht noch immer da" gilt. */
-    private static final double CAMP_RADIUS = 5.0;
-    private static final double CAMP_RADIUS_SQUARED = CAMP_RADIUS * CAMP_RADIUS;
-    /** Nach so vielen Sekunden auf der Stelle wird markiert. */
-    private static final int CAMP_WARN_SECONDS = 20;
+    /** Standardradius, innerhalb dessen ein Spieler als "steht noch immer da" gilt. */
+    public static final double DEFAULT_CAMP_RADIUS = 5.0;
+    /** Standardzeit auf der Stelle bis zur Markierung. */
+    public static final int DEFAULT_CAMP_SECONDS = 20;
+    public static final double MIN_CAMP_RADIUS = 1.0;
+    public static final double MAX_CAMP_RADIUS = 64.0;
+    public static final int MIN_CAMP_SECONDS = 3;
+    public static final int MAX_CAMP_SECONDS = 600;
+
     /** So viele Sekunden vorher gibt es eine Vorwarnung. */
     private static final int CAMP_PREWARN_SECONDS = 5;
     /** Groessere Spruenge sind Teleports und zaehlen nicht zur Strecke. */
@@ -46,6 +50,10 @@ public class AntiCampManager implements Listener {
     private static final long CHECK_PERIOD_TICKS = 20L;
 
     private final OneShotOneKill plugin;
+    /** Einstellbar ueber /osok camper. */
+    private double campRadius = DEFAULT_CAMP_RADIUS;
+    private int campSeconds = DEFAULT_CAMP_SECONDS;
+    private boolean enabled = true;
     private final Map<UUID, Location> anchors = new HashMap<>();
     private final Map<UUID, Integer> stationarySeconds = new HashMap<>();
     private final Set<UUID> flagged = new HashSet<>();
@@ -53,6 +61,45 @@ public class AntiCampManager implements Listener {
 
     public AntiCampManager(OneShotOneKill plugin) {
         this.plugin = plugin;
+    }
+
+    // ------------------------------------------------------------------
+    // Einstellungen (/osok camper)
+    // ------------------------------------------------------------------
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    /**
+     * Schaltet die Camper-Markierung um. Die <b>Streckenmessung fuer die
+     * Match-Zusammenfassung laeuft unabhaengig davon weiter</b> - sie ist eine eigene Aufgabe
+     * und haengt nicht an dieser Einstellung.
+     */
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+        if (!enabled) {
+            reset();
+        }
+    }
+
+    public double getCampRadius() {
+        return campRadius;
+    }
+
+    public void setCampRadius(double radius) {
+        this.campRadius = Math.max(MIN_CAMP_RADIUS, Math.min(radius, MAX_CAMP_RADIUS));
+        // Laufende Zaehler gelten fuer den alten Radius und waeren jetzt falsch
+        reset();
+    }
+
+    public int getCampSeconds() {
+        return campSeconds;
+    }
+
+    public void setCampSeconds(int seconds) {
+        this.campSeconds = Math.max(MIN_CAMP_SECONDS, Math.min(seconds, MAX_CAMP_SECONDS));
+        reset();
     }
 
     /** Startet die Dauerpruefung. Laeuft ueber die gesamte Plugin-Laufzeit. */
@@ -116,8 +163,13 @@ public class AntiCampManager implements Listener {
     }
 
     private void tick() {
+        if (!enabled) {
+            return;
+        }
+
         MatchManager match = plugin.getMatchManager();
         boolean matchRunning = match.isMatchStarted() && !match.isMatchPaused() && !match.isMatchEnded();
+        double radiusSquared = campRadius * campRadius;
 
         for (Player player : Bukkit.getOnlinePlayers()) {
             UUID playerId = player.getUniqueId();
@@ -131,7 +183,7 @@ public class AntiCampManager implements Listener {
             boolean moved = anchor == null
                     || anchor.getWorld() == null
                     || !anchor.getWorld().equals(player.getWorld())
-                    || anchor.distanceSquared(player.getLocation()) > CAMP_RADIUS_SQUARED;
+                    || anchor.distanceSquared(player.getLocation()) > radiusSquared;
 
             if (moved) {
                 anchors.put(playerId, player.getLocation().clone());
@@ -146,14 +198,14 @@ public class AntiCampManager implements Listener {
 
             int seconds = stationarySeconds.merge(playerId, 1, Integer::sum);
 
-            if (seconds == CAMP_WARN_SECONDS - CAMP_PREWARN_SECONDS) {
+            if (seconds == campSeconds - CAMP_PREWARN_SECONDS) {
                 player.sendActionBar(MiniMessage.miniMessage().deserialize(
                         "<yellow><b>⚠ Beweg dich! In " + CAMP_PREWARN_SECONDS + "s leuchtest du auf.</b></yellow>"));
                 player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_BASS, Sound.Source.MASTER, 1.0f, 1.4f));
                 continue;
             }
 
-            if (seconds >= CAMP_WARN_SECONDS && flagged.add(playerId)) {
+            if (seconds >= campSeconds && flagged.add(playerId)) {
                 plugin.getGlowManager().add(player, GlowManager.GlowReason.CAMPING);
                 player.sendMessage(MiniMessage.miniMessage().deserialize(
                         "<red>[OSOK] 🏕 <b>CAMPER!</b> <gray>Du stehst zu lange an derselben Stelle und leuchtest jetzt für alle.</gray></red>"));

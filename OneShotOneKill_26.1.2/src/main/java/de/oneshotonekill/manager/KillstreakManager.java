@@ -41,8 +41,23 @@ public class KillstreakManager {
     public static final String KEY_SINGULARITY = "singularity";
     public static final String KEY_GLIDER = "glider_flight";
 
+    /**
+     * Alle Spezial-Item-Typen in <b>Index-Reihenfolge</b>. Die Reihenfolge muss zu
+     * {@link #createSpecificSpecialItem(int)} passen; {@link #SPECIAL_ITEM_COUNT} leitet sich
+     * daraus ab, damit die Anzahl nirgends doppelt gepflegt werden muss.
+     */
+    public static final List<String> SPECIAL_ITEM_IDS = List.of(
+            KEY_RADAR, KEY_EXPLOSIVE, KEY_REFLECTOR, KEY_SMOKE, KEY_FROST, KEY_MINIGUN,
+            KEY_TELEPORT, KEY_INVISIBILITY, KEY_MAGNET, KEY_CHAIN_LIGHTNING, KEY_STEALTH_BOMBER,
+            KEY_AIRSTRIKE, KEY_C4, KEY_RAILGUN, KEY_SINGULARITY, KEY_GLIDER);
+
     /** Anzahl der verfuegbaren Spezial-Item-Typen (Indizes 0 bis SPECIAL_ITEM_COUNT-1). */
-    public static final int SPECIAL_ITEM_COUNT = 16;
+    public static final int SPECIAL_ITEM_COUNT = SPECIAL_ITEM_IDS.size();
+
+    /** Startgewicht jedes Items. Bewusst nicht 1, damit sich Gewichte auch senken lassen. */
+    public static final int DEFAULT_ITEM_WEIGHT = 10;
+    /** Obergrenze eines Gewichts - verhindert absurde Werte per Tippfehler. */
+    public static final int MAX_ITEM_WEIGHT = 1000;
 
     public static final NamespacedKey KEY_EXPLOSIVE_PDC = new NamespacedKey("oneshotonekill", "explosive_arrow");
     public static final NamespacedKey KEY_CHAIN_LIGHTNING_PDC = new NamespacedKey("oneshotonekill", "chain_lightning_arrow");
@@ -63,6 +78,8 @@ public class KillstreakManager {
     private static final long GROUND_SPAWN_PERIOD_TICKS = 300L;
 
     private final Set<Item> activeGroundItems = new HashSet<>();
+    /** Spawngewicht je Item-Typ, einstellbar ueber /osok itemgewichtung. */
+    private final Map<String, Integer> itemWeights = new HashMap<>();
     private ItemMode currentItemMode = ItemMode.BOTH;
     private int groundSpawnRuns = 0;
 
@@ -84,6 +101,70 @@ public class KillstreakManager {
 
     public NamespacedKey getSpecialItemKey() {
         return specialItemKey;
+    }
+
+    // ------------------------------------------------------------------
+    // Spawngewichte (/osok itemgewichtung)
+    // ------------------------------------------------------------------
+
+    public int getItemWeight(String typeId) {
+        return itemWeights.getOrDefault(typeId, DEFAULT_ITEM_WEIGHT);
+    }
+
+    /** Setzt das Gewicht eines Item-Typs. {@code 0} bedeutet: Das Item spawnt nie. */
+    public void setItemWeight(String typeId, int weight) {
+        itemWeights.put(typeId, Math.max(0, Math.min(weight, MAX_ITEM_WEIGHT)));
+    }
+
+    /** Setzt alle Gewichte auf {@link #DEFAULT_ITEM_WEIGHT} zurueck. */
+    public void resetItemWeights() {
+        itemWeights.clear();
+    }
+
+    /** Summe aller Gewichte. {@code 0} bedeutet: Es kann ueberhaupt kein Item mehr kommen. */
+    public int getTotalItemWeight() {
+        int total = 0;
+        for (String typeId : SPECIAL_ITEM_IDS) {
+            total += getItemWeight(typeId);
+        }
+        return total;
+    }
+
+    /** Spawnwahrscheinlichkeit eines Typs in Prozent. */
+    public double getSpawnChance(String typeId) {
+        int total = getTotalItemWeight();
+        return (total <= 0) ? 0.0 : getItemWeight(typeId) * 100.0 / total;
+    }
+
+    /** Anzeigename eines Item-Typs - direkt vom erzeugten Item, damit nichts doppelt gepflegt wird. */
+    public Component getItemDisplayName(String typeId) {
+        int index = SPECIAL_ITEM_IDS.indexOf(typeId);
+        if (index < 0) {
+            return Component.text(typeId);
+        }
+        ItemMeta meta = createSpecificSpecialItem(index).getItemMeta();
+        return (meta != null && meta.hasDisplayName()) ? meta.displayName() : Component.text(typeId);
+    }
+
+    /**
+     * Gewichteter Zufallszug ueber alle Item-Typen.
+     *
+     * @return Item-Index, oder {@code -1} wenn saemtliche Gewichte auf 0 stehen
+     */
+    private int rollItemIndex() {
+        int total = getTotalItemWeight();
+        if (total <= 0) {
+            return -1;
+        }
+
+        int roll = RANDOM.nextInt(total);
+        for (int index = 0; index < SPECIAL_ITEM_COUNT; index++) {
+            roll -= getItemWeight(SPECIAL_ITEM_IDS.get(index));
+            if (roll < 0) {
+                return index;
+            }
+        }
+        return SPECIAL_ITEM_COUNT - 1;
     }
 
     public void clearAllGroundItems() {
@@ -170,7 +251,11 @@ public class KillstreakManager {
             return;
         }
 
-        int itemType = RANDOM.nextInt(SPECIAL_ITEM_COUNT);
+        int itemType = rollItemIndex();
+        if (itemType < 0) {
+            // Alle Gewichte stehen auf 0 - dann soll auch keine Box erscheinen
+            return;
+        }
         ItemStack itemStack = createSpecificSpecialItem(itemType);
 
         spawnLoc.getWorld().addPluginChunkTicket(spawnLoc.getBlockX() >> 4, spawnLoc.getBlockZ() >> 4, plugin);
@@ -207,7 +292,11 @@ public class KillstreakManager {
      * {@link #giveSpecificSpecialItem(Player, int, int)} und zaehlt daher nicht.
      */
     public void awardRandomKillstreakItem(Player player, int streak) {
-        int itemType = RANDOM.nextInt(SPECIAL_ITEM_COUNT);
+        int itemType = rollItemIndex();
+        if (itemType < 0) {
+            // Alle Gewichte stehen auf 0 - dann gibt es auch keine Belohnung
+            return;
+        }
         giveSpecificSpecialItem(player, itemType, streak);
         plugin.getScoreboardManager().addItemsCollected(player.getUniqueId(), 1);
     }

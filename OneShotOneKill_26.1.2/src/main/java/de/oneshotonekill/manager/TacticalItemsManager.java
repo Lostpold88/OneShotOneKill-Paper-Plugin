@@ -5,6 +5,7 @@ import de.oneshotonekill.model.MapConfig;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.sound.Sound;
+import net.kyori.adventure.sound.SoundStop;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -358,7 +359,10 @@ public class TacticalItemsManager implements Listener {
         player.getScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
             int ticksLeft = GLIDE_DURATION_TICKS;
             int runs = 0;
-            boolean gliding = false;
+            /** setGliding wurde angestossen. */
+            boolean launched = false;
+            /** Der Server hat den Gleitflug bestaetigt - erst danach zaehlt eine Landung. */
+            boolean airborne = false;
 
             @Override
             public void accept(ScheduledTask task) {
@@ -369,19 +373,30 @@ public class TacticalItemsManager implements Listener {
                 }
 
                 // Erst nach dem Startschub gleiten - sonst faellt der Spieler sofort wieder
-                if (!gliding && runs >= 2) {
+                if (!launched && runs >= 2) {
                     player.setGliding(true);
-                    gliding = true;
+                    launched = true;
                 }
-                if (gliding && player.isGliding() && runs % GLIDE_BOOST_EVERY == 0) {
+
+                boolean gliding = player.isGliding();
+                if (launched && gliding) {
+                    airborne = true;
+                }
+
+                // Landung: Der Flug endet sofort, nicht erst nach Ablauf der acht Sekunden.
+                // Ohne diese Pruefung liefen Partikel und Flugsound am Boden weiter.
+                if (airborne && !gliding) {
+                    task.cancel();
+                    stopGlide(player, true);
+                    return;
+                }
+
+                if (gliding && runs % GLIDE_BOOST_EVERY == 0) {
                     applyGlideBoost(player);
                 }
 
                 Location trail = player.getLocation();
                 trail.getWorld().spawnParticle(Particle.END_ROD, trail, 2, 0.2, 0.2, 0.2, 0.01);
-                if (runs % 10 == 0) {
-                    player.playSound(Sound.sound(org.bukkit.Sound.ITEM_ELYTRA_FLYING, Sound.Source.MASTER, 0.4f, 1.3f));
-                }
 
                 runs++;
                 ticksLeft -= GLIDE_PERIOD_TICKS;
@@ -416,20 +431,30 @@ public class TacticalItemsManager implements Listener {
         player.setVelocity(velocity);
     }
 
-    /** Beendet einen laufenden Gleitflug. Mehrfachaufrufe sind unschaedlich. */
+    /**
+     * Beendet einen laufenden Gleitflug. Mehrfachaufrufe sind unschaedlich.
+     * <p>
+     * Der Flugsound wird ausdruecklich per {@code stopSound} abgewuergt. Der Client spielt
+     * {@code item.elytra.flying} als eigene, laufende Soundinstanz, solange er den Spieler fuer
+     * gleitend haelt - ein blosses {@code setGliding(false)} liess ihn noch sekundenlang
+     * nachklingen, sowohl bei der Landung als auch nach Ablauf der acht Sekunden.
+     */
     public void stopGlide(Player player, boolean notify) {
         if (player == null || !activeGliders.remove(player.getUniqueId())) return;
         if (!player.isOnline()) return;
 
         player.setGliding(false);
         removeGliderWings(player);
+        // Ohne Quellenangabe: stoppt den Flugsound auf jeder Sound-Kategorie
+        player.stopSound(SoundStop.named(org.bukkit.Sound.ITEM_ELYTRA_FLYING));
         // Sanfte Landung: Sturzschaden waere in der Arena toedlich
         player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 60, 0, false, false));
 
         if (notify) {
             player.sendMessage(MiniMessage.miniMessage().deserialize(
                     "<red>[OSOK] 🦅 Gleitflug beendet.</red>"));
-            player.playSound(Sound.sound(org.bukkit.Sound.ITEM_ELYTRA_FLYING, Sound.Source.MASTER, 0.6f, 0.6f));
+            // Kurzer, abschliessender Ton statt einer weiteren Elytra-Schleife
+            player.playSound(Sound.sound(org.bukkit.Sound.ITEM_ARMOR_EQUIP_ELYTRA, Sound.Source.MASTER, 0.8f, 0.8f));
         }
     }
 
