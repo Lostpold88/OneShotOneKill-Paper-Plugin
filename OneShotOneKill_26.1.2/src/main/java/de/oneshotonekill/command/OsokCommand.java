@@ -1,7 +1,6 @@
 package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
-import de.oneshotonekill.manager.AntiCampManager;
 import de.oneshotonekill.manager.KillstreakManager;
 import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -17,7 +16,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 
 public class OsokCommand implements BasicCommand {
 
@@ -62,8 +60,8 @@ public class OsokCommand implements BasicCommand {
             msg(sender, "<gray>/osok map <Standard|DustPvP> <dark_gray>-</dark_gray> <white>Dynamisch zwischen Arenen wechseln (Admin)</white></gray>");
             msg(sender, "<gray>/osok dauer [kills|minuten|sekunden|off] [Anzahl] <dark_gray>-</dark_gray> <white>Match-Dauer/Ziel festlegen (Admin)</white></gray>");
             msg(sender, "<gray>/osok itemmode [streak|spawn|both] <dark_gray>-</dark_gray> <white>Item-Modus umschalten (Admin)</white></gray>");
-            msg(sender, "<gray>/osok itemgewichtung [item] [gewicht] <dark_gray>-</dark_gray> <white>Spawnwahrscheinlichkeit je Spezial-Item einstellen (Admin)</white></gray>");
-            msg(sender, "<gray>/osok camper [an|aus|zeit|radius] <dark_gray>-</dark_gray> <white>Anti-Camping ein-/ausschalten & einstellen (Admin)</white></gray>");
+            msg(sender, "<gray>/osok itemgewichtung <dark_gray>-</dark_gray> <white>Menü: Spawnwahrscheinlichkeit je Spezial-Item (Admin)</white></gray>");
+            msg(sender, "<gray>/osok camper <dark_gray>-</dark_gray> <white>Menü: Anti-Camping ein/aus, Zeit & Radius (Admin)</white></gray>");
             msg(sender, "<gray>/osok itemtest <dark_gray>-</dark_gray> <white>Spezial-Item Testmenü öffnen (Admin)</white></gray>");
             msg(sender, "<gray>/osok clearpfeile <dark_gray>-</dark_gray> <white>Alle Pfeile aus der Welt löschen (Admin)</white></gray>");
             msg(sender, "<gray>/osok setspawn <dark_gray>-</dark_gray> <white>Spawnpunkt auf der Map setzen (Admin)</white></gray>");
@@ -123,14 +121,20 @@ public class OsokCommand implements BasicCommand {
         }
 
         if (sub.equals("itemgewichtung") || sub.equals("gewichtung") || sub.equals("itemweight")) {
-            String[] subArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
-            handleItemWeightCommand(sender, subArgs);
+            if (player == null) {
+                msg(sender, "<red>[OSOK] Die Item-Gewichtung läuft über ein Menü und kann nur von einem Spieler geöffnet werden.</red>");
+                return;
+            }
+            plugin.getItemWeightGui().openGui(player);
             return;
         }
 
         if (sub.equals("camper") || sub.equals("anticamp") || sub.equals("camping")) {
-            String[] subArgs = args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0];
-            handleCamperCommand(sender, subArgs);
+            if (player == null) {
+                msg(sender, "<red>[OSOK] Die Camper-Einstellungen laufen über ein Menü und können nur von einem Spieler geöffnet werden.</red>");
+                return;
+            }
+            plugin.getCamperGui().openGui(player);
             return;
         }
 
@@ -220,160 +224,6 @@ public class OsokCommand implements BasicCommand {
         msg(sender, "<red>[OSOK] Ungültiger Parameter. Verwende: /osok dauer [kills|minuten|sekunden|off] [wert]</red>");
     }
 
-    /**
-     * {@code /osok itemgewichtung} - Spawnwahrscheinlichkeit der einzelnen Spezial-Items.
-     * <p>
-     * Die Gewichte gelten fuer <b>beide</b> Quellen: Boden-Item-Boxen und
-     * Killstreak-/Kopfgeld-Belohnungen. Ein Gewicht von 0 nimmt ein Item vollstaendig aus
-     * dem Spiel.
-     */
-    private void handleItemWeightCommand(CommandSender sender, String[] args) {
-        KillstreakManager killstreak = plugin.getKillstreakManager();
-
-        if (args.length == 0) {
-            msg(sender, "<yellow><b>=======================================</b></yellow>");
-            msg(sender, "<green><b>🎲 SPAWN-GEWICHTUNG DER SPEZIAL-ITEMS</b></green>");
-            msg(sender, "<gray>Standardgewicht: <yellow>" + KillstreakManager.DEFAULT_ITEM_WEIGHT
-                    + "</yellow> <dark_gray>|</dark_gray> Gewicht <yellow>0</yellow> = das Item spawnt nie.</gray>");
-            msg(sender, "<yellow><b>=======================================</b></yellow>");
-
-            for (String typeId : KillstreakManager.SPECIAL_ITEM_IDS) {
-                sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                                "<gray>» <yellow>" + killstreak.getItemWeight(typeId) + "</yellow>"
-                                        + " <dark_gray>(</dark_gray><aqua>"
-                                        + String.format(Locale.GERMANY, "%.1f", killstreak.getSpawnChance(typeId))
-                                        + " %</aqua><dark_gray>)</dark_gray> <white>" + typeId + "</white> <dark_gray>-</dark_gray> </gray>")
-                        .append(killstreak.getItemDisplayName(typeId)));
-            }
-
-            if (killstreak.getTotalItemWeight() <= 0) {
-                msg(sender, "<red>⚠ Alle Gewichte stehen auf 0 - es können gar keine Spezial-Items mehr erscheinen!</red>");
-            }
-            msg(sender, "<gray>Verwendung: /osok itemgewichtung <item> <gewicht> <dark_gray>|</dark_gray> /osok itemgewichtung reset</gray>");
-            return;
-        }
-
-        String first = args[0].toLowerCase();
-        if (first.equals("reset") || first.equals("standard")) {
-            killstreak.resetItemWeights();
-            broadcast("<yellow>[OSOK] 🎲 Alle Item-Gewichte wurden auf den Standard (<green>"
-                    + KillstreakManager.DEFAULT_ITEM_WEIGHT + "</green>) zurückgesetzt.</yellow>");
-            Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f));
-            return;
-        }
-
-        if (!KillstreakManager.SPECIAL_ITEM_IDS.contains(first)) {
-            msg(sender, "<red>[OSOK] Unbekanntes Item: <white>" + args[0] + "</white></red>");
-            msg(sender, "<gray>Alle IDs siehst du mit <yellow>/osok itemgewichtung</yellow> ohne Argumente.</gray>");
-            return;
-        }
-
-        if (args.length < 2) {
-            msg(sender, "<yellow>[OSOK] Aktuelles Gewicht von <white>" + first + "</white>: <green>"
-                    + killstreak.getItemWeight(first) + "</green> <gray>("
-                    + String.format(Locale.GERMANY, "%.1f", killstreak.getSpawnChance(first)) + " %)</gray></yellow>");
-            msg(sender, "<gray>Verwendung: /osok itemgewichtung " + first + " <gewicht></gray>");
-            return;
-        }
-
-        int weight;
-        try {
-            weight = Integer.parseInt(args[1]);
-        } catch (NumberFormatException e) {
-            msg(sender, "<red>[OSOK] Ungültiger Zahlenwert: " + args[1] + "</red>");
-            return;
-        }
-        if (weight < 0 || weight > KillstreakManager.MAX_ITEM_WEIGHT) {
-            msg(sender, "<red>[OSOK] Das Gewicht muss zwischen 0 und " + KillstreakManager.MAX_ITEM_WEIGHT + " liegen.</red>");
-            return;
-        }
-
-        killstreak.setItemWeight(first, weight);
-        sender.sendMessage(MiniMessage.miniMessage().deserialize(
-                        "<green>[OSOK] 🎲 Gewicht gesetzt: <yellow>" + weight + "</yellow> <gray>("
-                                + String.format(Locale.GERMANY, "%.1f", killstreak.getSpawnChance(first))
-                                + " % Spawnchance)</gray> für </green>")
-                .append(killstreak.getItemDisplayName(first)));
-        Bukkit.getServer().playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f));
-
-        if (killstreak.getTotalItemWeight() <= 0) {
-            msg(sender, "<red>⚠ Alle Gewichte stehen jetzt auf 0 - es können gar keine Spezial-Items mehr erscheinen!</red>");
-        }
-    }
-
-    /**
-     * {@code /osok camper} - Zeit, Radius und Ein/Aus der Camper-Markierung.
-     * <p>
-     * Die Streckenmessung fuer die Match-Zusammenfassung laeuft unabhaengig davon weiter.
-     */
-    private void handleCamperCommand(CommandSender sender, String[] args) {
-        AntiCampManager antiCamp = plugin.getAntiCampManager();
-
-        if (args.length == 0) {
-            msg(sender, "<yellow><b>=======================================</b></yellow>");
-            msg(sender, "<green><b>🏕 ANTI-CAMPING</b></green>");
-            msg(sender, "<gray>Status: " + (antiCamp.isEnabled()
-                    ? "<green><b>AN</b></green>" : "<red><b>AUS</b></red>") + "</gray>");
-            msg(sender, "<gray>Zeit: <yellow>" + antiCamp.getCampSeconds() + "s</yellow> auf der Stelle bis zur Markierung</gray>");
-            msg(sender, "<gray>Radius: <yellow>" + String.format(Locale.GERMANY, "%.1f", antiCamp.getCampRadius())
-                    + " Blöcke</yellow></gray>");
-            msg(sender, "<yellow><b>=======================================</b></yellow>");
-            msg(sender, "<gray>Verwendung: /osok camper [an|aus|zeit <sek>|radius <blöcke>]</gray>");
-            return;
-        }
-
-        String sub = args[0].toLowerCase();
-
-        if (sub.equals("an") || sub.equals("on") || sub.equals("ein")) {
-            antiCamp.setEnabled(true);
-            broadcast("<yellow>[OSOK] 🏕 Anti-Camping ist jetzt <green><b>AN</b></green> <gray>(" + antiCamp.getCampSeconds()
-                    + "s / " + String.format(Locale.GERMANY, "%.1f", antiCamp.getCampRadius()) + " Blöcke)</gray>.</yellow>");
-            return;
-        }
-
-        if (sub.equals("aus") || sub.equals("off")) {
-            antiCamp.setEnabled(false);
-            broadcast("<yellow>[OSOK] 🏕 Anti-Camping ist jetzt <red><b>AUS</b></red>. <gray>Niemand wird mehr als Camper markiert.</gray></yellow>");
-            return;
-        }
-
-        if (sub.equals("zeit") || sub.equals("time") || sub.equals("sekunden")) {
-            if (args.length < 2) {
-                msg(sender, "<gray>Verwendung: /osok camper zeit <sekunden> <dark_gray>(aktuell "
-                        + antiCamp.getCampSeconds() + "s)</dark_gray></gray>");
-                return;
-            }
-            try {
-                antiCamp.setCampSeconds(Integer.parseInt(args[1]));
-            } catch (NumberFormatException e) {
-                msg(sender, "<red>[OSOK] Ungültiger Zahlenwert: " + args[1] + "</red>");
-                return;
-            }
-            broadcast("<yellow>[OSOK] 🏕 Camper-Zeit gesetzt: <green><b>" + antiCamp.getCampSeconds()
-                    + "s</b></green> <gray>auf der Stelle.</gray></yellow>");
-            return;
-        }
-
-        if (sub.equals("radius") || sub.equals("umkreis")) {
-            if (args.length < 2) {
-                msg(sender, "<gray>Verwendung: /osok camper radius <blöcke> <dark_gray>(aktuell "
-                        + String.format(Locale.GERMANY, "%.1f", antiCamp.getCampRadius()) + ")</dark_gray></gray>");
-                return;
-            }
-            try {
-                antiCamp.setCampRadius(Double.parseDouble(args[1].replace(',', '.')));
-            } catch (NumberFormatException e) {
-                msg(sender, "<red>[OSOK] Ungültiger Zahlenwert: " + args[1] + "</red>");
-                return;
-            }
-            broadcast("<yellow>[OSOK] 🏕 Camper-Radius gesetzt: <green><b>"
-                    + String.format(Locale.GERMANY, "%.1f", antiCamp.getCampRadius()) + " Blöcke</b></green>.</yellow>");
-            return;
-        }
-
-        msg(sender, "<red>[OSOK] Ungültiger Parameter. Verwende: /osok camper [an|aus|zeit <sek>|radius <blöcke>]</red>");
-    }
-
     private void handleItemModeCommand(CommandSender sender, String[] args) {
         if (args.length >= 1) {
             String modeArg = args[0].toLowerCase();
@@ -427,31 +277,7 @@ public class OsokCommand implements BasicCommand {
             return StringUtil.copyPartialMatches(args[1], Arrays.asList("streak", "spawn", "both", "kombi"), new ArrayList<>());
         }
 
-        boolean isItemWeight = args[0].equalsIgnoreCase("itemgewichtung")
-                || args[0].equalsIgnoreCase("gewichtung") || args[0].equalsIgnoreCase("itemweight");
-        if (args.length == 2 && isItemWeight) {
-            List<String> options = new ArrayList<>(KillstreakManager.SPECIAL_ITEM_IDS);
-            options.add("reset");
-            return StringUtil.copyPartialMatches(args[1], options, new ArrayList<>());
-        }
-        if (args.length == 3 && isItemWeight) {
-            return StringUtil.copyPartialMatches(args[2], Arrays.asList("0", "5", "10", "20", "50"), new ArrayList<>());
-        }
-
-        boolean isCamper = args[0].equalsIgnoreCase("camper")
-                || args[0].equalsIgnoreCase("anticamp") || args[0].equalsIgnoreCase("camping");
-        if (args.length == 2 && isCamper) {
-            return StringUtil.copyPartialMatches(args[1], Arrays.asList("an", "aus", "zeit", "radius"), new ArrayList<>());
-        }
-        if (args.length == 3 && isCamper) {
-            if (args[1].equalsIgnoreCase("zeit") || args[1].equalsIgnoreCase("time") || args[1].equalsIgnoreCase("sekunden")) {
-                return StringUtil.copyPartialMatches(args[2], Arrays.asList("10", "15", "20", "30", "60"), new ArrayList<>());
-            }
-            if (args[1].equalsIgnoreCase("radius") || args[1].equalsIgnoreCase("umkreis")) {
-                return StringUtil.copyPartialMatches(args[2], Arrays.asList("3", "5", "8", "12"), new ArrayList<>());
-            }
-        }
-
+        // itemgewichtung und camper nehmen keine Argumente mehr - sie oeffnen direkt ihr Menue
         return Collections.emptyList();
     }
 }

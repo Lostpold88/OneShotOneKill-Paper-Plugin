@@ -1,6 +1,8 @@
 package de.oneshotonekill;
 
+import de.oneshotonekill.command.CamperGui;
 import de.oneshotonekill.command.ItemTestCommand;
+import de.oneshotonekill.command.ItemWeightGui;
 import de.oneshotonekill.command.OsokCommand;
 import de.oneshotonekill.listener.CombatListener;
 import de.oneshotonekill.listener.PlayerConnectionListener;
@@ -43,6 +45,8 @@ public class OneShotOneKill extends JavaPlugin {
     private AntiCampManager antiCampManager;
     private MatchSummaryManager matchSummaryManager;
     private SpecialItemListener specialItemListener;
+    private ItemWeightGui itemWeightGui;
+    private CamperGui camperGui;
 
     @Override
     public void onEnable() {
@@ -69,6 +73,8 @@ public class OneShotOneKill extends JavaPlugin {
         // 3. Event-Listener registrieren
         ItemTestCommand itemTestCommand = new ItemTestCommand(this);
         this.specialItemListener = new SpecialItemListener(this);
+        this.itemWeightGui = new ItemWeightGui(this);
+        this.camperGui = new CamperGui(this);
 
         getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
@@ -79,6 +85,8 @@ public class OneShotOneKill extends JavaPlugin {
         getServer().getPluginManager().registerEvents(this.tacticalItemsManager, this);
         getServer().getPluginManager().registerEvents(this.antiCampManager, this);
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
+        getServer().getPluginManager().registerEvents(this.itemWeightGui, this);
+        getServer().getPluginManager().registerEvents(this.camperGui, this);
 
         // Dauerlauf der Anti-Camping- und Streckenmessung
         this.antiCampManager.start();
@@ -163,6 +171,14 @@ public class OneShotOneKill extends JavaPlugin {
 
     public SpecialItemListener getSpecialItemListener() {
         return specialItemListener;
+    }
+
+    public ItemWeightGui getItemWeightGui() {
+        return itemWeightGui;
+    }
+
+    public CamperGui getCamperGui() {
+        return camperGui;
     }
 
     public EliminationManager getEliminationManager() {

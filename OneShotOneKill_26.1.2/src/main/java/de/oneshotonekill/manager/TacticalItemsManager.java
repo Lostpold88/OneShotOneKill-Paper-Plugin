@@ -167,7 +167,10 @@ public class TacticalItemsManager implements Listener {
 
         drawBeam(eye, impact, Particle.ELECTRIC_SPARK, 0.4);
         drawBeam(eye, impact, Particle.END_ROD, 0.8);
-        world.spawnParticle(Particle.FLASH, impact, 1);
+        // Particle.FLASH verlangt zwingend ein Color-Datenobjekt. Ohne das wirft
+        // CraftParticle "missing required data class org.bukkit.Color" und der ganze
+        // Schuss bricht mittendrin ab - der Strahl wurde gezeichnet, aber nie ausgewertet.
+        world.spawnParticle(Particle.FLASH, impact, 1, 0.0, 0.0, 0.0, 0.0, Color.WHITE);
         world.playSound(Sound.sound(org.bukkit.Sound.ITEM_TRIDENT_THUNDER, Sound.Source.MASTER, 1.0f, 1.4f),
                 eye.x(), eye.y(), eye.z());
         world.playSound(Sound.sound(org.bukkit.Sound.ENTITY_LIGHTNING_BOLT_IMPACT, Sound.Source.MASTER, 0.8f, 1.8f),
