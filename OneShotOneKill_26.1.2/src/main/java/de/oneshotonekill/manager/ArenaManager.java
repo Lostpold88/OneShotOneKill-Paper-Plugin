@@ -7,6 +7,9 @@ import org.bukkit.World;
 
 public class ArenaManager {
 
+    /** Mindestabstand zum Todespunkt beim Respawn, in Bloecken. */
+    public static final double MIN_RESPAWN_DISTANCE = 16.0;
+
     private final OneShotOneKill plugin;
 
     public ArenaManager(OneShotOneKill plugin) {
@@ -20,6 +23,28 @@ public class ArenaManager {
         MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
         if (activeMap != null) {
             Location loc = activeMap.getRandomArenaLocation(osokWorld);
+            if (loc != null) return loc;
+        }
+
+        Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
+        return spawnLoc != null ? spawnLoc : osokWorld.getSpawnLocation();
+    }
+
+    /**
+     * Zufaelliger Spawn mit Mindestabstand zu einem Punkt - beim Respawn also zum Todespunkt.
+     * <p>
+     * Ohne das landete man regelmaessig direkt neben seinem Killer und war beim naechsten
+     * Treffer sofort wieder draussen. {@link #MIN_RESPAWN_DISTANCE} ist dabei ein Wunsch, keine
+     * Zusage: Findet die Suche keinen ausreichend entfernten Platz, kommt der erstbeste
+     * gueltige zurueck - gar kein Spawnpunkt waere schlimmer als ein etwas zu naher.
+     */
+    public Location getRandomArenaLocationAwayFrom(Location avoid) {
+        World osokWorld = plugin.getWorldManager().getOsokWorld();
+        if (osokWorld == null) return null;
+
+        MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
+        if (activeMap != null) {
+            Location loc = activeMap.getRandomArenaLocation(osokWorld, avoid, MIN_RESPAWN_DISTANCE);
             if (loc != null) return loc;
         }
 

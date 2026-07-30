@@ -429,7 +429,7 @@ public class ExplosivesManager implements Listener {
         Location above = event.getClickedBlock().getRelative(BlockFace.UP).getLocation();
         BlockDisplay found = null;
         for (BlockDisplay charge : charges) {
-            if (charge.isValid() && isSameBlock(charge.getLocation(), above)) {
+            if (charge.isValid() && isSameBlock(charge.getLocation(), above) && isOwnedBy(charge, owner)) {
                 found = charge;
                 break;
             }
@@ -461,6 +461,19 @@ public class ExplosivesManager implements Listener {
                     "<green>[OSOK] 💥 C4 wieder aufgenommen. <gray>Noch <yellow>" + charges.size()
                             + "</yellow> Ladung(en) platziert.</gray></green>"));
         }
+    }
+
+    /**
+     * Gehoert die Ladung diesem Spieler?
+     * <p>
+     * Die Zuordnung steckt zusaetzlich im PersistentDataContainer der Ladung selbst und nicht
+     * nur in {@code c4Charges}. Damit haengt die Regel "nur der Platzierer darf aufheben" am
+     * Objekt und nicht allein am Nachschlagepfad - eine falsch einsortierte Ladung koennte
+     * sonst von jemand anderem aufgenommen werden.
+     */
+    private boolean isOwnedBy(BlockDisplay charge, Player player) {
+        String ownerId = charge.getPersistentDataContainer().get(KEY_OWNER, PersistentDataType.STRING);
+        return ownerId != null && ownerId.equals(player.getUniqueId().toString());
     }
 
     private boolean isSameBlock(Location first, Location second) {
