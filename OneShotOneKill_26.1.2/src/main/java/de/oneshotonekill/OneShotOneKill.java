@@ -15,7 +15,6 @@ import de.oneshotonekill.manager.EquipmentManager;
 import de.oneshotonekill.manager.ExplosivesManager;
 import de.oneshotonekill.manager.GlowManager;
 import de.oneshotonekill.manager.MatchSummaryManager;
-import de.oneshotonekill.manager.SuddenDeathManager;
 import de.oneshotonekill.manager.TacticalItemsManager;
 import de.oneshotonekill.manager.StealthBomberManager;
 import de.oneshotonekill.manager.KillEffectManager;
@@ -41,7 +40,6 @@ public class OneShotOneKill extends JavaPlugin {
     private ExplosivesManager explosivesManager;
     private GlowManager glowManager;
     private TacticalItemsManager tacticalItemsManager;
-    private SuddenDeathManager suddenDeathManager;
     private AntiCampManager antiCampManager;
     private MatchSummaryManager matchSummaryManager;
     private SpecialItemListener specialItemListener;
@@ -56,7 +54,6 @@ public class OneShotOneKill extends JavaPlugin {
         this.equipmentManager = new EquipmentManager(this);
         this.scoreboardManager = new ScoreboardManager(this);
         this.glowManager = new GlowManager();
-        this.suddenDeathManager = new SuddenDeathManager(this);
         this.killstreakManager = new KillstreakManager(this);
         this.killEffectManager = new KillEffectManager();
         this.matchManager = new MatchManager(this);
@@ -121,9 +118,6 @@ public class OneShotOneKill extends JavaPlugin {
         if (matchManager != null) {
             matchManager.stopVictoryTasks();
         }
-        if (suddenDeathManager != null) {
-            suddenDeathManager.stop();
-        }
         if (antiCampManager != null) {
             antiCampManager.stop();
         }
@@ -155,10 +149,6 @@ public class OneShotOneKill extends JavaPlugin {
 
     public TacticalItemsManager getTacticalItemsManager() {
         return tacticalItemsManager;
-    }
-
-    public SuddenDeathManager getSuddenDeathManager() {
-        return suddenDeathManager;
     }
 
     public AntiCampManager getAntiCampManager() {

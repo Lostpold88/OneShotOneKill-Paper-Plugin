@@ -396,13 +396,12 @@ public class SpecialItemListener implements Listener {
                 return;
             }
 
-            // Railgun: laedt eine Sekunde und feuert dann einen Hitscan-Strahl.
-            // Verbrauch erst, wenn die Ladephase tatsaechlich startet.
+            // Railgun: feuert sofort einen Hitscan-Strahl, ohne Ladephase
             if (KillstreakManager.KEY_RAILGUN.equals(typeId)) {
                 event.setCancelled(true);
-                if (plugin.getTacticalItemsManager().chargeRailgun(player)) {
-                    consumeItem(player, item);
-                }
+                consumeItem(player, item);
+
+                plugin.getTacticalItemsManager().fireRailgun(player);
                 return;
             }
 
@@ -442,8 +441,8 @@ public class SpecialItemListener implements Listener {
     private void applyRadarGlow(Player target, long durationTicks) {
         UUID targetId = target.getUniqueId();
         int generation = radarGlowGeneration.merge(targetId, 1, Integer::sum);
-        // Ueber den GlowManager, damit Anti-Camping und Sudden Death das Radar-Leuchten
-        // nicht versehentlich wieder abschalten (und umgekehrt)
+        // Ueber den GlowManager, damit die Anti-Camping-Markierung das Radar-Leuchten
+        // nicht versehentlich wieder abschaltet (und umgekehrt)
         plugin.getGlowManager().add(target, GlowManager.GlowReason.RADAR);
 
         // Paper Entity Scheduler: an den Tick des Ziels gebunden

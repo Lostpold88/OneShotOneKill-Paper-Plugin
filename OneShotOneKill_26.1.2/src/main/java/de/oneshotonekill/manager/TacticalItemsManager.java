@@ -51,8 +51,6 @@ public class TacticalItemsManager implements Listener {
     // ---------------- Railgun ----------------
     /** Reichweite des Strahls in Bloecken. */
     private static final double RAILGUN_RANGE = 64.0;
-    /** Ladezeit, in der das Ziel den Zielstrahl sieht und ausweichen kann. */
-    private static final int RAILGUN_CHARGE_TICKS = 20;
     /** Trefferradius des Strahls - etwas grosszuegiger als ein Pixelstrahl. */
     private static final double RAILGUN_RAY_SIZE = 0.6;
 
@@ -77,11 +75,19 @@ public class TacticalItemsManager implements Listener {
     private static final NamespacedKey KEY_SINGULARITY_ORB = new NamespacedKey("oneshotonekill", "singularity_orb");
     private static final NamespacedKey KEY_GLIDER_WINGS = new NamespacedKey("oneshotonekill", "glider_wings");
 
+    /**
+     * Eine laufende Singularitaet. Jede fuehrt ihre <b>eigene</b> Ausschlussliste - zwei
+     * gleichzeitig offene Singularitaeten duerfen sich nicht gegenseitig beeinflussen.
+     */
+    private static final class ActiveSingularity {
+        private final Set<UUID> excluded = new HashSet<>();
+        private ScheduledTask task;
+    }
+
     private final OneShotOneKill plugin;
     /** Laufende Singularitaeten, damit sie beim Aufraeumen abgebrochen werden koennen. */
-    private final Set<ScheduledTask> activeSingularities = new HashSet<>();
+    private final Set<ActiveSingularity> activeSingularities = new HashSet<>();
     private final Set<UUID> activeGliders = new HashSet<>();
-    private final Set<UUID> chargingRailguns = new HashSet<>();
 
     public TacticalItemsManager(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -97,56 +103,14 @@ public class TacticalItemsManager implements Listener {
      *
      * @return {@code false}, wenn bereits ein Schuss geladen wird (Item nicht verbrauchen)
      */
-    public boolean chargeRailgun(Player shooter) {
-        UUID shooterId = shooter.getUniqueId();
-        if (!chargingRailguns.add(shooterId)) {
-            shooter.sendMessage(MiniMessage.miniMessage().deserialize(
-                    "<red>[OSOK] 🔭 Deine Railgun lädt bereits!</red>"));
-            shooter.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
-            return false;
-        }
-
-        shooter.playSound(Sound.sound(org.bukkit.Sound.ITEM_SPYGLASS_USE, Sound.Source.MASTER, 1.0f, 0.7f));
-        shooter.playSound(Sound.sound(org.bukkit.Sound.BLOCK_CONDUIT_ACTIVATE, Sound.Source.MASTER, 0.7f, 1.6f));
-        shooter.sendMessage(MiniMessage.miniMessage().deserialize(
-                "<yellow>[OSOK] 🔭 <b>Railgun lädt…</b> <gray>Halte dein Ziel im Visier!</gray></yellow>"));
-
-        // Paper Entity Scheduler: an den Tick des Schuetzen gebunden
-        shooter.getScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
-            int elapsed = 0;
-
-            @Override
-            public void accept(ScheduledTask task) {
-                if (!shooter.isOnline() || !isCombatActive(shooter)) {
-                    task.cancel();
-                    chargingRailguns.remove(shooterId);
-                    return;
-                }
-
-                if (elapsed >= RAILGUN_CHARGE_TICKS) {
-                    task.cancel();
-                    chargingRailguns.remove(shooterId);
-                    fireRailgun(shooter);
-                    return;
-                }
-
-                // Vorwarnung: Zielstrahl fuer alle sichtbar
-                drawBeam(shooter.getEyeLocation(), aimEnd(shooter), Particle.SMALL_FLAME, 1.0);
-                shooter.playSound(Sound.sound(org.bukkit.Sound.BLOCK_BEACON_POWER_SELECT, Sound.Source.MASTER,
-                        0.35f, 1.2f + elapsed * 0.04f));
-                elapsed += 2;
-            }
-        }, null, 1L, 2L);
-
-        return true;
-    }
-
     /**
-     * Feuert den Strahl ab. {@code World#rayTrace} liefert in <b>einem</b> Aufruf den naechsten
-     * Treffer - egal ob Block oder Spieler. Damit blockt eine Wand den Schuss zuverlaessig,
-     * ohne dass Block- und Entity-Raytrace von Hand verglichen werden muessen.
+     * Feuert den Strahl <b>sofort</b> ab - ohne Ladephase.
+     * <p>
+     * {@code World#rayTrace} liefert in <b>einem</b> Aufruf den naechsten Treffer - egal ob
+     * Block oder Spieler. Damit blockt eine Wand den Schuss zuverlaessig, ohne dass Block- und
+     * Entity-Raytrace von Hand verglichen werden muessen.
      */
-    private void fireRailgun(Player shooter) {
+    public void fireRailgun(Player shooter) {
         World world = shooter.getWorld();
         Location eye = shooter.getEyeLocation();
         Vector direction = eye.getDirection();
@@ -165,6 +129,7 @@ public class TacticalItemsManager implements Listener {
                 ? result.getHitPosition().toLocation(world)
                 : eye.clone().add(direction.clone().multiply(RAILGUN_RANGE));
 
+        shooter.playSound(Sound.sound(org.bukkit.Sound.ITEM_SPYGLASS_USE, Sound.Source.MASTER, 1.0f, 1.8f));
         drawBeam(eye, impact, Particle.ELECTRIC_SPARK, 0.4);
         drawBeam(eye, impact, Particle.END_ROD, 0.8);
         // Particle.FLASH verlangt zwingend ein Color-Datenobjekt. Ohne das wirft
@@ -186,17 +151,6 @@ public class TacticalItemsManager implements Listener {
                     "<red>[OSOK] 🔭 Fehlschuss! Der Strahl hat kein Ziel getroffen.</red>"));
             shooter.playSound(Sound.sound(org.bukkit.Sound.ITEM_SPYGLASS_STOP_USING, Sound.Source.MASTER, 1.0f, 0.8f));
         }
-    }
-
-    /** Endpunkt des Zielstrahls waehrend der Ladephase - stoppt an der ersten Wand. */
-    private Location aimEnd(Player shooter) {
-        Location eye = shooter.getEyeLocation();
-        Vector direction = eye.getDirection();
-        RayTraceResult blocked = shooter.getWorld().rayTraceBlocks(
-                eye, direction, RAILGUN_RANGE, FluidCollisionMode.NEVER, true);
-        return (blocked != null)
-                ? blocked.getHitPosition().toLocation(shooter.getWorld())
-                : eye.clone().add(direction.multiply(RAILGUN_RANGE));
     }
 
     /** Zeichnet eine Partikellinie zwischen zwei Punkten. */
@@ -243,10 +197,12 @@ public class TacticalItemsManager implements Listener {
     }
 
     /**
-     * Oeffnet die Singularitaet: 4 Sekunden Sog auf alle Spieler im Umkreis.
+     * Oeffnet die Singularitaet: 4 Sekunden Sog auf die Gegner im Umkreis.
      * <p>
-     * Der Sog trifft bewusst <b>jeden</b> - auch den Werfer. Die Singularitaet richtet keinen
-     * Schaden an; sie ist ein Aufbau-Item fuer Air-Strike, C4 und Bomber.
+     * Vom Sog ausgenommen sind der <b>Werfer</b> und jeder, der waehrenddessen
+     * <b>eliminiert wurde</b> - siehe {@link #excludeFromSingularities(UUID)}. Die
+     * Singularitaet richtet keinen Schaden an; sie ist ein Aufbau-Item fuer Air-Strike,
+     * C4 und Bomber.
      */
     private void openSingularity(Location center, Player owner) {
         World world = center.getWorld();
@@ -260,14 +216,21 @@ public class TacticalItemsManager implements Listener {
                             + "</white> hat eine <b>SINGULARITÄT</b> geöffnet!</dark_purple>"));
         }
 
-        ScheduledTask task = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
+        ActiveSingularity singularity = new ActiveSingularity();
+        // Der Werfer wird von seiner eigenen Singularitaet nicht erfasst
+        if (owner != null) {
+            singularity.excluded.add(owner.getUniqueId());
+        }
+        activeSingularities.add(singularity);
+
+        singularity.task = Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
             int ticksLeft = SINGULARITY_DURATION_TICKS;
 
             @Override
             public void accept(ScheduledTask self) {
                 if (ticksLeft <= 0) {
                     self.cancel();
-                    activeSingularities.remove(self);
+                    activeSingularities.remove(singularity);
                     collapse(center);
                     return;
                 }
@@ -276,6 +239,7 @@ public class TacticalItemsManager implements Listener {
 
                 // Paper Spatial Entity Index: direkte Spieler-Abfrage statt Entity-Box + instanceof
                 for (Player pulled : center.getNearbyPlayers(SINGULARITY_RADIUS)) {
+                    if (singularity.excluded.contains(pulled.getUniqueId())) continue;
                     if (!plugin.getArenaManager().isInArenaArea(pulled.getLocation())) continue;
                     applyPull(pulled, center);
                 }
@@ -283,8 +247,19 @@ public class TacticalItemsManager implements Listener {
                 ticksLeft -= SINGULARITY_PERIOD_TICKS;
             }
         }, 1L, SINGULARITY_PERIOD_TICKS);
+    }
 
-        activeSingularities.add(task);
+    /**
+     * Nimmt einen Spieler dauerhaft aus allen laufenden Singularitaeten heraus.
+     * <p>
+     * Wird bei jeder Eliminierung gerufen. Ohne das wuerde ein Spieler, der beim Respawn
+     * zufaellig wieder in Reichweite landet, sofort erneut eingesogen - der Sog haengt nur an
+     * der Position, nicht daran, ob es noch derselbe "Anlauf" ist.
+     */
+    public void excludeFromSingularities(UUID playerId) {
+        for (ActiveSingularity singularity : activeSingularities) {
+            singularity.excluded.add(playerId);
+        }
     }
 
     private void applyPull(Player player, Location center) {
@@ -514,11 +489,12 @@ public class TacticalItemsManager implements Listener {
      * ladende Railguns. Wird bei Match-Start, Match-Ende, Map-Wechsel und Plugin-Stop gerufen.
      */
     public void clearAll() {
-        for (ScheduledTask task : new HashSet<>(activeSingularities)) {
-            task.cancel();
+        for (ActiveSingularity singularity : new HashSet<>(activeSingularities)) {
+            if (singularity.task != null) {
+                singularity.task.cancel();
+            }
         }
         activeSingularities.clear();
-        chargingRailguns.clear();
 
         for (UUID gliderId : new ArrayList<>(activeGliders)) {
             Player player = Bukkit.getPlayer(gliderId);

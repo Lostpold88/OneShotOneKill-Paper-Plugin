@@ -11,10 +11,10 @@ import java.util.UUID;
 /**
  * Zentrale Verwaltung des Leuchtrahmens (Glow-Flag).
  * <p>
- * Drei Features markieren Spieler unabhaengig voneinander: der <b>Radar-Puls</b>, die
- * <b>Anti-Camping-Markierung</b> und der <b>Sudden Death</b>. Ohne zentrale Stelle wuerden
- * sie sich gegenseitig ausschalten - wer per Radar markiert ist und gleichzeitig aufhoert
- * zu campen, verlaere sonst auch das Radar-Leuchten.
+ * Zwei Features markieren Spieler unabhaengig voneinander: der <b>Radar-Puls</b> und die
+ * <b>Anti-Camping-Markierung</b>. Ohne zentrale Stelle wuerden sie sich gegenseitig
+ * ausschalten - wer per Radar markiert ist und gleichzeitig aufhoert zu campen, verloere
+ * sonst auch das Radar-Leuchten.
  * <p>
  * Deshalb haelt diese Klasse pro Spieler die <b>Gruende</b> fest und schaltet das Flag erst
  * ab, wenn kein Grund mehr besteht.
@@ -30,9 +30,7 @@ public class GlowManager {
         /** Radar-Puls hat den Spieler enthuellt. */
         RADAR,
         /** Der Spieler steht zu lange an derselben Stelle. */
-        CAMPING,
-        /** Sudden Death: In der Endphase leuchtet jeder. */
-        SUDDEN_DEATH
+        CAMPING
     }
 
     private final Map<UUID, EnumSet<GlowReason>> reasons = new HashMap<>();

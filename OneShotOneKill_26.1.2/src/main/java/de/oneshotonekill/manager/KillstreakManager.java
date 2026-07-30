@@ -74,14 +74,13 @@ public class KillstreakManager {
 
     private static final Random RANDOM = new Random();
 
-    /** Grundtakt des Boden-Spawns. Regulaer wird nur jeder zweite Durchlauf genutzt. */
-    private static final long GROUND_SPAWN_PERIOD_TICKS = 300L;
+    /** Takt des Boden-Spawns: alle 30 Sekunden. */
+    private static final long GROUND_SPAWN_PERIOD_TICKS = 600L;
 
     private final Set<Item> activeGroundItems = new HashSet<>();
     /** Spawngewicht je Item-Typ, einstellbar ueber /osok itemgewichtung. */
     private final Map<String, Integer> itemWeights = new HashMap<>();
     private ItemMode currentItemMode = ItemMode.BOTH;
-    private int groundSpawnRuns = 0;
 
     public KillstreakManager(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -179,30 +178,15 @@ public class KillstreakManager {
         activeGroundItems.clear();
     }
 
-    /**
-     * Paper Native Global Region Scheduler: Spawnt Mario-Kart-Boxen.
-     * <p>
-     * Der Takt liegt bei 15 Sekunden, regulaer wird aber nur jeder zweite Durchlauf genutzt -
-     * also alle 30 Sekunden. Im <b>Sudden Death</b> zaehlt jeder Durchlauf, die Rate verdoppelt
-     * sich damit auf 15 Sekunden.
-     */
+    /** Paper Native Global Region Scheduler: Spawnt alle 30 Sekunden Mario-Kart-Boxen. */
     private void startGroundSpawnTask() {
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
             if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
                 return;
             }
-            if (currentItemMode != ItemMode.SPAWN && currentItemMode != ItemMode.BOTH) {
-                return;
+            if (currentItemMode == ItemMode.SPAWN || currentItemMode == ItemMode.BOTH) {
+                spawnGroundSpecialItem();
             }
-
-            SuddenDeathManager suddenDeath = plugin.getSuddenDeathManager();
-            boolean doubleRate = suddenDeath != null && suddenDeath.isActive();
-
-            groundSpawnRuns++;
-            if (!doubleRate && groundSpawnRuns % 2 != 0) {
-                return;
-            }
-            spawnGroundSpecialItem();
         }, GROUND_SPAWN_PERIOD_TICKS, GROUND_SPAWN_PERIOD_TICKS);
     }
 

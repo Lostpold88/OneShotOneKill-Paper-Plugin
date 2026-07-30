@@ -182,7 +182,6 @@ public class MatchManager {
     public void stopMatch() {
         stopTimer();
         stopVictoryTasks();
-        plugin.getSuddenDeathManager().stop();
         this.matchStarted = false;
         this.matchPaused = false;
         this.statsPaused = false;
@@ -270,14 +269,6 @@ public class MatchManager {
             }
 
             remainingSeconds--;
-
-            // Endphase: ab hier leuchtet jeder, der Ring schrumpft und Item-Boxen kommen doppelt.
-            // Bewusst "<=" statt "==": Bei einem Limit unter einer Minute (z. B. /osok dauer
-            // sekunden 30) wuerde die Marke sonst nie exakt getroffen. start() ist idempotent.
-            if (remainingSeconds <= SuddenDeathManager.SUDDEN_DEATH_SECONDS) {
-                plugin.getSuddenDeathManager().start();
-            }
-
             plugin.getScoreboardManager().updateAllScoreboards();
 
             if (remainingSeconds <= 0) {
@@ -338,7 +329,6 @@ public class MatchManager {
     public void celebrateWinner(Player winner) {
         matchEnded = true;
         stopTimer();
-        plugin.getSuddenDeathManager().stop();
         clearAllItemEffects();
 
         int winnerKills = plugin.getScoreboardManager().getKills(winner.getUniqueId());
@@ -543,7 +533,6 @@ public class MatchManager {
     public void restartMatch(Player sender) {
         stopVictoryTasks();
         stopTimer();
-        plugin.getSuddenDeathManager().stop();
         this.matchStarted = true;
         this.matchPaused = false;
         this.statsPaused = false;

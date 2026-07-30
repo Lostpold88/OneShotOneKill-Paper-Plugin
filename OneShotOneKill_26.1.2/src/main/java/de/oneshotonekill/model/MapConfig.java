@@ -188,17 +188,7 @@ public class MapConfig {
      * erhoehte Plattformen und Bruecken der Arena.
      */
     public Location getRandomArenaLocation(World osokWorld) {
-        return getRandomArenaLocation(osokWorld, 1.0);
-    }
-
-    /**
-     * Wie {@link #getRandomArenaLocation(World)}, aber auf einen um {@code shrinkFactor}
-     * verkleinerten Bereich um die Arena-Mitte beschraenkt. Im Sudden Death spawnen Spieler
-     * damit garantiert innerhalb des Rings - sonst koennte ein Respawn direkt in der
-     * Todeszone landen und eine Endlosschleife ausloesen.
-     */
-    public Location getRandomArenaLocation(World osokWorld, double shrinkFactor) {
-        Location loc = findRandomSpot(osokWorld, true, shrinkFactor);
+        Location loc = findRandomSpot(osokWorld, true);
         return loc != null ? loc : fallbackLocation(osokWorld);
     }
 
@@ -209,15 +199,10 @@ public class MapConfig {
      * den Spawn ueberspringen kann statt ein Item in der Lobby abzulegen.
      */
     public Location getRandomFloorLocation(World osokWorld) {
-        return getRandomFloorLocation(osokWorld, 1.0);
+        return findRandomSpot(osokWorld, false);
     }
 
-    /** Wie {@link #getRandomFloorLocation(World)}, beschraenkt auf den geschrumpften Bereich. */
-    public Location getRandomFloorLocation(World osokWorld, double shrinkFactor) {
-        return findRandomSpot(osokWorld, false, shrinkFactor);
-    }
-
-    private Location findRandomSpot(World osokWorld, boolean topDown, double shrinkFactor) {
+    private Location findRandomSpot(World osokWorld, boolean topDown) {
         if (osokWorld == null) return null;
 
         int scanMinY = Math.max((int) Math.floor(minY) - SPAWN_SCAN_BELOW, osokWorld.getMinHeight());
@@ -231,18 +216,9 @@ public class MapConfig {
             return null;
         }
 
-        // Suchbereich um die Arena-Mitte verkleinern (Sudden-Death-Ring); 1.0 = volle Arena
-        double factor = Math.max(0.05, Math.min(shrinkFactor, 1.0));
-        double centerX = (minX + maxX) / 2.0;
-        double centerZ = (minZ + maxZ) / 2.0;
-        double spanX = (maxX - minX) * factor;
-        double spanZ = (maxZ - minZ) * factor;
-        double startX = centerX - spanX / 2.0;
-        double startZ = centerZ - spanZ / 2.0;
-
         for (int attempts = 0; attempts < 200; attempts++) {
-            int blockX = (int) Math.floor(startX + (RANDOM.nextDouble() * spanX));
-            int blockZ = (int) Math.floor(startZ + (RANDOM.nextDouble() * spanZ));
+            int blockX = (int) Math.floor(minX + (RANDOM.nextDouble() * (maxX - minX)));
+            int blockZ = (int) Math.floor(minZ + (RANDOM.nextDouble() * (maxZ - minZ)));
 
             for (int step = 0; step <= scanMaxY - scanMinY; step++) {
                 int y = topDown ? scanMaxY - step : scanMinY + step;

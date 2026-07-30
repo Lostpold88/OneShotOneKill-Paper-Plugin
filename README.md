@@ -62,12 +62,18 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 
   12. 🛰 **Air-Strike** *(Karte)*: Öffnet eine **Karte der aktiven Arena** – ein 9×6-Raster über die XZ-Grenzen der Map, auf dem alle Spieler in der Arena als Kopf auf ihrem Sektor eingezeichnet sind (der eigene in Blau, Gegner in Rot). Ein Klick markiert das Ziel, eine Partikelsäule kündigt den Einschlag an, und nach ~2 s gehen 8 Bomben auf den Sektor nieder. Die Abwurfhöhe respektiert die **Decke der Map** (auf Standard also maximal `Y 68`). Das Item wird erst bei der Zielauswahl verbraucht.
   13. 💥 **C4** *(TNT-Lore)*: Wird per Rechtsklick auf einen Block **platziert** und liegt dort als TNT-Block ohne Leuchtrahmen, ist also nicht durch Waende sichtbar – umgesetzt als `BlockDisplay`, die Map bleibt also völlig unberührt. Beim Platzieren erhält man automatisch einen **Fernzünder** (Hebel), der per Rechtsklick **alle eigenen Ladungen gleichzeitig** auslöst. Mehrere Ladungen lassen sich vorher verteilen.
+      - **Wieder aufheben**: Rechtsklick auf den **Trägerblock** gibt die Ladung zurück ins Inventar. Die Ladung selbst ist ein `BlockDisplay` und damit nicht anklickbar – deshalb wird der Block darunter angeklickt und geprüft, ob direkt darüber eine eigene Ladung sitzt.
+      - Mit einer C4 oder dem Fernzünder in der Hand greift das bewusst **nicht**: Damit wird platziert bzw. gezündet. Es lassen sich nur **eigene** Ladungen aufnehmen.
+      - **Mit der letzten Ladung verschwindet auch der Fernzünder** – ohne Ladung hat er keine Funktion mehr. Dasselbe gilt beim Aufräumen zum Match-Ende.
 
-  14. 🔭 **Railgun** *(Fernrohr)*: Rechtsklick startet eine **Ladephase von 1 Sekunde**, in der ein Partikelstrahl die aktuelle Blickrichtung für **alle sichtbar** nachzeichnet – das Ziel kann also ausweichen. Danach schlägt ein Hitscan-Strahl ein: Wer auf der Sichtlinie steht, ist sofort eliminiert. Der Treffer wird mit **einem** `World#rayTrace`-Aufruf ermittelt, der Blöcke und Entities gemeinsam prüft und den nächstgelegenen Treffer liefert – eine Wand blockt den Schuss damit zuverlässig, ohne dass Block- und Entity-Raytrace von Hand verglichen werden müssen. Reichweite 64 Blöcke, ein Schuss pro Item, Fehlschuss inklusive.
+  14. 🔭 **Railgun** *(Fernrohr)*: Rechtsklick feuert **sofort** – keine Ladephase, keine Vorwarnung. Der Hitscan-Strahl schlägt im selben Tick ein: Wer auf der Sichtlinie steht, ist eliminiert. Der Treffer wird mit **einem** `World#rayTrace`-Aufruf ermittelt, der Blöcke und Entities gemeinsam prüft und den nächstgelegenen Treffer liefert – eine Wand blockt den Schuss damit zuverlässig, ohne dass Block- und Entity-Raytrace von Hand verglichen werden müssen. Reichweite 64 Blöcke, ein Schuss pro Item, Fehlschuss inklusive.
 
   > **`Particle.FLASH` braucht zwingend ein `Color`-Datenobjekt.** Ohne das wirft `CraftParticle` ein `IllegalArgumentException: missing required data class org.bukkit.Color`, und der Schuss bricht mittendrin ab: Der Strahl wird noch gezeichnet, aber der Treffer nie ausgewertet. Ob ein Partikel Daten braucht, verrät `Particle#getDataType()` – bei den hier verwendeten Partikeln gilt das außer für `FLASH` nur noch für `DUST` (`DustOptions`) und `BLOCK` (`BlockData`).
 
-  15. 🕳 **Singularität** *(Echo-Scherbe)*: Wurfgeschoss (optisch eine Echo-Scherbe über `ThrowableProjectile#setItem`). Beim Einschlag öffnet sich für **4 Sekunden** ein Sog, der alle Spieler im Umkreis von 8 Blöcken zum Zentrum reißt – **auch den Werfer**. Richtet keinen Schaden an: Die Singularität ist ein **Aufbau-Item** für Air-Strike, C4 und Tarnkappenbomber. Der Sog wirkt nur auf Spieler *innerhalb* der Arena.
+  15. 🕳 **Singularität** *(Echo-Scherbe)*: Wurfgeschoss (optisch eine Echo-Scherbe über `ThrowableProjectile#setItem`). Beim Einschlag öffnet sich für **4 Sekunden** ein Sog, der Gegner im Umkreis von 8 Blöcken zum Zentrum reißt. Richtet keinen Schaden an: Die Singularität ist ein **Aufbau-Item** für Air-Strike, C4 und Tarnkappenbomber. Der Sog wirkt nur auf Spieler *innerhalb* der Arena.
+      - **Der Werfer selbst wird nicht erfasst.**
+      - **Wer eliminiert wird, ist für den Rest der Laufzeit raus.** Der Sog hängt nur an der Position, nicht daran, ob es noch derselbe „Anlauf" ist – ohne diesen Ausschluss würde ein Gegner, der beim Respawn zufällig wieder in Reichweite landet, sofort erneut eingesogen.
+      - Jede Singularität führt ihre **eigene** Ausschlussliste, damit zwei gleichzeitig offene sich nicht gegenseitig beeinflussen.
 
   16. 🦅 **Gleitflug** *(Elytra)*: **8 Sekunden** Flug mit Startschub und regelmäßigen Schubstößen. Für die Flugdauer erhält der Spieler Leih-Schwingen im Brustslot, die danach restlos wieder eingesammelt werden. Die Flughöhe respektiert die **Decke der Map** und die Arena-Oberkante – auf der offenen DustPvP-Map könnte man sonst über die Arena hinaussteigen, und außerhalb der Arena ist jeder Kampf deaktiviert. Am Ende gibt es **Sanfter Fall** für die Landung, denn Sturzschaden wäre in der Arena tödlich.
 
@@ -115,16 +121,6 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 - **👑 Kopfgeld-System**:
   - Ab einer 5er Killstreak erhält der Spieler ein Kopfgeld `[👑]` mit Blitzschlag-Ankündigung.
   - Wer das Kopfgeld holt, erhält 2 zufällige Spezial-Items als Belohnung.
-
-- **☠ Sudden Death (Endphase bei Zeitlimit)**:
-  - Startet automatisch bei **60 verbleibenden Sekunden**. Bei kürzeren Limits (z. B. `/osok dauer sekunden 30`) greift die Phase ab dem ersten Timer-Tick.
-  - **Jeder leuchtet** – Verstecken ist vorbei.
-  - **Der Ring schrumpft** von 100 % auf 45 % der Arena-Kantenlänge und wird als rote Partikelwand gezeichnet. Wer länger als **5 Sekunden** draußen bleibt, wird eliminiert; ein Countdown in der Actionbar warnt vorher.
-  - **Doppelte Item-Rate**: Boden-Item-Boxen spawnen alle 15 statt alle 30 Sekunden.
-  - Die Arena-Grenzen der `MapConfig` bleiben **unangetastet**. Sie steuern Kampfzone, Pausensperre und Item-Spawns – sie zu verkleinern würde außerhalb des Rings jeden Kampf deaktivieren. Der Ring ist deshalb eine eigene, zusätzliche Grenze.
-  - **Respawns landen garantiert im Ring**: `getRandomArenaLocation` beschränkt die Suchfläche auf den aktuellen Ring. Ohne das könnte ein Respawn direkt in der Todeszone landen und eine Endlosschleife auslösen.
-  - Der Ring friert bei `/osok pause` und `/osok pausestats` mit dem Timer ein.
-
 - **🏕 Anti-Camping (`/osok camper`)** – reines GUI, kein Textbefehl:
   - Wer **20 Sekunden** (einstellbar) im Umkreis von **5 Blöcken** (einstellbar) bleibt, leuchtet für alle auf – bis er sich wieder bewegt.
   - **5 Sekunden vorher** gibt es eine Actionbar-Vorwarnung mit Signalton.
@@ -148,7 +144,7 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - Ausgewertet werden nur **verbundene** Spieler – eine UUID ohne Online-Spieler aufzulösen würde eine blockierende Profilabfrage auslösen. Die Live-Rangliste im Scoreboard arbeitet aus demselben Grund so.
 
 - **💡 Zentrale Leuchtrahmen-Verwaltung**:
-  - Radar-Puls, Anti-Camping und Sudden Death markieren Spieler unabhängig voneinander. Der `GlowManager` hält deshalb pro Spieler die **Gründe** fest und schaltet `Entity#setGlowing` erst ab, wenn kein Grund mehr besteht – sonst würde ein auslaufender Camping-Status das Radar-Leuchten mit abschalten.
+  - Radar-Puls und Anti-Camping markieren Spieler unabhängig voneinander. Der `GlowManager` hält deshalb pro Spieler die **Gründe** fest und schaltet `Entity#setGlowing` erst ab, wenn kein Grund mehr besteht – sonst würde ein auslaufender Camping-Status das Radar-Leuchten mit abschalten.
 
 - **📊 Native Paper Scoreboard & Tabliste**:
   - Live Leaderboard mit Kills, K/D Ratio, Streak, Highscore und Kopfgeld-Marker.

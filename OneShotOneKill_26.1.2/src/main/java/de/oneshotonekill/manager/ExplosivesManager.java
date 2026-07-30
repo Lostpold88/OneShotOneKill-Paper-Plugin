@@ -374,8 +374,7 @@ public class ExplosivesManager implements Listener {
 
     private void giveDetonator(Player owner) {
         for (ItemStack stack : owner.getInventory().getContents()) {
-            if (stack != null && stack.hasItemMeta()
-                    && stack.getPersistentDataContainer().has(KEY_DETONATOR, PersistentDataType.BYTE)) {
+            if (isDetonator(stack)) {
                 return; // hat schon einen
             }
         }
@@ -389,6 +388,94 @@ public class ExplosivesManager implements Listener {
             detonator.setItemMeta(meta);
         }
         owner.getInventory().addItem(detonator);
+    }
+
+    /**
+     * Aufheben einer platzierten C4: Rechtsklick auf den Block, auf dem die Ladung liegt.
+     * <p>
+     * Die Ladung ist ein {@link BlockDisplay} und damit nicht anklickbar - deshalb wird der
+     * <b>Traegerblock</b> angeklickt und geprueft, ob direkt darueber eine eigene Ladung sitzt.
+     * Mit einer C4 oder dem Fernzuender in der Hand greift das bewusst nicht: Damit wird
+     * platziert bzw. gezuendet.
+     * <p>
+     * Es lassen sich nur <b>eigene</b> Ladungen aufnehmen. Mit der letzten Ladung verschwindet
+     * auch der Fernzuender - ohne Ladung hat er keine Funktion mehr.
+     */
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onC4Pickup(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) return;
+
+        ItemStack held = event.getItem();
+        if (isC4Item(held) || isDetonator(held)) return;
+
+        Player owner = event.getPlayer();
+        List<BlockDisplay> charges = c4Charges.get(owner.getUniqueId());
+        if (charges == null || charges.isEmpty()) return;
+
+        Location above = event.getClickedBlock().getRelative(BlockFace.UP).getLocation();
+        BlockDisplay found = null;
+        for (BlockDisplay charge : charges) {
+            if (charge.isValid() && isSameBlock(charge.getLocation(), above)) {
+                found = charge;
+                break;
+            }
+        }
+        if (found == null) return;
+
+        event.setCancelled(true);
+        charges.remove(found);
+        Location chargeLoc = found.getLocation().clone();
+        found.remove();
+
+        // Ladung zurueck ins Inventar
+        int c4Index = KillstreakManager.SPECIAL_ITEM_IDS.indexOf(KillstreakManager.KEY_C4);
+        owner.getInventory().addItem(plugin.getKillstreakManager().createSpecificSpecialItem(c4Index));
+
+        owner.playSound(Sound.sound(org.bukkit.Sound.BLOCK_STONE_BREAK, Sound.Source.MASTER, 1.0f, 1.4f));
+        if (chargeLoc.getWorld() != null) {
+            chargeLoc.getWorld().spawnParticle(Particle.SMOKE, chargeLoc.clone().add(0.5, 0.5, 0.5),
+                    12, 0.2, 0.2, 0.2, 0.02);
+        }
+
+        if (charges.isEmpty()) {
+            c4Charges.remove(owner.getUniqueId());
+            removeDetonator(owner);
+            owner.sendMessage(MiniMessage.miniMessage().deserialize(
+                    "<green>[OSOK] 💥 C4 wieder aufgenommen. <gray>Es war deine letzte Ladung - der Fernzünder ist weg.</gray></green>"));
+        } else {
+            owner.sendMessage(MiniMessage.miniMessage().deserialize(
+                    "<green>[OSOK] 💥 C4 wieder aufgenommen. <gray>Noch <yellow>" + charges.size()
+                            + "</yellow> Ladung(en) platziert.</gray></green>"));
+        }
+    }
+
+    private boolean isSameBlock(Location first, Location second) {
+        return first.getWorld() != null && first.getWorld().equals(second.getWorld())
+                && first.getBlockX() == second.getBlockX()
+                && first.getBlockY() == second.getBlockY()
+                && first.getBlockZ() == second.getBlockZ();
+    }
+
+    private boolean isC4Item(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        String type = stack.getPersistentDataContainer()
+                .get(plugin.getKillstreakManager().getSpecialItemKey(), PersistentDataType.STRING);
+        return KillstreakManager.KEY_C4.equals(type);
+    }
+
+    private boolean isDetonator(ItemStack stack) {
+        return stack != null && !stack.isEmpty()
+                && stack.getPersistentDataContainer().has(KEY_DETONATOR, PersistentDataType.BYTE);
+    }
+
+    /** Nimmt dem Spieler den Fernzuender ab - er ist ohne platzierte Ladung wirkungslos. */
+    private void removeDetonator(Player owner) {
+        ItemStack[] contents = owner.getInventory().getContents();
+        for (int slot = 0; slot < contents.length; slot++) {
+            if (isDetonator(contents[slot])) {
+                owner.getInventory().setItem(slot, null);
+            }
+        }
     }
 
     /** Fernzünder: zündet alle Ladungen des Spielers. */
@@ -465,6 +552,11 @@ public class ExplosivesManager implements Listener {
             }
         }
         c4Charges.clear();
+
+        // Ohne Ladung ist der Fernzuender wirkungslos - er darf nicht im Inventar zurueckbleiben
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            removeDetonator(online);
+        }
 
         int orphans = 0;
         for (World world : Bukkit.getWorlds()) {

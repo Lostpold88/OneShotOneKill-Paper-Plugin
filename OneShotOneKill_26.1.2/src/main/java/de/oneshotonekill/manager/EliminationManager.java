@@ -236,6 +236,8 @@ public class EliminationManager {
         }
         if (plugin.getTacticalItemsManager() != null) {
             plugin.getTacticalItemsManager().stopGlide(victim, false);
+            // Nach dem Respawn darf keine noch laufende Singularitaet erneut zugreifen
+            plugin.getTacticalItemsManager().excludeFromSingularities(victim.getUniqueId());
         }
     }
 }

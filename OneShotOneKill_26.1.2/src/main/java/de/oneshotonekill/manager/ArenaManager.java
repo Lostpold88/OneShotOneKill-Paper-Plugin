@@ -19,7 +19,7 @@ public class ArenaManager {
 
         MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
         if (activeMap != null) {
-            Location loc = activeMap.getRandomArenaLocation(osokWorld, ringFactor());
+            Location loc = activeMap.getRandomArenaLocation(osokWorld);
             if (loc != null) return loc;
         }
 
@@ -37,16 +37,7 @@ public class ArenaManager {
         if (osokWorld == null) return null;
 
         MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
-        return activeMap != null ? activeMap.getRandomFloorLocation(osokWorld, ringFactor()) : null;
-    }
-
-    /**
-     * Aktueller Schrumpffaktor der Spawn-Flaeche. Im Sudden Death spawnen Spieler und
-     * Item-Boxen nur noch innerhalb des Rings.
-     */
-    private double ringFactor() {
-        SuddenDeathManager suddenDeath = plugin.getSuddenDeathManager();
-        return suddenDeath != null ? suddenDeath.getRingFactor() : 1.0;
+        return activeMap != null ? activeMap.getRandomFloorLocation(osokWorld) : null;
     }
 
     /**

@@ -167,12 +167,6 @@ public class ScoreboardManager {
                         "<yellow><b>⏱ VERBLEIBEND:</b></yellow> <white>" + match.formatTime(shownSeconds) + "</white>"));
                 lines.add(SEPARATOR);
             }
-
-            SuddenDeathManager suddenDeath = plugin.getSuddenDeathManager();
-            if (suddenDeath != null && suddenDeath.isActive()) {
-                lines.add(suddenDeath.sidebarLine());
-                lines.add(SEPARATOR);
-            }
         }
 
         lines.add(HEADING_RANKING);
