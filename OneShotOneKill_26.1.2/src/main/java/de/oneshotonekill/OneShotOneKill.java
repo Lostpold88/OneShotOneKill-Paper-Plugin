@@ -6,10 +6,15 @@ import de.oneshotonekill.listener.CombatListener;
 import de.oneshotonekill.listener.PlayerConnectionListener;
 import de.oneshotonekill.listener.SpecialItemListener;
 import de.oneshotonekill.listener.WorldRuleListener;
+import de.oneshotonekill.manager.AntiCampManager;
 import de.oneshotonekill.manager.ArenaManager;
 import de.oneshotonekill.manager.EliminationManager;
 import de.oneshotonekill.manager.EquipmentManager;
 import de.oneshotonekill.manager.ExplosivesManager;
+import de.oneshotonekill.manager.GlowManager;
+import de.oneshotonekill.manager.MatchSummaryManager;
+import de.oneshotonekill.manager.SuddenDeathManager;
+import de.oneshotonekill.manager.TacticalItemsManager;
 import de.oneshotonekill.manager.StealthBomberManager;
 import de.oneshotonekill.manager.KillEffectManager;
 import de.oneshotonekill.manager.KillstreakManager;
@@ -32,34 +37,51 @@ public class OneShotOneKill extends JavaPlugin {
     private EliminationManager eliminationManager;
     private StealthBomberManager stealthBomberManager;
     private ExplosivesManager explosivesManager;
+    private GlowManager glowManager;
+    private TacticalItemsManager tacticalItemsManager;
+    private SuddenDeathManager suddenDeathManager;
+    private AntiCampManager antiCampManager;
+    private MatchSummaryManager matchSummaryManager;
+    private SpecialItemListener specialItemListener;
 
     @Override
     public void onEnable() {
         // 1. Manager instanziieren
         this.worldManager = new WorldManager(this);
         this.arenaManager = new ArenaManager(this);
-        this.equipmentManager = new EquipmentManager();
+        this.equipmentManager = new EquipmentManager(this);
         this.scoreboardManager = new ScoreboardManager(this);
+        this.glowManager = new GlowManager();
+        this.suddenDeathManager = new SuddenDeathManager(this);
         this.killstreakManager = new KillstreakManager(this);
         this.killEffectManager = new KillEffectManager();
         this.matchManager = new MatchManager(this);
         this.eliminationManager = new EliminationManager(this);
         this.stealthBomberManager = new StealthBomberManager(this);
         this.explosivesManager = new ExplosivesManager(this);
+        this.tacticalItemsManager = new TacticalItemsManager(this);
+        this.antiCampManager = new AntiCampManager(this);
+        this.matchSummaryManager = new MatchSummaryManager(this);
 
         // 2. Map & Welt laden
         this.worldManager.setupWorld();
 
         // 3. Event-Listener registrieren
         ItemTestCommand itemTestCommand = new ItemTestCommand(this);
+        this.specialItemListener = new SpecialItemListener(this);
 
         getServer().getPluginManager().registerEvents(new PlayerConnectionListener(this), this);
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
-        getServer().getPluginManager().registerEvents(new SpecialItemListener(this), this);
+        getServer().getPluginManager().registerEvents(this.specialItemListener, this);
         getServer().getPluginManager().registerEvents(new WorldRuleListener(), this);
         getServer().getPluginManager().registerEvents(this.stealthBomberManager, this);
         getServer().getPluginManager().registerEvents(this.explosivesManager, this);
+        getServer().getPluginManager().registerEvents(this.tacticalItemsManager, this);
+        getServer().getPluginManager().registerEvents(this.antiCampManager, this);
         getServer().getPluginManager().registerEvents(itemTestCommand, this);
+
+        // Dauerlauf der Anti-Camping- und Streckenmessung
+        this.antiCampManager.start();
 
         // Serverweit erzwungene GameRules (locator_bar) auf alle bereits geladenen Welten anwenden
         WorldManager.applyGlobalGameRulesToAllWorlds();
@@ -91,6 +113,12 @@ public class OneShotOneKill extends JavaPlugin {
         if (matchManager != null) {
             matchManager.stopVictoryTasks();
         }
+        if (suddenDeathManager != null) {
+            suddenDeathManager.stop();
+        }
+        if (antiCampManager != null) {
+            antiCampManager.stop();
+        }
         if (killstreakManager != null) {
             killstreakManager.clearAllGroundItems();
         }
@@ -100,6 +128,41 @@ public class OneShotOneKill extends JavaPlugin {
         if (explosivesManager != null) {
             explosivesManager.clearAll();
         }
+        if (tacticalItemsManager != null) {
+            tacticalItemsManager.clearAll();
+        }
+        // Frost-Traps zuletzt: Sie veraendern Bloecke und muessen weg, bevor die Welt gesichert wird
+        if (specialItemListener != null) {
+            specialItemListener.clearAllTraps();
+            specialItemListener.clearAllVanish();
+        }
+        if (glowManager != null) {
+            glowManager.clearAll();
+        }
+    }
+
+    public GlowManager getGlowManager() {
+        return glowManager;
+    }
+
+    public TacticalItemsManager getTacticalItemsManager() {
+        return tacticalItemsManager;
+    }
+
+    public SuddenDeathManager getSuddenDeathManager() {
+        return suddenDeathManager;
+    }
+
+    public AntiCampManager getAntiCampManager() {
+        return antiCampManager;
+    }
+
+    public MatchSummaryManager getMatchSummaryManager() {
+        return matchSummaryManager;
+    }
+
+    public SpecialItemListener getSpecialItemListener() {
+        return specialItemListener;
     }
 
     public EliminationManager getEliminationManager() {

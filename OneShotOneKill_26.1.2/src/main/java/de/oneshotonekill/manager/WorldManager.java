@@ -137,6 +137,21 @@ public class WorldManager {
         if (plugin.getExplosivesManager() != null) {
             plugin.getExplosivesManager().clearAll();
         }
+        // Frost-Traps MUESSEN vor dem Entladen weg - danach ist die alte Welt nicht mehr
+        // erreichbar und die gespeicherten Locations zeigen ins Leere
+        if (plugin.getSpecialItemListener() != null) {
+            plugin.getSpecialItemListener().clearAllTraps();
+            plugin.getSpecialItemListener().clearAllVanish();
+        }
+        if (plugin.getTacticalItemsManager() != null) {
+            plugin.getTacticalItemsManager().clearAll();
+        }
+        if (plugin.getAntiCampManager() != null) {
+            plugin.getAntiCampManager().reset();
+        }
+        if (plugin.getGlowManager() != null) {
+            plugin.getGlowManager().clearAll();
+        }
 
         // 3. Paper Async Teleportation: Alle Spieler aus der OSOK-Welt heraus sichern.
         //    Die Welt darf erst entladen werden, wenn ALLE Teleports abgeschlossen sind.

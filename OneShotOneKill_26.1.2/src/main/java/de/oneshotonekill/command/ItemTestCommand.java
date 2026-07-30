@@ -20,7 +20,8 @@ import org.bukkit.inventory.Inventory;
 public class ItemTestCommand implements Listener {
 
     private final OneShotOneKill plugin;
-    public static final Component GUI_TITLE = MiniMessage.miniMessage().deserialize("<yellow><b>🧪 Spezial-Item Test-Menü (12 Items)</b></yellow>");
+    public static final Component GUI_TITLE = MiniMessage.miniMessage().deserialize(
+            "<yellow><b>🧪 Spezial-Item Test-Menü (" + KillstreakManager.SPECIAL_ITEM_COUNT + " Items)</b></yellow>");
 
     public ItemTestCommand(OneShotOneKill plugin) {
         this.plugin = plugin;

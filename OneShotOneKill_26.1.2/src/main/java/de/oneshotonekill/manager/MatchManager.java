@@ -182,11 +182,29 @@ public class MatchManager {
     public void stopMatch() {
         stopTimer();
         stopVictoryTasks();
+        plugin.getSuddenDeathManager().stop();
         this.matchStarted = false;
         this.matchPaused = false;
         this.statsPaused = false;
         this.matchEnded = false;
         this.remainingSeconds = this.timeLimitSeconds;
+    }
+
+    /**
+     * Nimmt alle laufenden Item-Wirkungen zurueck: Frost-Traps, Unsichtbarkeiten, Gleitfluege,
+     * Singularitaeten, Camping-Markierungen und Leuchtrahmen.
+     * <p>
+     * Wird bei Match-Start und Match-Ende gerufen. Ohne diesen Durchgang blieben Druckplatten
+     * in der Map liegen und Spieler unsichtbar oder markiert in die naechste Runde hinein.
+     */
+    private void clearAllItemEffects() {
+        if (plugin.getSpecialItemListener() != null) {
+            plugin.getSpecialItemListener().clearAllTraps();
+            plugin.getSpecialItemListener().clearAllVanish();
+        }
+        plugin.getTacticalItemsManager().clearAll();
+        plugin.getAntiCampManager().reset();
+        plugin.getGlowManager().clearAll();
     }
 
     /**
@@ -206,10 +224,13 @@ public class MatchManager {
         plugin.getKillstreakManager().clearAllGroundItems();
         plugin.getStealthBomberManager().clearAll();
         plugin.getExplosivesManager().clearAll();
+        clearAllItemEffects();
+
+        // Zusammenfassung VOR dem Zuruecksetzen - danach sind die Statistiken leer
+        plugin.getMatchSummaryManager().broadcastSummary();
         plugin.getScoreboardManager().resetAllStats();
 
         for (Player p : Bukkit.getOnlinePlayers()) {
-            p.setGlowing(false);
             p.setFireTicks(0);
             p.setFreezeTicks(0);
             for (PotionEffect effect : new java.util.ArrayList<>(p.getActivePotionEffects())) {
@@ -249,6 +270,14 @@ public class MatchManager {
             }
 
             remainingSeconds--;
+
+            // Endphase: ab hier leuchtet jeder, der Ring schrumpft und Item-Boxen kommen doppelt.
+            // Bewusst "<=" statt "==": Bei einem Limit unter einer Minute (z. B. /osok dauer
+            // sekunden 30) wuerde die Marke sonst nie exakt getroffen. start() ist idempotent.
+            if (remainingSeconds <= SuddenDeathManager.SUDDEN_DEATH_SECONDS) {
+                plugin.getSuddenDeathManager().start();
+            }
+
             plugin.getScoreboardManager().updateAllScoreboards();
 
             if (remainingSeconds <= 0) {
@@ -309,6 +338,8 @@ public class MatchManager {
     public void celebrateWinner(Player winner) {
         matchEnded = true;
         stopTimer();
+        plugin.getSuddenDeathManager().stop();
+        clearAllItemEffects();
 
         int winnerKills = plugin.getScoreboardManager().getKills(winner.getUniqueId());
 
@@ -323,6 +354,9 @@ public class MatchManager {
         broadcast("<gray>  Starte ein neues Match mit: <yellow>/start</yellow></gray>");
         broadcast("<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff><b>=======================================</b></gradient>");
         broadcast(" ");
+
+        // Zusammenfassung direkt nach dem Sieger - die Statistiken stehen hier noch
+        plugin.getMatchSummaryManager().broadcastSummary();
 
         // Gewinner Effekte
         winner.addPotionEffect(new PotionEffect(PotionEffectType.GLOWING, 7200, 0));
@@ -509,6 +543,7 @@ public class MatchManager {
     public void restartMatch(Player sender) {
         stopVictoryTasks();
         stopTimer();
+        plugin.getSuddenDeathManager().stop();
         this.matchStarted = true;
         this.matchPaused = false;
         this.statsPaused = false;
@@ -523,6 +558,7 @@ public class MatchManager {
         plugin.getKillstreakManager().clearAllGroundItems();
         plugin.getStealthBomberManager().clearAll();
         plugin.getExplosivesManager().clearAll();
+        clearAllItemEffects();
 
         Location spawn = plugin.getWorldManager().getSpawnLocation();
         int count = 0;

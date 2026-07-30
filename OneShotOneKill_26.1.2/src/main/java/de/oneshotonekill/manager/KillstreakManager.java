@@ -2,6 +2,7 @@ package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
 import net.kyori.adventure.sound.Sound;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -36,9 +37,12 @@ public class KillstreakManager {
     public static final String KEY_STEALTH_BOMBER = "stealth_bomber";
     public static final String KEY_AIRSTRIKE = "air_strike";
     public static final String KEY_C4 = "c4_charge_item";
+    public static final String KEY_RAILGUN = "railgun";
+    public static final String KEY_SINGULARITY = "singularity";
+    public static final String KEY_GLIDER = "glider_flight";
 
     /** Anzahl der verfuegbaren Spezial-Item-Typen (Indizes 0 bis SPECIAL_ITEM_COUNT-1). */
-    public static final int SPECIAL_ITEM_COUNT = 13;
+    public static final int SPECIAL_ITEM_COUNT = 16;
 
     public static final NamespacedKey KEY_EXPLOSIVE_PDC = new NamespacedKey("oneshotonekill", "explosive_arrow");
     public static final NamespacedKey KEY_CHAIN_LIGHTNING_PDC = new NamespacedKey("oneshotonekill", "chain_lightning_arrow");
@@ -55,8 +59,12 @@ public class KillstreakManager {
 
     private static final Random RANDOM = new Random();
 
+    /** Grundtakt des Boden-Spawns. Regulaer wird nur jeder zweite Durchlauf genutzt. */
+    private static final long GROUND_SPAWN_PERIOD_TICKS = 300L;
+
     private final Set<Item> activeGroundItems = new HashSet<>();
     private ItemMode currentItemMode = ItemMode.BOTH;
+    private int groundSpawnRuns = 0;
 
     public KillstreakManager(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -90,16 +98,31 @@ public class KillstreakManager {
         activeGroundItems.clear();
     }
 
+    /**
+     * Paper Native Global Region Scheduler: Spawnt Mario-Kart-Boxen.
+     * <p>
+     * Der Takt liegt bei 15 Sekunden, regulaer wird aber nur jeder zweite Durchlauf genutzt -
+     * also alle 30 Sekunden. Im <b>Sudden Death</b> zaehlt jeder Durchlauf, die Rate verdoppelt
+     * sich damit auf 15 Sekunden.
+     */
     private void startGroundSpawnTask() {
-        // Paper Native Global Region Scheduler: Spawnt alle 30 Sekunden Mario-Kart-Boxen
         Bukkit.getGlobalRegionScheduler().runAtFixedRate(plugin, task -> {
             if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchEnded()) {
                 return;
             }
-            if (currentItemMode == ItemMode.SPAWN || currentItemMode == ItemMode.BOTH) {
-                spawnGroundSpecialItem();
+            if (currentItemMode != ItemMode.SPAWN && currentItemMode != ItemMode.BOTH) {
+                return;
             }
-        }, 600L, 600L);
+
+            SuddenDeathManager suddenDeath = plugin.getSuddenDeathManager();
+            boolean doubleRate = suddenDeath != null && suddenDeath.isActive();
+
+            groundSpawnRuns++;
+            if (!doubleRate && groundSpawnRuns % 2 != 0) {
+                return;
+            }
+            spawnGroundSpecialItem();
+        }, GROUND_SPAWN_PERIOD_TICKS, GROUND_SPAWN_PERIOD_TICKS);
     }
 
     private void startMarioKartParticleAnimation() {
@@ -178,9 +201,15 @@ public class KillstreakManager {
         }, 1200L);
     }
 
+    /**
+     * Vergibt ein zufaelliges Spezial-Item als Killstreak- oder Kopfgeld-Belohnung.
+     * Zaehlt fuer die Match-Zusammenfassung mit; das Admin-Testmenue nutzt bewusst
+     * {@link #giveSpecificSpecialItem(Player, int, int)} und zaehlt daher nicht.
+     */
     public void awardRandomKillstreakItem(Player player, int streak) {
         int itemType = RANDOM.nextInt(SPECIAL_ITEM_COUNT);
         giveSpecificSpecialItem(player, itemType, streak);
+        plugin.getScoreboardManager().addItemsCollected(player.getUniqueId(), 1);
     }
 
     public ItemStack createSpecificSpecialItem(int itemType) {
@@ -197,8 +226,28 @@ public class KillstreakManager {
             case 9 -> createSpecialItem(Material.LIGHTNING_ROD, "<yellow><b>[⚡] Kettenblitz-Schuss (Rechtsklick)</b></yellow>", "<gray>Dein nächster Schuss erzeugt Blitze!</gray>", KEY_CHAIN_LIGHTNING);
             case 10 -> createSpecialItem(Material.DRAGON_HEAD, "<dark_purple><b>[🐉] Tarnkappenbomber (Rechtsklick)</b></dark_purple>", "<gray>Setzt 10s lang einen TNT-werfenden Drachen auf ein Ziel an!</gray>", KEY_STEALTH_BOMBER);
             case 11 -> createSpecialItem(Material.FILLED_MAP, "<red><b>[🛰] Air-Strike (Rechtsklick)</b></red>", "<gray>Arena-Karte öffnen und einen Bombenhagel anfordern!</gray>", KEY_AIRSTRIKE);
-            default -> createSpecialItem(Material.TNT_MINECART, "<gold><b>[💥] C4 (Auf Block platzieren)</b></gold>", "<gray>Platzieren und per Fernzünder auslösen!</gray>", KEY_C4);
+            case 12 -> createSpecialItem(Material.TNT_MINECART, "<gold><b>[💥] C4 (Auf Block platzieren)</b></gold>", "<gray>Platzieren und per Fernzünder auslösen!</gray>", KEY_C4);
+            case 13 -> createSpecialItem(Material.SPYGLASS, "<white><b>[🔭] Railgun (Rechtsklick)</b></white>", "<gray>Lädt 1s und tötet dann alles auf der Sichtlinie!</gray>", KEY_RAILGUN);
+            case 14 -> createSpecialItem(Material.ECHO_SHARD, "<dark_purple><b>[🕳] Singularität (Werfen)</b></dark_purple>", "<gray>Reißt 4s lang alle Spieler im Umkreis zusammen!</gray>", KEY_SINGULARITY);
+            default -> createGliderItem();
         };
+    }
+
+    /**
+     * Gleitflug-Item fuer die Hotbar.
+     * <p>
+     * Die Elytra darf ausdruecklich <b>nicht</b> angezogen werden koennen - sonst haette der
+     * Spieler unbegrenzten Flug statt der acht Sekunden. Beide Faehigkeiten werden deshalb
+     * ueber die Paper Data Components vom Item entfernt. Die eigentlichen Schwingen vergibt
+     * fuer die Flugdauer der {@code TacticalItemsManager}.
+     */
+    private ItemStack createGliderItem() {
+        ItemStack item = createSpecialItem(Material.ELYTRA,
+                "<aqua><b>[🦅] Gleitflug (Rechtsklick)</b></aqua>",
+                "<gray>8 Sekunden Flug mit Schubstößen!</gray>", KEY_GLIDER);
+        item.unsetData(DataComponentTypes.EQUIPPABLE);
+        item.unsetData(DataComponentTypes.GLIDER);
+        return item;
     }
 
     public void giveSpecificSpecialItem(Player player, int itemType, int streak) {

@@ -2,6 +2,7 @@ package de.oneshotonekill.listener;
 
 import de.oneshotonekill.OneShotOneKill;
 import net.kyori.adventure.sound.Sound;
+import de.oneshotonekill.manager.GlowManager;
 import de.oneshotonekill.manager.KillstreakManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -32,6 +33,15 @@ public class SpecialItemListener implements Listener {
 
     /** Dauer des Radar-Puls Leuchtens (30 Sekunden). */
     private static final long RADAR_GLOW_TICKS = 600L;
+    /**
+     * Lebensdauer einer nicht ausgeloesten Frost-Trap (45 Sekunden).
+     * <p>
+     * Ohne diese Grenze blieben Druckplatten, auf die nie jemand tritt, dauerhaft in der Map
+     * liegen - und sammelten sich ueber ein Match hinweg an.
+     */
+    private static final long FROST_TRAP_LIFETIME_TICKS = 900L;
+    /** Dauer der Vereisung nach dem Ausloesen (7 Sekunden). */
+    private static final long FROST_TRAP_FREEZE_TICKS = 140L;
 
     private final OneShotOneKill plugin;
     private final Set<Location> activeBearTraps = new HashSet<>();
@@ -71,10 +81,56 @@ public class SpecialItemListener implements Listener {
     public void onPlayerQuit(org.bukkit.event.player.PlayerQuitEvent event) {
         Player leaver = event.getPlayer();
         radarGlowGeneration.remove(leaver.getUniqueId());
-        if (vanishedPlayers.remove(leaver.getUniqueId())) {
-            for (Player other : Bukkit.getOnlinePlayers()) {
-                other.showPlayer(plugin, leaver);
+        revealPlayer(leaver);
+    }
+
+    /**
+     * Beendet den Unsichtbarkeits-Mantel eines Spielers sofort.
+     * <p>
+     * Der Mantel haengt nicht am Potion-Effekt, sondern an {@code hidePlayer}. Wuerde er beim
+     * Eliminieren oder beim Match-Ende nicht ausdruecklich beendet, bliebe der Spieler bis zum
+     * Ablauf seines Timers fuer alle unsichtbar - auch in der Lobby.
+     */
+    public void revealPlayer(Player player) {
+        if (player == null || !vanishedPlayers.remove(player.getUniqueId())) return;
+
+        for (Player other : Bukkit.getOnlinePlayers()) {
+            other.showPlayer(plugin, player);
+        }
+    }
+
+    /** Beendet alle laufenden Unsichtbarkeiten (Match-Ende, Map-Wechsel, Plugin-Stop). */
+    public void clearAllVanish() {
+        for (UUID vanishedId : new HashSet<>(vanishedPlayers)) {
+            Player vanished = Bukkit.getPlayer(vanishedId);
+            if (vanished != null) {
+                revealPlayer(vanished);
             }
+        }
+        vanishedPlayers.clear();
+    }
+
+    /**
+     * Entfernt alle noch liegenden Frost-Trap-Druckplatten aus der Welt.
+     * Wird bei Match-Start, Match-Ende, Map-Wechsel und Plugin-Stop gerufen, damit keine
+     * Platte in der Map zurueckbleibt.
+     */
+    public void clearAllTraps() {
+        for (Location trapLoc : new HashSet<>(activeBearTraps)) {
+            removeTrapBlock(trapLoc);
+        }
+        activeBearTraps.clear();
+    }
+
+    /** Nimmt die Druckplatte zurueck, sofern an der Stelle noch eine liegt. */
+    private void removeTrapBlock(Location trapLoc) {
+        if (trapLoc == null || trapLoc.getWorld() == null) return;
+
+        Block block = trapLoc.getBlock();
+        if (Tag.PRESSURE_PLATES.isTagged(block.getType())) {
+            block.setType(Material.AIR);
+            block.getWorld().spawnParticle(Particle.SNOWFLAKE, trapLoc.clone().add(0.5, 0.2, 0.5),
+                    15, 0.2, 0.2, 0.2, 0.05);
         }
     }
 
@@ -86,8 +142,13 @@ public class SpecialItemListener implements Listener {
             ItemMeta meta = item.getItemStack().hasItemMeta() ? item.getItemStack().getItemMeta() : null;
             Component nameComp = meta != null && meta.hasDisplayName() ? meta.displayName() : Component.text("Spezial-Item");
             
+            // Zaehlt fuer die Match-Zusammenfassung - bei eingefrorener Wertung nicht
+            if (!plugin.getMatchManager().isStatsPaused()) {
+                plugin.getScoreboardManager().addItemsCollected(player.getUniqueId(), 1);
+            }
+
             player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.8f));
-            
+
             Location loc = item.getLocation();
             loc.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, loc, 30, 0.3, 0.3, 0.3, 0.1);
 
@@ -117,19 +178,16 @@ public class SpecialItemListener implements Listener {
         // Druckplatten Betreten (Physical Action)
         if (event.getAction() == Action.PHYSICAL && event.getClickedBlock() != null) {
             Block block = event.getClickedBlock();
-            if (activeBearTraps.remove(block.getLocation())) {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 140, 10));
-                player.setFreezeTicks(140);
+            Location trapLoc = block.getLocation();
+            if (activeBearTraps.remove(trapLoc)) {
+                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, (int) FROST_TRAP_FREEZE_TICKS, 10));
+                player.setFreezeTicks((int) FROST_TRAP_FREEZE_TICKS);
                 player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_GLASS_BREAK, Sound.Source.MASTER, 1.0f, 0.5f));
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❄ Du bist in eine Frost-Trap getreten und für 7s eingefroren!</red>"));
 
-                // Nach 7 Sekunden (140 Ticks) verschwindet die Druckplatte
-                Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
-                    if (Tag.PRESSURE_PLATES.isTagged(block.getType())) {
-                        block.setType(Material.AIR);
-                        block.getWorld().spawnParticle(Particle.SNOWFLAKE, block.getLocation().add(0.5, 0.2, 0.5), 15, 0.2, 0.2, 0.2, 0.05);
-                    }
-                }, 140L);
+                // Nach 7 Sekunden verschwindet die Druckplatte
+                Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> removeTrapBlock(trapLoc),
+                        FROST_TRAP_FREEZE_TICKS);
                 return;
             }
         }
@@ -234,10 +292,18 @@ public class SpecialItemListener implements Listener {
                 Block targetBlock = event.getClickedBlock().getRelative(BlockFace.UP);
                 if (targetBlock.getType() == Material.AIR) {
                     targetBlock.setType(Material.HEAVY_WEIGHTED_PRESSURE_PLATE);
-                    activeBearTraps.add(targetBlock.getLocation());
+                    Location trapLoc = targetBlock.getLocation();
+                    activeBearTraps.add(trapLoc);
                     consumeItem(player, item);
                     player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_GLASS_PLACE, Sound.Source.MASTER, 1.0f, 1.0f));
-                    player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ❄ Frost-Trap platziert!</green>"));
+                    player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ❄ Frost-Trap platziert! <gray>(verfällt nach 45s)</gray></green>"));
+
+                    // Ablauf auch ohne Ausloesung - sonst bleibt die Platte fuer immer liegen
+                    Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
+                        if (activeBearTraps.remove(trapLoc)) {
+                            removeTrapBlock(trapLoc);
+                        }
+                    }, FROST_TRAP_LIFETIME_TICKS);
                 }
                 return;
             }
@@ -272,11 +338,9 @@ public class SpecialItemListener implements Listener {
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ✦ Unsichtbarkeits-Mantel aktiviert! Du bist für 15s komplett unsichtbar (Vanish).</green>"));
 
                 player.getScheduler().runDelayed(plugin, task -> {
-                    if (vanishedPlayers.remove(player.getUniqueId())) {
+                    if (vanishedPlayers.contains(player.getUniqueId())) {
+                        revealPlayer(player);
                         if (player.isOnline()) {
-                            for (Player other : Bukkit.getOnlinePlayers()) {
-                                other.showPlayer(plugin, player);
-                            }
                             player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ✦ Unsichtbarkeits-Mantel abgelaufen.</red>"));
                         }
                     }
@@ -332,6 +396,34 @@ public class SpecialItemListener implements Listener {
                 return;
             }
 
+            // Railgun: laedt eine Sekunde und feuert dann einen Hitscan-Strahl.
+            // Verbrauch erst, wenn die Ladephase tatsaechlich startet.
+            if (KillstreakManager.KEY_RAILGUN.equals(typeId)) {
+                event.setCancelled(true);
+                if (plugin.getTacticalItemsManager().chargeRailgun(player)) {
+                    consumeItem(player, item);
+                }
+                return;
+            }
+
+            // Singularitaet: Wurfgeschoss, das beim Einschlag alles zusammenreisst
+            if (KillstreakManager.KEY_SINGULARITY.equals(typeId)) {
+                event.setCancelled(true);
+                consumeItem(player, item);
+
+                plugin.getTacticalItemsManager().throwSingularity(player);
+                return;
+            }
+
+            // Gleitflug: Verbrauch erst, wenn wirklich ein Flug startet
+            if (KillstreakManager.KEY_GLIDER.equals(typeId)) {
+                event.setCancelled(true);
+                if (plugin.getTacticalItemsManager().startGlide(player)) {
+                    consumeItem(player, item);
+                }
+                return;
+            }
+
         }
     }
 
@@ -350,7 +442,9 @@ public class SpecialItemListener implements Listener {
     private void applyRadarGlow(Player target, long durationTicks) {
         UUID targetId = target.getUniqueId();
         int generation = radarGlowGeneration.merge(targetId, 1, Integer::sum);
-        target.setGlowing(true);
+        // Ueber den GlowManager, damit Anti-Camping und Sudden Death das Radar-Leuchten
+        // nicht versehentlich wieder abschalten (und umgekehrt)
+        plugin.getGlowManager().add(target, GlowManager.GlowReason.RADAR);
 
         // Paper Entity Scheduler: an den Tick des Ziels gebunden
         target.getScheduler().runDelayed(plugin, task -> {
@@ -358,7 +452,7 @@ public class SpecialItemListener implements Listener {
             if (radarGlowGeneration.getOrDefault(targetId, 0) == generation) {
                 radarGlowGeneration.remove(targetId);
                 if (target.isOnline()) {
-                    target.setGlowing(false);
+                    plugin.getGlowManager().remove(target, GlowManager.GlowReason.RADAR);
                 }
             }
         }, null, durationTicks);

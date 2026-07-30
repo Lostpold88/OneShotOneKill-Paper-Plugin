@@ -21,7 +21,10 @@ import java.util.UUID;
  * loest beim Client einen Respawn-Paketwechsel aus, der den Ladebildschirm ("Welt wird geladen")
  * zeigt - genau das entfaellt dadurch vollstaendig.
  * <p>
- * {@code PlayerDeathEvent} bleibt als Auffangnetz fuer echte Tode bestehen (z. B. /kill oder Void).
+ * {@code PlayerDeathEvent} bleibt als Auffangnetz fuer echte Tode bestehen (z. B. /kill). Diese
+ * gehen ueber {@link #handleRealDeath(Player, Player)} und teilen sich mit der regulaeren
+ * Eliminierung dieselbe Buchfuehrung. Frueher fuehrte der Death-Handler eine eigene, parallele
+ * Statistik - dabei wurden weder {@code /osok pausestats} noch das Kill-Limit beachtet.
  */
 public class EliminationManager {
 
@@ -48,7 +51,7 @@ public class EliminationManager {
 
         // Reflektor-Schild: faengt JEDE Eliminierung ab, nicht nur direkte Treffer.
         // Die Pruefung sitzt bewusst hier und nicht im CombatListener, denn Kettenblitz,
-        // Explosiv-Pfeil, Bomber-TNT, Air-Strike, C4 und Sturzschaden erreichen den
+        // Explosiv-Pfeil, Bomber-TNT, Air-Strike, C4, Railgun und Sturzschaden erreichen den
         // CombatListener-Nahkampfzweig nie und wuerden das Schild sonst umgehen.
         // Steht vor der inProgress-Sperre, damit ein zweiter Treffer im selben Tick
         // korrekt toetet, statt ebenfalls blockiert zu werden.
@@ -72,23 +75,50 @@ public class EliminationManager {
         }
         Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> inProgress.remove(victimId), 2L);
 
-        ScoreboardManager scoreboard = plugin.getScoreboardManager();
         Location deathLoc = victim.getLocation().clone();
-
         plugin.getKillEffectManager().playKillEffect(deathLoc);
 
-        // /osok pausestats: Der Treffer wirkt normal (Effekt, Respawn), wird aber nicht gewertet.
-        boolean tracking = !plugin.getMatchManager().isStatsPaused();
+        registerKill(victim, killer);
+        returnToPlay(victim);
+        plugin.getScoreboardManager().updateAllScoreboards();
+    }
+
+    /**
+     * Auffangnetz fuer einen <b>echten</b> Tod (z. B. {@code /kill}).
+     * <p>
+     * Hier wird ausschliesslich gebucht: Kein Reflektor-Schild (der Tod laesst sich in
+     * {@code PlayerDeathEvent} nicht mehr verhindern, das Schild duerfte also auch nicht
+     * verbraucht werden) und kein Teleport - den Respawn erledigt der
+     * {@code PlayerRespawnEvent}.
+     */
+    public void handleRealDeath(Player victim, Player killer) {
+        if (victim == null) return;
+
+        plugin.getKillEffectManager().playKillEffect(victim.getLocation());
+        registerKill(victim, killer);
+        cleanupEffects(victim);
+        plugin.getScoreboardManager().updateAllScoreboards();
+    }
+
+    /**
+     * Gemeinsame Buchfuehrung von Eliminierung und echtem Tod: Statistik, Kopfgeld,
+     * Killstreak-Belohnung, Todesnachricht und Match-Ziel.
+     * <p>
+     * Bei eingefrorener Wertung ({@code /osok pausestats}) wirkt der Treffer normal, wird aber
+     * nicht gezaehlt.
+     */
+    private void registerKill(Player victim, Player killer) {
+        UUID victimId = victim.getUniqueId();
+        ScoreboardManager scoreboard = plugin.getScoreboardManager();
 
         boolean hasKiller = killer != null && killer.isOnline() && !killer.getUniqueId().equals(victimId);
 
-        if (!tracking) {
+        if (plugin.getMatchManager().isStatsPaused()) {
             if (hasKiller) {
                 killer.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ARROW_HIT_PLAYER, Sound.Source.MASTER, 1.0f, 1.2f));
                 killer.sendMessage(MiniMessage.miniMessage().deserialize(
                         "<gray>[OSOK] Du hast <yellow>" + victim.getName() + "</yellow> eliminiert - <b>wird aktuell nicht gewertet</b> (Statistik eingefroren).</gray>"));
             }
-            returnToPlay(victim);
             return;
         }
 
@@ -96,42 +126,40 @@ public class EliminationManager {
         scoreboard.addDeath(victimId);
         scoreboard.resetStreak(victimId);
 
-        if (hasKiller) {
-            int kills = scoreboard.addKill(killer.getUniqueId());
-            int streak = scoreboard.addStreak(killer.getUniqueId());
-
-            killer.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ARROW_HIT_PLAYER, Sound.Source.MASTER, 1.0f, 1.2f));
-            killer.sendMessage(MiniMessage.miniMessage().deserialize(
-                    "<green>[OSOK] Du hast <yellow>" + victim.getName() + "</yellow> eliminiert! <gray>(Streak: <yellow>" + streak + "</yellow>)</gray></green>"));
-
-            if (wasBounty) {
-                plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
-                plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
-                killer.playSound(Sound.sound(org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, Sound.Source.MASTER, 1.0f, 1.5f));
-                Bukkit.broadcast(MiniMessage.miniMessage().deserialize(
-                        "<green>[OSOK] 💰 KOPFGELD KASSIERT! <white>" + killer.getName() + "</white> <gray>hat das Kopfgeld auf <yellow>"
-                                + victim.getName() + "</yellow> geholt und 2 Spezial-Items kassiert!</gray></green>"));
-            }
-
-            KillstreakManager.ItemMode mode = plugin.getKillstreakManager().getItemMode();
-            if (streak > 0 && streak % 3 == 0
-                    && (mode == KillstreakManager.ItemMode.STREAK || mode == KillstreakManager.ItemMode.BOTH)) {
-                plugin.getKillstreakManager().awardRandomKillstreakItem(killer, streak);
-            }
-
-            Component deathMessage = MiniMessage.miniMessage().deserialize(
-                    "<red>🎯 " + victim.getName() + " <gray>wurde von <yellow>" + killer.getName() + "</yellow> ausgeschaltet!</gray></red>");
-            Bukkit.broadcast(deathMessage);
-
-            notifyKillLimitProgress(killer, kills);
-            plugin.getMatchManager().checkKillWinner(killer, kills);
-        } else {
+        if (!hasKiller) {
             Bukkit.broadcast(MiniMessage.miniMessage().deserialize(
                     "<red>☠ " + victim.getName() + " <gray>ist gestorben.</gray></red>"));
+            return;
         }
 
-        returnToPlay(victim);
-        scoreboard.updateAllScoreboards();
+        int kills = scoreboard.addKill(killer.getUniqueId());
+        int streak = scoreboard.addStreak(killer.getUniqueId());
+
+        killer.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ARROW_HIT_PLAYER, Sound.Source.MASTER, 1.0f, 1.2f));
+        killer.sendMessage(MiniMessage.miniMessage().deserialize(
+                "<green>[OSOK] Du hast <yellow>" + victim.getName() + "</yellow> eliminiert! <gray>(Streak: <yellow>" + streak + "</yellow>)</gray></green>"));
+
+        if (wasBounty) {
+            plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
+            plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
+            killer.playSound(Sound.sound(org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, Sound.Source.MASTER, 1.0f, 1.5f));
+            Bukkit.broadcast(MiniMessage.miniMessage().deserialize(
+                    "<green>[OSOK] 💰 KOPFGELD KASSIERT! <white>" + killer.getName() + "</white> <gray>hat das Kopfgeld auf <yellow>"
+                            + victim.getName() + "</yellow> geholt und 2 Spezial-Items kassiert!</gray></green>"));
+        }
+
+        KillstreakManager.ItemMode mode = plugin.getKillstreakManager().getItemMode();
+        if (streak > 0 && streak % 3 == 0
+                && (mode == KillstreakManager.ItemMode.STREAK || mode == KillstreakManager.ItemMode.BOTH)) {
+            plugin.getKillstreakManager().awardRandomKillstreakItem(killer, streak);
+        }
+
+        Component deathMessage = MiniMessage.miniMessage().deserialize(
+                "<red>🎯 " + victim.getName() + " <gray>wurde von <yellow>" + killer.getName() + "</yellow> ausgeschaltet!</gray></red>");
+        Bukkit.broadcast(deathMessage);
+
+        notifyKillLimitProgress(killer, kills);
+        plugin.getMatchManager().checkKillWinner(killer, kills);
     }
 
     /**
@@ -161,10 +189,7 @@ public class EliminationManager {
      * Ohne echten Tod gibt es keinen Respawn-Bildschirm.
      */
     private void returnToPlay(Player victim) {
-        victim.setFireTicks(0);
-        victim.setFreezeTicks(0);
-        victim.setGlowing(false);
-        new ArrayList<>(victim.getActivePotionEffects()).forEach(effect -> victim.removePotionEffect(effect.getType()));
+        cleanupEffects(victim);
 
         boolean matchRunning = plugin.getMatchManager().isMatchStarted()
                 && !plugin.getMatchManager().isMatchPaused()
@@ -190,5 +215,27 @@ public class EliminationManager {
                 victim.playSound(Sound.sound(org.bukkit.Sound.ENTITY_PLAYER_DEATH, Sound.Source.MASTER, 1.0f, 1.0f));
             }
         });
+    }
+
+    /**
+     * Raeumt alle laufenden Item-Wirkungen des Opfers ab.
+     * <p>
+     * Wichtig: Der Unsichtbarkeits-Mantel und der Gleitflug haengen nicht an einem Potion-Effekt,
+     * sondern an {@code hidePlayer} bzw. an angelegten Schwingen. Wuerden sie hier fehlen,
+     * bliebe ein eliminierter Spieler bis zum Ablauf seines Timers unsichtbar - oder truege
+     * weiter eine Elytra.
+     */
+    private void cleanupEffects(Player victim) {
+        victim.setFireTicks(0);
+        victim.setFreezeTicks(0);
+        plugin.getGlowManager().clear(victim);
+        new ArrayList<>(victim.getActivePotionEffects()).forEach(effect -> victim.removePotionEffect(effect.getType()));
+
+        if (plugin.getSpecialItemListener() != null) {
+            plugin.getSpecialItemListener().revealPlayer(victim);
+        }
+        if (plugin.getTacticalItemsManager() != null) {
+            plugin.getTacticalItemsManager().stopGlide(victim, false);
+        }
     }
 }

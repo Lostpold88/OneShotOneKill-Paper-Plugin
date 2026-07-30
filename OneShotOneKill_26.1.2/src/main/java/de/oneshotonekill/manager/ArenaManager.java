@@ -19,7 +19,7 @@ public class ArenaManager {
 
         MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
         if (activeMap != null) {
-            Location loc = activeMap.getRandomArenaLocation(osokWorld);
+            Location loc = activeMap.getRandomArenaLocation(osokWorld, ringFactor());
             if (loc != null) return loc;
         }
 
@@ -37,7 +37,34 @@ public class ArenaManager {
         if (osokWorld == null) return null;
 
         MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
-        return activeMap != null ? activeMap.getRandomFloorLocation(osokWorld) : null;
+        return activeMap != null ? activeMap.getRandomFloorLocation(osokWorld, ringFactor()) : null;
+    }
+
+    /**
+     * Aktueller Schrumpffaktor der Spawn-Flaeche. Im Sudden Death spawnen Spieler und
+     * Item-Boxen nur noch innerhalb des Rings.
+     */
+    private double ringFactor() {
+        SuddenDeathManager suddenDeath = plugin.getSuddenDeathManager();
+        return suddenDeath != null ? suddenDeath.getRingFactor() : 1.0;
+    }
+
+    /**
+     * Ist der Spieler unter die Welt gefallen und muss gerettet werden?
+     * <p>
+     * Ausserhalb der Arena wird jeder Schaden gecancelt - auch Void-Schaden. Ohne diese
+     * Pruefung faellt ein Spieler, der neben die Lobby-Plattform tritt, endlos weiter.
+     */
+    public boolean isBelowWorld(Location loc) {
+        if (loc == null || loc.getWorld() == null) return false;
+
+        World osokWorld = plugin.getWorldManager().getOsokWorld();
+        if (osokWorld == null || !loc.getWorld().equals(osokWorld)) return false;
+
+        MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
+        if (activeMap == null) return false;
+
+        return loc.getY() < activeMap.getVoidRescueY();
     }
 
     /**

@@ -1,10 +1,7 @@
 package de.oneshotonekill.listener;
 
 import de.oneshotonekill.OneShotOneKill;
-import de.oneshotonekill.manager.KillstreakManager;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
-import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import net.kyori.adventure.sound.Sound;
 import org.bukkit.damage.DamageSource;
@@ -134,59 +131,27 @@ public class CombatListener implements Listener {
         }
     }
 
+    /**
+     * Auffangnetz fuer echte Tode (z. B. {@code /kill}).
+     * <p>
+     * Die Buchfuehrung uebernimmt vollstaendig der {@link de.oneshotonekill.manager.EliminationManager} -
+     * dieselbe wie bei einer regulaeren Eliminierung. Frueher lief hier eine eigene, parallele
+     * Statistik, die weder {@code /osok pausestats} noch die Match-Ziel-Erinnerung kannte und
+     * damit stillschweigend von der Hauptlogik abwich.
+     * <p>
+     * Die Todesnachricht wird unterdrueckt, weil der EliminationManager sie selbst sendet.
+     * Sofortiger Auto-Respawn ohne Wiederbeleben-Button laeuft rein ueber die Paper GameRule
+     * IMMEDIATE_RESPAWN (siehe {@code WorldManager#applyPaperGameRules}).
+     */
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
         Player victim = event.getEntity();
-        Player killer = victim.getKiller();
 
         event.getDrops().clear();
         event.setDroppedExp(0);
+        event.deathMessage(null);
 
-        // Kopfgeld-Prüfung & Auszahlung vor Stats-Reset
-        boolean wasBounty = plugin.getScoreboardManager().removeBountyTarget(victim.getUniqueId());
-
-        // Deaths erhöhen
-        int d = plugin.getScoreboardManager().addDeath(victim.getUniqueId());
-        plugin.getScoreboardManager().resetStreak(victim.getUniqueId());
-
-        if (killer != null && !killer.getUniqueId().equals(victim.getUniqueId())) {
-            int k = plugin.getScoreboardManager().addKill(killer.getUniqueId());
-            int s = plugin.getScoreboardManager().addStreak(killer.getUniqueId());
-
-            // Standard Blut-Splash Killeffekt beim Opfer abspielen
-            plugin.getKillEffectManager().playKillEffect(victim.getLocation());
-
-            killer.playSound(Sound.sound(org.bukkit.Sound.ENTITY_ARROW_HIT_PLAYER, Sound.Source.MASTER, 1.0f, 1.2f));
-            killer.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] Du hast <yellow>" + victim.getName() + "</yellow> eliminiert! <gray>(Streak: <yellow>" + s + "</yellow>)</gray></green>"));
-
-            // Kopfgeld Belohnung: 2 Spezial-Items für den Killer!
-            if (wasBounty) {
-                plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
-                plugin.getKillstreakManager().awardRandomKillstreakItem(killer, 0);
-                killer.playSound(Sound.sound(org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, Sound.Source.MASTER, 1.0f, 1.5f));
-                Component bcMsg = MiniMessage.miniMessage().deserialize("<green>[OSOK] 💰 KOPFGELD KASSIERT! <white>" + killer.getName() + "</white> <gray>hat das Kopfgeld auf <yellow>" + victim.getName() + "</yellow> geholt und 2 Spezial-Items kassiert!</gray></green>");
-                Bukkit.broadcast(bcMsg);
-            }
-
-            // Alle 3er Streaks zufälliges Spezial-Item verleihen (im STREAK- oder BOTH-Modus)
-            KillstreakManager.ItemMode mode = plugin.getKillstreakManager().getItemMode();
-            if (s > 0 && s % 3 == 0 && (mode == KillstreakManager.ItemMode.STREAK || mode == KillstreakManager.ItemMode.BOTH)) {
-                plugin.getKillstreakManager().awardRandomKillstreakItem(killer, s);
-            }
-
-            event.deathMessage(MiniMessage.miniMessage().deserialize("<red>🎯 " + victim.getName() + " <gray>wurde von <yellow>" + killer.getName() + "</yellow> ausgeschaltet!</gray></red>"));
-
-            // Prüfen, ob dieser Kill den Match-Sieg auslöst
-            plugin.getMatchManager().checkKillWinner(killer, k);
-        } else {
-            event.deathMessage(MiniMessage.miniMessage().deserialize("<red>☠ " + victim.getName() + " <gray>ist gestorben.</gray></red>"));
-        }
-
-        // Live-Scoreboard und Tab-Liste für ALLE Online-Spieler aktualisieren
-        plugin.getScoreboardManager().updateAllScoreboards();
-
-        // Sofortiger Auto-Respawn ohne Wiederbeleben-Button laeuft rein ueber die
-        // Paper GameRule DO_IMMEDIATE_RESPAWN (siehe WorldManager#applyPaperGameRules).
+        plugin.getEliminationManager().handleRealDeath(victim, victim.getKiller());
     }
 
     @EventHandler
