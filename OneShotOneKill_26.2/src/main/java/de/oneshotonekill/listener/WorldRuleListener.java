@@ -7,6 +7,8 @@ import org.bukkit.GameRules;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.weather.ThunderChangeEvent;
+import org.bukkit.event.weather.WeatherChangeEvent;
 import org.bukkit.event.world.WorldInitEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 
@@ -29,14 +31,48 @@ public class WorldRuleListener implements Listener {
     }
 
     /**
-     * Paper WorldGameRuleChangeEvent: Blockt jeden Versuch, locator_bar wieder einzuschalten.
+     * Paper WorldGameRuleChangeEvent: Blockt jeden Versuch, eine der erzwungenen Regeln
+     * wieder einzuschalten - locator_bar sowie den Tages- und Wetterfortlauf.
      */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onGameRuleChange(WorldGameRuleChangeEvent event) {
-        if (event.getGameRule().equals(GameRules.LOCATOR_BAR) && !"false".equalsIgnoreCase(event.getValue())) {
+        if ("false".equalsIgnoreCase(event.getValue())) {
+            return; // Ausschalten ist immer erlaubt, erzwungen ist ja genau das
+        }
+
+        String ruleName = null;
+        if (event.getGameRule().equals(GameRules.LOCATOR_BAR)) {
+            ruleName = "locator_bar";
+        } else if (event.getGameRule().equals(GameRules.ADVANCE_TIME)) {
+            ruleName = "advance_time";
+        } else if (event.getGameRule().equals(GameRules.ADVANCE_WEATHER)) {
+            ruleName = "advance_weather";
+        }
+        if (ruleName == null) return;
+
+        event.setCancelled(true);
+        event.getCommandSender().sendMessage(MiniMessage.miniMessage().deserialize(
+                "<red>[OSOK] 🔒 <b>" + ruleName + "</b> ist serverweit dauerhaft auf <b>false</b> gesetzt und kann nicht aktiviert werden.</red>"));
+    }
+
+    /**
+     * Zusaetzliche Absicherung gegen Wetterwechsel.
+     * <p>
+     * {@code advance_weather=false} haelt nur den natuerlichen Fortlauf an. Ein
+     * {@code /weather rain} oder ein anderes Plugin kann das Wetter trotzdem umstellen -
+     * hier wird jeder Wechsel weg von "klar" abgelehnt.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onWeatherChange(WeatherChangeEvent event) {
+        if (event.toWeatherState()) {
             event.setCancelled(true);
-            event.getCommandSender().sendMessage(MiniMessage.miniMessage().deserialize(
-                    "<red>[OSOK] 🔒 <b>locator_bar</b> ist serverweit dauerhaft auf <b>false</b> gesetzt und kann nicht aktiviert werden.</red>"));
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onThunderChange(ThunderChangeEvent event) {
+        if (event.toThunderState()) {
+            event.setCancelled(true);
         }
     }
 }

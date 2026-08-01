@@ -15,8 +15,11 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.util.Vector;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -34,17 +37,18 @@ public class SpecialItemListener implements Listener {
     /** Dauer des Radar-Puls Leuchtens (30 Sekunden). */
     private static final long RADAR_GLOW_TICKS = 600L;
     /**
-     * Lebensdauer einer nicht ausgeloesten Frost-Trap (45 Sekunden).
+     * Dauer der Vereisung nach dem Ausloesen (7 Sekunden).
      * <p>
-     * Ohne diese Grenze blieben Druckplatten, auf die nie jemand tritt, dauerhaft in der Map
-     * liegen - und sammelten sich ueber ein Match hinweg an.
+     * Eine platzierte Frost-Trap laeuft bewusst <b>nicht</b> von selbst ab - sie liegt, bis
+     * jemand hineintritt. Dass sich keine Platten ansammeln, stellt {@link #clearAllTraps()}
+     * sicher, das bei Match-Start, Match-Ende, Map-Wechsel und Plugin-Stop laeuft.
      */
-    private static final long FROST_TRAP_LIFETIME_TICKS = 900L;
-    /** Dauer der Vereisung nach dem Ausloesen (7 Sekunden). */
     private static final long FROST_TRAP_FREEZE_TICKS = 140L;
 
     private final OneShotOneKill plugin;
     private final Set<Location> activeBearTraps = new HashSet<>();
+    /** Von einer Frost-Trap festgehaltene Spieler. */
+    private final Set<UUID> frozenPlayers = new HashSet<>();
     private final Set<UUID> vanishedPlayers = new HashSet<>();
     /** Zaehler pro Spieler, damit ein neuer Radar-Puls das Leuchten des vorherigen verlaengert. */
     private final Map<UUID, Integer> radarGlowGeneration = new HashMap<>();
@@ -81,6 +85,7 @@ public class SpecialItemListener implements Listener {
     public void onPlayerQuit(org.bukkit.event.player.PlayerQuitEvent event) {
         Player leaver = event.getPlayer();
         radarGlowGeneration.remove(leaver.getUniqueId());
+        frozenPlayers.remove(leaver.getUniqueId());
         revealPlayer(leaver);
     }
 
@@ -111,15 +116,81 @@ public class SpecialItemListener implements Listener {
     }
 
     /**
-     * Entfernt alle noch liegenden Frost-Trap-Druckplatten aus der Welt.
-     * Wird bei Match-Start, Match-Ende, Map-Wechsel und Plugin-Stop gerufen, damit keine
-     * Platte in der Map zurueckbleibt.
+     * Entfernt alle noch liegenden Frost-Trap-Druckplatten aus der Welt und taut alle
+     * eingefrorenen Spieler auf.
+     * <p>
+     * Wird bei Match-Start, Match-Ende, Map-Wechsel und Plugin-Stop gerufen. Da eine Trap
+     * von sich aus nicht mehr verfaellt, ist das die einzige Stelle, an der ungenutzte
+     * Platten wieder verschwinden.
      */
     public void clearAllTraps() {
         for (Location trapLoc : new HashSet<>(activeBearTraps)) {
             removeTrapBlock(trapLoc);
         }
         activeBearTraps.clear();
+
+        for (UUID frozenId : new HashSet<>(frozenPlayers)) {
+            unfreezePlayer(Bukkit.getPlayer(frozenId));
+        }
+        frozenPlayers.clear();
+    }
+
+    /**
+     * Friert einen Spieler tatsaechlich fest.
+     * <p>
+     * SLOWNESS allein reicht nicht: Der Effekt senkt nur die Laufgeschwindigkeit, ein Sprung
+     * trug den Spieler weiterhin mehrere Bloecke weit. Deshalb wird zusaetzlich die Bewegung
+     * in {@link #onFrozenMove(PlayerMoveEvent)} unterbunden und die laufende Bewegung sofort
+     * auf null gesetzt, damit auch ein bereits begonnener Sprung abbricht.
+     */
+    private void freezePlayer(Player player) {
+        UUID playerId = player.getUniqueId();
+        frozenPlayers.add(playerId);
+
+        player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, (int) FROST_TRAP_FREEZE_TICKS, 10, false, false));
+        player.setFreezeTicks((int) FROST_TRAP_FREEZE_TICKS);
+        player.setVelocity(new Vector(0.0, 0.0, 0.0));
+
+        // Paper Entity Scheduler: an den Tick des Spielers gebunden
+        player.getScheduler().runDelayed(plugin, task -> {
+            if (frozenPlayers.remove(playerId) && player.isOnline()) {
+                player.setFreezeTicks(0);
+                player.sendMessage(MiniMessage.miniMessage().deserialize(
+                        "<aqua>[OSOK] ❄ Du bist wieder aufgetaut.</aqua>"));
+                player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_GLASS_BREAK, Sound.Source.MASTER, 0.7f, 1.6f));
+            }
+        }, null, FROST_TRAP_FREEZE_TICKS);
+    }
+
+    /** Hebt die Vereisung sofort auf - bei Eliminierung, Quit und beim Aufraeumen. */
+    public void unfreezePlayer(Player player) {
+        if (player == null) return;
+        if (frozenPlayers.remove(player.getUniqueId()) && player.isOnline()) {
+            player.setFreezeTicks(0);
+        }
+    }
+
+    /**
+     * Haelt eingefrorene Spieler an Ort und Stelle.
+     * <p>
+     * Umsehen bleibt erlaubt - nur die Position wird auf den Stand vor der Bewegung
+     * zurueckgesetzt. Ohne das konnte man sich per Sprung aus der Falle heraustragen lassen.
+     * <p>
+     * Teleports sind nicht betroffen: {@code PlayerTeleportEvent} hat in Paper eine eigene
+     * HandlerList, ein {@code PlayerMoveEvent}-Handler sieht sie also gar nicht. Ein Respawn
+     * waehrend der Vereisung funktioniert damit normal.
+     */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onFrozenMove(PlayerMoveEvent event) {
+        if (frozenPlayers.isEmpty()) return;
+        if (!frozenPlayers.contains(event.getPlayer().getUniqueId())) return;
+        // Paper: reine Blickrichtungsaenderungen gar nicht erst weiterverarbeiten
+        if (!event.hasChangedPosition()) return;
+
+        Location locked = event.getFrom().clone();
+        locked.setYaw(event.getTo().getYaw());
+        locked.setPitch(event.getTo().getPitch());
+        event.setTo(locked);
     }
 
     /** Nimmt die Druckplatte zurueck, sofern an der Stelle noch eine liegt. */
@@ -180,8 +251,7 @@ public class SpecialItemListener implements Listener {
             Block block = event.getClickedBlock();
             Location trapLoc = block.getLocation();
             if (activeBearTraps.remove(trapLoc)) {
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, (int) FROST_TRAP_FREEZE_TICKS, 10));
-                player.setFreezeTicks((int) FROST_TRAP_FREEZE_TICKS);
+                freezePlayer(player);
                 player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_GLASS_BREAK, Sound.Source.MASTER, 1.0f, 0.5f));
                 player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] ❄ Du bist in eine Frost-Trap getreten und für 7s eingefroren!</red>"));
 
@@ -296,14 +366,7 @@ public class SpecialItemListener implements Listener {
                     activeBearTraps.add(trapLoc);
                     consumeItem(player, item);
                     player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_GLASS_PLACE, Sound.Source.MASTER, 1.0f, 1.0f));
-                    player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ❄ Frost-Trap platziert! <gray>(verfällt nach 45s)</gray></green>"));
-
-                    // Ablauf auch ohne Ausloesung - sonst bleibt die Platte fuer immer liegen
-                    Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
-                        if (activeBearTraps.remove(trapLoc)) {
-                            removeTrapBlock(trapLoc);
-                        }
-                    }, FROST_TRAP_LIFETIME_TICKS);
+                    player.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] ❄ Frost-Trap platziert! <gray>(bleibt liegen, bis jemand hineintritt)</gray></green>"));
                 }
                 return;
             }

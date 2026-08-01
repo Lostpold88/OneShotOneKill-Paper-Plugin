@@ -26,6 +26,9 @@ import java.util.zip.ZipInputStream;
 
 public class WorldManager {
 
+    /** Tageszeit, auf der jede Welt festgehalten wird: Mittag. */
+    public static final long MIDDAY_TICKS = 6000L;
+
     private final OneShotOneKill plugin;
     private World osokWorld;
     private Location spawnLocation;
@@ -93,7 +96,7 @@ public class WorldManager {
 
         if (osokWorld != null) {
             applyPaperGameRules(osokWorld);
-            osokWorld.setTime(6000); // Mittag
+            osokWorld.setTime(MIDDAY_TICKS);
 
             for (org.bukkit.entity.Entity entity : osokWorld.getEntities()) {
                 if (!(entity instanceof Player)) {
@@ -210,7 +213,7 @@ public class WorldManager {
             }
 
             applyPaperGameRules(osokWorld);
-            osokWorld.setTime(6000);
+            osokWorld.setTime(MIDDAY_TICKS);
 
             for (org.bukkit.entity.Entity entity : osokWorld.getEntities()) {
                 if (!(entity instanceof Player)) {
@@ -270,6 +273,26 @@ public class WorldManager {
      */
     public static void applyGlobalGameRules(World world) {
         world.setGameRule(GameRules.LOCATOR_BAR, false);
+        applyFixedDaylightAndWeather(world);
+    }
+
+    /**
+     * Friert Tageszeit und Wetter fest: immer Mittag, immer klar.
+     * <p>
+     * Die beiden GameRules allein reichen nicht - sie halten nur den Fortlauf an. Steht die
+     * Welt beim Anwenden gerade auf Nacht oder Regen, bliebe sie genau so stehen. Deshalb
+     * werden Zeit und Wetter zusaetzlich einmal auf den gewuenschten Stand gesetzt.
+     */
+    public static void applyFixedDaylightAndWeather(World world) {
+        world.setGameRule(GameRules.ADVANCE_TIME, false);
+        world.setGameRule(GameRules.ADVANCE_WEATHER, false);
+
+        world.setTime(MIDDAY_TICKS);
+        world.setStorm(false);
+        world.setThundering(false);
+        world.setWeatherDuration(0);
+        world.setThunderDuration(0);
+        world.setClearWeatherDuration(Integer.MAX_VALUE);
     }
 
     /** Wendet die globalen GameRules auf alle aktuell geladenen Welten an. */

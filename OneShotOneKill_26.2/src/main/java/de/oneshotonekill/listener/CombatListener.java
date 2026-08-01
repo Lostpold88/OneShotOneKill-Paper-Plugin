@@ -63,9 +63,15 @@ public class CombatListener implements Listener {
         // Air-Strike und C4 sprengen bewusst ohne Verursacher-Entity, damit auch der
         // Ausloeser Schaden nimmt. Dort gibt es also keine CausingEntity und die
         // Zuordnung liefert der ExplosivesManager.
-        if (event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION
-                || event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION) {
-            return plugin.getExplosivesManager().getCurrentBlastOwner();
+        //
+        // FALL zaehlt bewusst mit: Eine C4 schleudert Getroffene weit nach oben, und wer den
+        // Treffer knapp ueberlebt, stirbt Sekunden spaeter am Aufprall. Ohne diesen Zweig
+        // blieb so ein Tod unzugeordnet - genau der Fall aus Issue #2.
+        if (event.getEntity() instanceof Player victim
+                && (event.getCause() == EntityDamageEvent.DamageCause.BLOCK_EXPLOSION
+                || event.getCause() == EntityDamageEvent.DamageCause.ENTITY_EXPLOSION
+                || event.getCause() == EntityDamageEvent.DamageCause.FALL)) {
+            return plugin.getExplosivesManager().resolveBlastKiller(victim);
         }
         return null;
     }

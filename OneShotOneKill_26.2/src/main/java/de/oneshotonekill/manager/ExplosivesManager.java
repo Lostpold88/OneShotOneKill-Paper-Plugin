@@ -91,22 +91,68 @@ public class ExplosivesManager implements Listener {
 
     private static final Random RANDOM = new Random();
 
+    /** So lange nach einer Sprengung zaehlt ein Tod noch als deren Kill. */
+    private static final long BLAST_CREDIT_MILLIS = 6000L;
+
+    /** Merkzettel: Wer hat die Sprengung ausgeloest, die diesen Spieler erwischt hat? */
+    private record BlastCredit(UUID owner, long expiresAt) { }
+
     private final OneShotOneKill plugin;
     private final Set<TNTPrimed> activeBombs = new HashSet<>();
     private final Map<UUID, List<BlockDisplay>> c4Charges = new HashMap<>();
     /** Ausloeser der aktuell laufenden Sprengung, nur waehrend {@code createExplosion} gesetzt. */
     private Player currentBlastOwner = null;
+    /** Nachwirkende Zuordnung fuer Folgeschaeden, siehe resolveBlastKiller. */
+    private final Map<UUID, BlastCredit> blastCredits = new HashMap<>();
 
     public ExplosivesManager(OneShotOneKill plugin) {
         this.plugin = plugin;
     }
 
     /**
-     * Ausloeser der gerade laufenden Sprengung, oder {@code null}.
-     * Wird vom {@code CombatListener} zur Kill-Zuordnung bei Explosionsschaden abgefragt.
+     * Ermittelt, wem der Tod eines Spielers als Sprengungs-Kill zuzuschreiben ist.
+     * <p>
+     * Reicht {@link #currentBlastOwner} nicht aus, greift ein Kurzzeitgedaechtnis: Bei jeder
+     * Sprengung wird fuer alle Spieler in Reichweite {@link #BLAST_CREDIT_MILLIS} lang
+     * vermerkt, wer gezuendet hat.
+     * <p>
+     * Das ist noetig, weil eine Sprengung nicht nur direkt toetet. Eine C4 mit Staerke 12
+     * schleudert Getroffene weit nach oben - wer den Treffer knapp ueberlebt, stirbt Sekunden
+     * spaeter am Sturz. Der Schaden traegt dann die Ursache {@code FALL} und gar keine
+     * Verursacher-Entity, der Kill blieb also unzugeordnet und wurde als "ist gestorben"
+     * gemeldet. Mit dem Zeitfenster bekommt ihn der Zuender.
+     *
+     * @return der Ausloeser, oder {@code null} wenn keine Sprengung in Frage kommt
      */
-    public Player getCurrentBlastOwner() {
-        return currentBlastOwner;
+    public Player resolveBlastKiller(Player victim) {
+        if (currentBlastOwner != null) {
+            return currentBlastOwner;
+        }
+        if (victim == null) return null;
+
+        BlastCredit credit = blastCredits.get(victim.getUniqueId());
+        if (credit == null || System.currentTimeMillis() > credit.expiresAt()) {
+            blastCredits.remove(victim.getUniqueId());
+            return null;
+        }
+
+        Player owner = Bukkit.getPlayer(credit.owner());
+        return (owner != null && owner.isOnline()) ? owner : null;
+    }
+
+    /** Vermerkt fuer alle Spieler in Reichweite, wer die Sprengung ausgeloest hat. */
+    private void rememberBlastCredit(Location center, Player owner, float power) {
+        if (owner == null) return;
+
+        long expiresAt = System.currentTimeMillis() + BLAST_CREDIT_MILLIS;
+        // Paper Spatial Entity Index: direkte Spieler-Abfrage statt Entity-Box + instanceof
+        for (Player affected : center.getNearbyPlayers(power)) {
+            if (affected.getUniqueId().equals(owner.getUniqueId())) continue;
+            blastCredits.put(affected.getUniqueId(), new BlastCredit(owner.getUniqueId(), expiresAt));
+        }
+
+        // Abgelaufene Eintraege bei der Gelegenheit wegraeumen
+        blastCredits.values().removeIf(entry -> System.currentTimeMillis() > entry.expiresAt());
     }
 
     // ==================================================================
@@ -129,6 +175,10 @@ public class ExplosivesManager implements Listener {
     private void blast(Location loc, Player owner, float power) {
         World world = loc.getWorld();
         if (world == null) return;
+
+        // Zuordnung VOR der Sprengung merken - danach koennen Getroffene noch sekundenlang
+        // an Folgeschaden (vor allem Sturz) sterben, siehe resolveBlastKiller
+        rememberBlastCredit(loc, owner, power);
 
         // breakBlocks = false -> die Map kann nicht beschaedigt werden. setFire = false -> kein Feuer.
         this.currentBlastOwner = (owner != null && owner.isOnline()) ? owner : null;
@@ -579,6 +629,7 @@ public class ExplosivesManager implements Listener {
             }
         }
         c4Charges.clear();
+        blastCredits.clear();
 
         // Ohne Ladung ist der Fernzuender wirkungslos - er darf nicht im Inventar zurueckbleiben
         for (Player online : Bukkit.getOnlinePlayers()) {

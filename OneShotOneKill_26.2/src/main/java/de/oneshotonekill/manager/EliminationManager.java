@@ -241,6 +241,8 @@ public class EliminationManager {
 
         if (plugin.getSpecialItemListener() != null) {
             plugin.getSpecialItemListener().revealPlayer(victim);
+            // Sonst bliebe ein in der Frost-Trap Erwischter auch nach dem Respawn festgenagelt
+            plugin.getSpecialItemListener().unfreezePlayer(victim);
         }
         if (plugin.getTacticalItemsManager() != null) {
             plugin.getTacticalItemsManager().stopGlide(victim, false);
