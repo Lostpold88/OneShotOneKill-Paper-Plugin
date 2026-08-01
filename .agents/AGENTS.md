@@ -2,8 +2,8 @@
 
 ## 🔴 Grundsatz (gilt ausnahmslos für jede Änderung)
 
-Dieses Projekt ist ein **100% natives Paper Plugin** (`paper-plugin.yml`, `api-version: '1.21'`)
-für **Paper 26.1.2+ / Minecraft 1.21.x**.
+Dieses Projekt ist ein **100% natives Paper Plugin** (`paper-plugin.yml`, `api-version: '26.2'`)
+für **Paper 26.2+ / Minecraft 26.2**.
 
 **MANDATORY:** Jede Erweiterung, jedes Refactoring, jeder Befehl, Listener, jede GUI und jede
 Korrektur **MUSS in 100% nativer Paper API und Paper-Syntax** verfasst werden. Wann immer eine
@@ -42,12 +42,13 @@ Gedächtnis sind regelmäßig falsch. Vor der Verwendung einer API **immer** geg
 JAR prüfen:
 
 ```bash
-J=Server/libraries/io/papermc/paper/paper-api/26.1.2.build.74-stable/paper-api-26.1.2.build.74-stable.jar
+J=Server/libraries/io/papermc/paper/paper-api/26.2.build.87-stable/paper-api-26.2.build.87-stable.jar
 javap -cp $J org.bukkit.entity.Player | grep -i "<methode>"
 ```
 
 Das deckt in Sekunden auf, ob eine Methode existiert, welche Überladungen es gibt und ob sie
-veraltet ist. Adventure-Klassen liegen in `Server/libraries/net/kyori/adventure-api/...`.
+veraltet ist. Adventure-Klassen liegen in `Server/libraries/net/kyori/adventure-api/...` –
+seit Paper 26.2 ist das **Adventure 5.x**, nicht mehr 4.x.
 
 ---
 
@@ -123,8 +124,8 @@ Server-Plugins-Ordner platziert:
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
-Das Skript kompiliert mit `javac` (UTF-8) gegen `paper-api-26.1.2.build.74-stable.jar`, kopiert
-`paper-plugin.yml`, `Standard.zip` und `DustPvP.zip`, baut `OneShotOneKill_26.1.2.jar` und kopiert
+Das Skript kompiliert mit `javac` (UTF-8) gegen `paper-api-26.2.build.87-stable.jar`, kopiert
+`paper-plugin.yml`, `Standard.zip` und `DustPvP.zip`, baut `OneShotOneKill_26.2.jar` und kopiert
 sie nach `Server/plugins/`. Alle Pfade sind relativ zu `$PSScriptRoot`; das Repository darf
 verschoben oder umbenannt werden. Bricht `javac` oder `jar` ab, schlägt der Build fehl.
 

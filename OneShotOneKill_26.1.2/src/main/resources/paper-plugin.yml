@@ -1,6 +1,0 @@
-name: OneShotOneKill_26.1.2
-version: '1.0.0-26.1.2'
-main: de.oneshotonekill.OneShotOneKill
-api-version: '1.21'
-description: OneShotOneKill 1-Hit Kill Minigame Plugin built natively for Paper 26.1.2
-author: Lostpold88

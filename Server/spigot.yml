@@ -18,9 +18,7 @@ settings:
   timeout-time: 60
   restart-on-crash: true
   restart-script: ./start.sh
-  sample-count: 12
-  player-shuffle: 0
-  user-cache-size: 1000
+  moved-wrongly-threshold: 0.0625
   attribute:
     maxAbsorption:
       max: 2048.0
@@ -30,10 +28,12 @@ settings:
       max: 1024.0
     attackDamage:
       max: 2048.0
-  moved-too-quickly-multiplier: 10.0
-  moved-wrongly-threshold: 0.0625
+  sample-count: 12
   netty-threads: 4
+  user-cache-size: 1000
   save-user-cache-on-stop-only: false
+  moved-too-quickly-multiplier: 10.0
+  player-shuffle: 0
 messages:
   whitelist: You are not whitelisted on this server!
   unknown-command: Unknown command. Type "/help" for help.
@@ -44,16 +44,25 @@ messages:
 world-settings:
   default:
     below-zero-generation-in-existing-chunks: true
+    enable-zombie-pigmen-portal-spawns: true
+    zombie-aggressive-towards-villager: true
+    simulation-distance: default
+    view-distance: default
     arrow-despawn-rate: 1200
     trident-despawn-rate: 1200
     item-despawn-rate: 6000
     mob-spawn-range: 8
     nerf-spawner-mobs: false
-    end-portal-sound-radius: 0
     wither-spawn-sound-radius: 0
-    hanging-tick-frequency: 100
-    thunder-chance: 100000
-    unload-frozen-chunks: false
+    end-portal-sound-radius: 0
+    max-tnt-per-tick: 100
+    entity-tracking-range:
+      players: 128
+      animals: 96
+      monsters: 96
+      misc: 96
+      display: 128
+      other: 64
     growth:
       cactus-modifier: 100
       cane-modifier: 100
@@ -77,6 +86,34 @@ world-settings:
       cavevines-modifier: 100
       glowberry-modifier: 100
       pitcherplant-modifier: 100
+    hanging-tick-frequency: 100
+    unload-frozen-chunks: false
+    thunder-chance: 100000
+    dragon-death-sound-radius: 0
+    seed-village: 10387312
+    seed-desert: 14357617
+    seed-igloo: 14357618
+    seed-jungle: 14357619
+    seed-swamp: 14357620
+    seed-monument: 10387313
+    seed-shipwreck: 165745295
+    seed-ocean: 14357621
+    seed-outpost: 165745296
+    seed-endcity: 10387313
+    seed-slime: 987234911
+    seed-nether: 30084232
+    seed-mansion: 10387319
+    seed-fossil: 14357921
+    seed-portal: 34222645
+    seed-ancientcity: 20083232
+    seed-trailruins: 83469867
+    seed-trialchambers: 94251327
+    seed-buriedtreasure: 10387320
+    seed-mineshaft: default
+    seed-stronghold: default
+    max-tick-time:
+      tile: 50
+      entity: 50
     entity-activation-range:
       animals: 32
       monsters: 32
@@ -103,44 +140,11 @@ world-settings:
       villagers-active-for-panic: true
       tick-inactive-villagers: true
       ignore-spectators: false
-    seed-village: 10387312
-    seed-desert: 14357617
-    seed-igloo: 14357618
-    seed-jungle: 14357619
-    seed-swamp: 14357620
-    seed-monument: 10387313
-    seed-shipwreck: 165745295
-    seed-ocean: 14357621
-    seed-outpost: 165745296
-    seed-endcity: 10387313
-    seed-slime: 987234911
-    seed-nether: 30084232
-    seed-mansion: 10387319
-    seed-fossil: 14357921
-    seed-portal: 34222645
-    seed-ancientcity: 20083232
-    seed-trailruins: 83469867
-    seed-trialchambers: 94251327
-    seed-buriedtreasure: 10387320
-    seed-mineshaft: default
-    seed-stronghold: default
-    dragon-death-sound-radius: 0
-    max-tnt-per-tick: 100
-    max-tick-time:
-      tile: 50
-      entity: 50
-    entity-tracking-range:
-      players: 128
-      animals: 96
-      monsters: 96
-      misc: 96
-      display: 128
-      other: 64
-    zombie-aggressive-towards-villager: true
-    enable-zombie-pigmen-portal-spawns: true
-    merge-radius:
-      exp: -1.0
-      item: 0.5
+    ticks-per:
+      hopper-transfer: 8
+      hopper-check: 1
+    hopper-amount: 1
+    hopper-can-load-chunks: false
     hunger:
       jump-walk-exhaustion: 0.05
       jump-sprint-exhaustion: 0.2
@@ -149,13 +153,9 @@ world-settings:
       swim-multiplier: 0.01
       sprint-multiplier: 0.1
       other-multiplier: 0.0
-    ticks-per:
-      hopper-transfer: 8
-      hopper-check: 1
-    hopper-amount: 1
-    hopper-can-load-chunks: false
-    simulation-distance: default
-    view-distance: default
+    merge-radius:
+      item: 0.5
+      exp: -1.0
     verbose: false
 advancements:
   disable-saving: false
@@ -168,11 +168,11 @@ stats:
   disable-saving: false
   forced-stats: {}
 commands:
+  tab-complete: 0
+  send-namespaced: true
   log: true
   spam-exclusions:
   - /skill
-  tab-complete: 0
-  send-namespaced: true
   replace-commands:
   - setblock
   - summon

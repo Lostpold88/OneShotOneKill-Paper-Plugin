@@ -1,6 +1,6 @@
 *.log
 *.class
-OneShotOneKill_26.1.2/bin/
+OneShotOneKill_26.2/bin/
 Server/logs/*
 Server/crash-reports/*
 Server/usercache.json

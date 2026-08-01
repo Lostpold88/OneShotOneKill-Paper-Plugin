@@ -2,17 +2,17 @@ $ErrorActionPreference = "Stop"
 
 # Alle Pfade relativ zum Skript-Verzeichnis (kein hart kodierter Repository-Pfad).
 $rootDir = $PSScriptRoot
-$projectDir = Join-Path $rootDir "OneShotOneKill_26.1.2"
+$projectDir = Join-Path $rootDir "OneShotOneKill_26.2"
 $binDir = Join-Path $projectDir "bin"
 $srcDir = Join-Path $projectDir "src\main\java"
 $resDir = Join-Path $projectDir "src\main\resources"
-$jarTarget = Join-Path $projectDir "OneShotOneKill_26.1.2.jar"
+$jarTarget = Join-Path $projectDir "OneShotOneKill_26.2.jar"
 $serverDir = Join-Path $rootDir "Server"
 $pluginsDir = Join-Path $serverDir "plugins"
-$pluginTarget = Join-Path $pluginsDir "OneShotOneKill_26.1.2.jar"
+$pluginTarget = Join-Path $pluginsDir "OneShotOneKill_26.2.jar"
 
 Write-Host "==============================================="
-Write-Host " Building OneShotOneKill for Paper 26.1.2 ... "
+Write-Host " Building OneShotOneKill for Paper 26.2 ...    "
 Write-Host "==============================================="
 
 $serverJars = Get-ChildItem -Path (Join-Path $serverDir "libraries") -Recurse -Filter "*.jar" | Select-Object -ExpandProperty FullName

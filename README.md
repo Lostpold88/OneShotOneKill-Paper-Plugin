@@ -1,6 +1,6 @@
-# 🎯 OneShotOneKill (OSOK) - Native Paper 26.1.2 Plugin & Server
+# 🎯 OneShotOneKill (OSOK) - Native Paper 26.2 Plugin & Server
 
-Ein 100% **natives Paper 26.1.2 PvP Minigame Plugin** (1.21.x) mit `paper-plugin.yml`, Paper Lifecycle Commands API, Kyori Adventure Components und High-Performance Asynchronitäts-Features.
+Ein 100% **natives Paper 26.2 PvP Minigame Plugin** mit `paper-plugin.yml`, Paper Lifecycle Commands API, Kyori Adventure Components und High-Performance Asynchronitäts-Features.
 
 ---
 
@@ -178,9 +178,9 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 
 ---
 
-## 🚀 Native Paper 26.1.2 Highlights
+## 🚀 Native Paper 26.2 Highlights
 
-1. **Native Paper Plugin Architecture**: `paper-plugin.yml` (`api-version: '1.21'`) für direkte Einordnung unter **Paper Plugins** bei `/pl`.
+1. **Native Paper Plugin Architecture**: `paper-plugin.yml` (`api-version: '26.2'`) für direkte Einordnung unter **Paper Plugins** bei `/pl`.
 2. **Paper Lifecycle Commands API & Brigadier**: Registrierung über `LifecycleEvents.COMMANDS` mit `BasicCommand`, `canUse` und `suggest` (ausschließlich `/osok`). Keine Bukkit `CommandExecutor`/`TabCompleter`.
 3. **Paper Persistent Data Container (PDC)**: Typsichere Identifizierung aller Spezial-Items via `NamespacedKey` – keine Anzeigenamen-Vergleiche.
 4. **Paper Entity & Region Schedulers**: Thread-safe Aufgabenverwaltung via `player.getScheduler()` und `GlobalRegionScheduler` (0% `BukkitRunnable`).
@@ -188,7 +188,7 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 6. **Asynchrone Teleportation (`player.teleportAsync`)**: Hintergrund-Preloading von Ziel-Chunks mit `.thenAccept(...)` Callbacks.
 7. **Paper Plugin Chunk Tickets (`addPluginChunkTicket`)**: Hält Chunks mit Boden-Items geladen.
 8. **Kyori Adventure Component & Sound API**: Alle Texte, Titles, Tablisten über `Component`/MiniMessage; sämtliche Sounds über `Audience#playSound(net.kyori.adventure.sound.Sound)` mit `Sound.Source` statt `SoundCategory`.
-9. **Moderne GameRules-Registry**: `org.bukkit.GameRules` statt des in 26.1.2 als *deprecated for removal* markierten `org.bukkit.GameRule`.
+9. **Moderne GameRules-Registry**: `org.bukkit.GameRules` statt des in Paper 26.x als *deprecated for removal* markierten `org.bukkit.GameRule`.
 
 > Der Quellcode ist frei von Deprecation- und Removal-Warnungen:
 > `javac -Xlint:deprecation,removal` meldet über alle Quelldateien null Warnungen.
@@ -197,9 +197,9 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 
 ## ⚙️ Requirements & Server-Setup
 
-- **Server-Software**: [Paper 26.1.2](https://papermc.io/) (oder neuer)
+- **Server-Software**: [Paper 26.2](https://papermc.io/) (oder neuer)
 - **Java**: Java 21+ (Java 25 unterstützt)
-- **Minecraft Client**: 1.21.x
+- **Minecraft Client**: 26.2
 
 Ein fertiger, vorkonfigurierter Paper-Server inklusive Plugins & Welt befindet sich im Ordner **`Server/`**.
 
@@ -214,10 +214,10 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
 **Was das Skript macht:**
-1. Kompiliert den Java-Quellcode mit `javac` (UTF-8) gegen die Paper 26.1.2 API.
+1. Kompiliert den Java-Quellcode mit `javac` (UTF-8) gegen die Paper 26.2 API.
 2. Kopiert `paper-plugin.yml` sowie `Standard.zip` und `DustPvP.zip`.
-3. Verpackt das Plugin in `OneShotOneKill_26.1.2/OneShotOneKill_26.1.2.jar`.
-4. Kopiert das Artefakt automatisch nach `Server/plugins/OneShotOneKill_26.1.2.jar`.
+3. Verpackt das Plugin in `OneShotOneKill_26.2/OneShotOneKill_26.2.jar`.
+4. Kopiert das Artefakt automatisch nach `Server/plugins/OneShotOneKill_26.2.jar`.
 
 Alle Pfade werden relativ zum Skript-Verzeichnis (`$PSScriptRoot`) aufgelöst; das Repository kann
 also beliebig verschoben oder umbenannt werden. Bricht `javac` oder `jar` ab, schlägt der Build fehl.
@@ -250,4 +250,4 @@ also beliebig verschoben oder umbenannt werden. Bricht `javac` oder `jar` ab, sc
 ---
 
 ## 📄 Lizenz & Credits
-Entwickelt als 100% natives Paper 26.1.2 Plugin.
+Entwickelt als 100% natives Paper 26.2 Plugin.
