@@ -2,13 +2,24 @@ package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.model.MapConfig;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ArenaManager {
 
-    /** Mindestabstand zum Todespunkt beim Respawn, in Bloecken. */
-    public static final double MIN_RESPAWN_DISTANCE = 16.0;
+    /** So viele Spawnpunkte werden pro Respawn ausgewuerfelt und bewertet. */
+    private static final int RESPAWN_CANDIDATES = 24;
+    /** Ab diesem Abstand zum naechsten Gegner bringt mehr Abstand keinen Vorteil mehr. */
+    private static final double ENEMY_DISTANCE_CAP = 32.0;
+    /** Dasselbe fuer den Todespunkt - er wiegt weniger schwer als die Gegnerposition. */
+    private static final double DEATH_DISTANCE_CAP = 24.0;
+    private static final double ENEMY_WEIGHT = 0.7;
+    private static final double DEATH_WEIGHT = 0.3;
 
     private final OneShotOneKill plugin;
 
@@ -31,23 +42,90 @@ public class ArenaManager {
     }
 
     /**
-     * Zufaelliger Spawn mit Mindestabstand zu einem Punkt - beim Respawn also zum Todespunkt.
+     * Bestmoeglicher Respawn-Punkt: moeglichst weit weg vom Todespunkt <b>und</b> vom naechsten
+     * Gegner.
      * <p>
-     * Ohne das landete man regelmaessig direkt neben seinem Killer und war beim naechsten
-     * Treffer sofort wieder draussen. {@link #MIN_RESPAWN_DISTANCE} ist dabei ein Wunsch, keine
-     * Zusage: Findet die Suche keinen ausreichend entfernten Platz, kommt der erstbeste
-     * gueltige zurueck - gar kein Spawnpunkt waere schlimmer als ein etwas zu naher.
+     * Statt den erstbesten ausreichend entfernten Platz zu nehmen, werden
+     * {@link #RESPAWN_CANDIDATES} zufaellige Kandidaten gesammelt und bewertet; der beste
+     * gewinnt. Weil die Kandidatenmenge jedes Mal neu ausgewuerfelt wird, bleibt der Spawn
+     * trotzdem unvorhersehbar - eine reine "maximaler Abstand"-Suche wuerde die Spieler
+     * dagegen immer in dieselbe Ecke schicken, die man dann bequem zucampen kann.
+     *
+     * @param respawning der Spieler, der zurueckkommt - zaehlt nicht als eigener Gegner
+     * @param deathLoc   Todespunkt, oder {@code null} wenn unbekannt
      */
-    public Location getRandomArenaLocationAwayFrom(Location avoid) {
+    public Location getSafestArenaLocation(Player respawning, Location deathLoc) {
         World osokWorld = plugin.getWorldManager().getOsokWorld();
         if (osokWorld == null) return null;
 
         MapConfig activeMap = plugin.getWorldManager().getActiveMapConfig();
-        if (activeMap != null) {
-            Location loc = activeMap.getRandomArenaLocation(osokWorld, avoid, MIN_RESPAWN_DISTANCE);
-            if (loc != null) return loc;
+        if (activeMap == null) {
+            return fallbackSpawn(osokWorld);
         }
 
+        List<Location> candidates = activeMap.collectArenaSpots(osokWorld, RESPAWN_CANDIDATES);
+        if (candidates.isEmpty()) {
+            return fallbackSpawn(osokWorld);
+        }
+
+        List<Location> enemies = collectEnemyPositions(respawning, osokWorld);
+        Location relevantDeathLoc = (deathLoc != null && osokWorld.equals(deathLoc.getWorld())) ? deathLoc : null;
+
+        Location best = candidates.get(0);
+        double bestScore = Double.NEGATIVE_INFINITY;
+        for (Location candidate : candidates) {
+            double score = rateSpawn(candidate, relevantDeathLoc, enemies);
+            if (score > bestScore) {
+                bestScore = score;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Bewertet einen Spawnpunkt. Hoeher ist besser, das Ergebnis liegt zwischen 0 und 1.
+     * <p>
+     * Der Abstand zum naechsten Gegner wiegt schwerer als der zum Todespunkt: Der Todespunkt ist
+     * nur ein Anhaltspunkt dafuer, wo der Killer stand - wo die Gegner <b>jetzt</b> stehen, ist
+     * die genauere Information. Beide Abstaende werden gedeckelt, weil jenseits der Deckel kein
+     * spuerbarer Sicherheitsgewinn mehr entsteht und sonst nur noch die Kartenecken gewinnen.
+     */
+    private double rateSpawn(Location candidate, Location deathLoc, List<Location> enemies) {
+        double nearestEnemy = ENEMY_DISTANCE_CAP;
+        for (Location enemy : enemies) {
+            nearestEnemy = Math.min(nearestEnemy, candidate.distance(enemy));
+        }
+        double enemyScore = nearestEnemy / ENEMY_DISTANCE_CAP;
+
+        double deathScore = 1.0;
+        if (deathLoc != null) {
+            deathScore = Math.min(candidate.distance(deathLoc), DEATH_DISTANCE_CAP) / DEATH_DISTANCE_CAP;
+        }
+
+        return enemyScore * ENEMY_WEIGHT + deathScore * DEATH_WEIGHT;
+    }
+
+    /**
+     * Positionen aller Gegner in der Arena.
+     * <p>
+     * Bewusst ein einzelner Durchlauf ueber die Online-Spieler statt
+     * {@code Location#getNearbyPlayers}: Gesucht sind nicht die Spieler nahe <b>einem</b> Punkt,
+     * sondern alle - jeder Kandidat wird anschliessend gegen dieselbe Liste geprueft. Eine
+     * Umkreissuche pro Kandidat waere hier der teurere Weg.
+     */
+    private List<Location> collectEnemyPositions(Player respawning, World osokWorld) {
+        List<Location> enemies = new ArrayList<>();
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (respawning != null && online.getUniqueId().equals(respawning.getUniqueId())) continue;
+            if (!osokWorld.equals(online.getWorld())) continue;
+            if (!isInArenaArea(online.getLocation())) continue;
+            enemies.add(online.getLocation());
+        }
+        return enemies;
+    }
+
+    private Location fallbackSpawn(World osokWorld) {
         Location spawnLoc = plugin.getWorldManager().getSpawnLocation();
         return spawnLoc != null ? spawnLoc : osokWorld.getSpawnLocation();
     }

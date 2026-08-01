@@ -5,8 +5,10 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
@@ -188,20 +190,21 @@ public class MapConfig {
      * erhoehte Plattformen und Bruecken der Arena.
      */
     public Location getRandomArenaLocation(World osokWorld) {
-        return getRandomArenaLocation(osokWorld, null, 0.0);
+        Location loc = findRandomSpot(osokWorld, true);
+        return loc != null ? loc : fallbackLocation(osokWorld);
     }
 
     /**
-     * Wie {@link #getRandomArenaLocation(World)}, haelt aber mindestens {@code minDistance}
-     * Bloecke Abstand zu {@code avoid} - beim Respawn also zum Todespunkt.
+     * Sammelt mehrere gueltige Spielerspawnpunkte auf einmal.
      * <p>
-     * Bewusst als "moeglichst weit weg" und nicht als harte Zusage umgesetzt: Findet die Suche
-     * keinen ausreichend entfernten Platz, liefert sie den erstbesten gueltigen zurueck. Ein
-     * Spieler ohne Spawnpunkt waere schlimmer als einer, der etwas zu nah dran steht.
+     * Grundlage fuer die Respawn-Bewertung im {@code ArenaManager}: Der bewertet die Kandidaten
+     * nach Abstand zum Todespunkt und zum naechsten Gegner und nimmt den besten. Die
+     * {@code MapConfig} kennt bewusst nur die Geometrie - wo Spieler stehen, weiss sie nicht.
+     * <p>
+     * Kann weniger als {@code wanted} Punkte liefern, wenn die Arena kaum begehbare Flaeche hat.
      */
-    public Location getRandomArenaLocation(World osokWorld, Location avoid, double minDistance) {
-        Location loc = findRandomSpot(osokWorld, true, avoid, minDistance);
-        return loc != null ? loc : fallbackLocation(osokWorld);
+    public List<Location> collectArenaSpots(World osokWorld, int wanted) {
+        return collectSpots(osokWorld, true, wanted, wanted * 15);
     }
 
     /**
@@ -211,15 +214,23 @@ public class MapConfig {
      * den Spawn ueberspringen kann statt ein Item in der Lobby abzulegen.
      */
     public Location getRandomFloorLocation(World osokWorld) {
-        return findRandomSpot(osokWorld, false, null, 0.0);
+        return findRandomSpot(osokWorld, false);
+    }
+
+    private Location findRandomSpot(World osokWorld, boolean topDown) {
+        List<Location> spots = collectSpots(osokWorld, topDown, 1, 200);
+        return spots.isEmpty() ? null : spots.get(0);
     }
 
     /**
-     * @param avoid       Punkt, zu dem Abstand gehalten werden soll, oder {@code null}
-     * @param minDistance geforderter Mindestabstand zu {@code avoid} in Bloecken
+     * Sucht bis zu {@code wanted} begehbare Punkte an zufaelligen XZ-Positionen.
+     *
+     * @param topDown     von oben nach unten suchen (Spielerspawn) statt von unten (Boden-Items)
+     * @param maxAttempts Obergrenze der XZ-Versuche, damit die Suche in jedem Fall terminiert
      */
-    private Location findRandomSpot(World osokWorld, boolean topDown, Location avoid, double minDistance) {
-        if (osokWorld == null) return null;
+    private List<Location> collectSpots(World osokWorld, boolean topDown, int wanted, int maxAttempts) {
+        List<Location> found = new ArrayList<>(Math.max(1, wanted));
+        if (osokWorld == null) return found;
 
         int scanMinY = Math.max((int) Math.floor(minY) - SPAWN_SCAN_BELOW, osokWorld.getMinHeight());
         int scanMaxY = Math.min((int) Math.floor(maxY) + SPAWN_SCAN_ABOVE, osokWorld.getMaxHeight() - 3);
@@ -229,39 +240,24 @@ public class MapConfig {
             scanMaxY = Math.min(scanMaxY, (int) Math.floor(maxItemSpawnY) - 1);
         }
         if (scanMaxY < scanMinY) {
-            return null;
+            return found;
         }
 
-        boolean keepDistance = avoid != null && avoid.getWorld() != null
-                && avoid.getWorld().equals(osokWorld) && minDistance > 0.0;
-        double minDistanceSquared = minDistance * minDistance;
-        // Erster gueltiger Platz - dient als Rueckfallebene, falls kein entfernter gefunden wird
-        Location closestFallback = null;
-
-        for (int attempts = 0; attempts < 200; attempts++) {
+        for (int attempts = 0; attempts < maxAttempts && found.size() < wanted; attempts++) {
             int blockX = (int) Math.floor(minX + (RANDOM.nextDouble() * (maxX - minX)));
             int blockZ = (int) Math.floor(minZ + (RANDOM.nextDouble() * (maxZ - minZ)));
 
             for (int step = 0; step <= scanMaxY - scanMinY; step++) {
                 int y = topDown ? scanMaxY - step : scanMinY + step;
 
-                if (!isStandableAt(osokWorld, blockX, y, blockZ)) {
-                    continue;
+                if (isStandableAt(osokWorld, blockX, y, blockZ)) {
+                    float randomYaw = RANDOM.nextFloat() * 360f - 180f;
+                    found.add(new Location(osokWorld, blockX + 0.5, y + 1.0, blockZ + 0.5, randomYaw, 0f));
+                    break;
                 }
-
-                float randomYaw = RANDOM.nextFloat() * 360f - 180f;
-                Location candidate = new Location(osokWorld, blockX + 0.5, y + 1.0, blockZ + 0.5, randomYaw, 0f);
-
-                if (!keepDistance || candidate.distanceSquared(avoid) >= minDistanceSquared) {
-                    return candidate;
-                }
-                if (closestFallback == null) {
-                    closestFallback = candidate;
-                }
-                break; // zu nah - naechster Versuch mit neuen X/Z
             }
         }
-        return closestFallback;
+        return found;
     }
 
     /** Boden tragfaehig, Fuss- und Kopfhoehe begehbar und frei von Fluessigkeit. */

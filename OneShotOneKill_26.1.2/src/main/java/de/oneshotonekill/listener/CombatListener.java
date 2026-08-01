@@ -28,6 +28,11 @@ public class CombatListener implements Listener {
     public void onEntityDamage(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
 
+        // /kill und Void-Sturz muessen als echte Tode durchgehen
+        if (event.getCause() == EntityDamageEvent.DamageCause.KILL || event.getCause() == EntityDamageEvent.DamageCause.VOID) {
+            return;
+        }
+
         // Außerhalb der Arena ist JEGLICHER Schaden (Sturz, Angriff etc.) verboten
         if (!plugin.getArenaManager().isInArenaArea(player.getLocation())) {
             event.setCancelled(true);

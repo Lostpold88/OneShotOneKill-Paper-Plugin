@@ -188,18 +188,21 @@ public class EliminationManager {
      * Setzt den Spieler zurueck ins Spiel: frische Position, volle Gesundheit, saubere Effekte.
      * Ohne echten Tod gibt es keinen Respawn-Bildschirm.
      * <p>
-     * Der Respawn haelt bewusst Abstand zum Todespunkt - sonst landet man regelmaessig direkt
-     * neben seinem Killer und ist beim naechsten Treffer sofort wieder draussen.
+     * Der Respawn sucht bewusst den Punkt mit dem groessten Abstand zu Todespunkt <b>und</b>
+     * Gegnern - sonst landet man regelmaessig direkt neben seinem Killer und ist beim naechsten
+     * Treffer sofort wieder draussen.
      */
     private void returnToPlay(Player victim, Location deathLoc) {
         cleanupEffects(victim);
+        victim.setHealth(20.0);
+        victim.setFoodLevel(20);
 
         boolean matchRunning = plugin.getMatchManager().isMatchStarted()
                 && !plugin.getMatchManager().isMatchPaused()
                 && !plugin.getMatchManager().isMatchEnded();
 
         Location target = matchRunning
-                ? plugin.getArenaManager().getRandomArenaLocationAwayFrom(deathLoc)
+                ? plugin.getArenaManager().getSafestArenaLocation(victim, deathLoc)
                 : null;
         if (target == null) {
             target = plugin.getWorldManager().getSpawnLocation();

@@ -137,7 +137,7 @@ public class PlayerConnectionListener implements Listener {
 
         // player.getLocation() zeigt hier noch auf den Todespunkt - der Respawn haelt Abstand dazu
         Location respawnLoc = matchRunning
-                ? plugin.getArenaManager().getRandomArenaLocationAwayFrom(event.getPlayer().getLocation())
+                ? plugin.getArenaManager().getSafestArenaLocation(event.getPlayer(), event.getPlayer().getLocation())
                 : null;
         if (respawnLoc == null) {
             respawnLoc = spawnLoc;
