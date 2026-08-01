@@ -206,7 +206,15 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 - **Java**: Java 21+ (Java 25 unterstützt)
 - **Minecraft Client**: 26.2
 
-Ein fertiger, vorkonfigurierter Paper-Server inklusive Plugins & Welt befindet sich im Ordner **`Server/`**.
+Der Ordner **`Server/`** enthaelt einen startbereiten Paper-Server. Versioniert sind darin bewusst nur
+`server.jar`, `start.bat`, `eula.txt`, `server.properties` und der `plugins/`-Ordner — alles andere legt
+der Server beim ersten Start selbst an: Bibliotheken, Welten, Logs und die uebrigen Konfigurationen mit
+ihren Standardwerten.
+
+> **Reihenfolge beim ersten Mal**: `build.ps1` kompiliert gegen die Paper-API aus `Server/libraries/`,
+> und dieser Ordner entsteht erst, wenn Paper ihn beim Start herunterlaedt. Nach einem frischen Clone
+> also **zuerst `Server/start.bat` einmal starten**, dann bauen. Das Build-Skript weist mit einer
+> entsprechenden Meldung darauf hin, falls der Ordner fehlt.
 
 ---
 
@@ -221,7 +229,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 **Was das Skript macht:**
 1. Kompiliert den Java-Quellcode mit `javac` (UTF-8) gegen die Paper 26.2 API.
 2. Kopiert `paper-plugin.yml` sowie `Standard.zip` und `DustPvP.zip`.
-3. Verpackt das Plugin in `OneShotOneKill_26.2/OneShotOneKill_26.2.jar`.
+3. Verpackt das Plugin in `OneShotOneKill_26.2/OneShotOneKill_26.2.jar` (nicht versioniert — siehe `.gitignore`).
 4. Kopiert das Artefakt automatisch nach `Server/plugins/OneShotOneKill_26.2.jar`.
 
 Alle Pfade werden relativ zum Skript-Verzeichnis (`$PSScriptRoot`) aufgelöst; das Repository kann

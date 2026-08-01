@@ -7,27 +7,31 @@
 #  ein GitHub-Release, nicht in die Historie.
 # ===================================================================
 *.class
+*.log
 OneShotOneKill_*/bin/
 OneShotOneKill_*/OneShotOneKill_*.jar
-Server/plugins/OneShotOneKill_*.jar
 
 # ===================================================================
-#  Vom Server selbst erzeugt oder heruntergeladen
+#  Server: Positivliste
 #
-#  cache/ und versions/ packt Paperclip beim ersten Start aus server.jar
-#  aus bzw. laedt sie nach. world/ wird beim Start neu angelegt - die
-#  Arenen entpackt das Plugin ohnehin bei jedem Start frisch aus der JAR
-#  (siehe WorldManager#setupWorld).
+#  Alles unter Server/ ist ausgeschlossen, versioniert werden nur die
+#  Dateien, die man zum Starten wirklich braucht. Der Rest ist entweder
+#  Laufzeitzustand (world, logs, Spielerdaten), von Paperclip beim Start
+#  nachgeladen (libraries, versions, cache) oder eine Konfiguration mit
+#  Standardwerten, die der Server selbst wieder anlegt (bukkit.yml,
+#  spigot.yml, config/, ops.json, whitelist.json, ...).
 # ===================================================================
-Server/cache/
-Server/versions/
-Server/world/
-Server/logs/
-Server/crash-reports/
-Server/usercache.json
-Server/.console_history
-*.log
+Server/*
+!Server/start.bat
+!Server/eula.txt
+!Server/server.properties
+!Server/server.jar
+!Server/plugins/
+
+# Die gebaute Plugin-JAR bleibt auch im plugins-Ordner draussen (siehe oben)
+Server/plugins/OneShotOneKill_*.jar
+# Temporaerdateien des mitgelieferten spark-Profilers
+Server/plugins/spark/tmp/
 
 # Sperrdateien laufender Server
 *.lock
-Server/session.lock

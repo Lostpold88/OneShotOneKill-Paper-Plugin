@@ -15,7 +15,18 @@ Write-Host "==============================================="
 Write-Host " Building OneShotOneKill for Paper 26.2 ...    "
 Write-Host "==============================================="
 
-$serverJars = Get-ChildItem -Path (Join-Path $serverDir "libraries") -Recurse -Filter "*.jar" | Select-Object -ExpandProperty FullName
+# Server/libraries ist bewusst nicht versioniert - Paper laedt die Bibliotheken beim ersten
+# Start selbst herunter. Ohne sie gibt es nichts zum Kompilieren, deshalb hier eine klare
+# Ansage statt eines rohen Get-ChildItem-Fehlers.
+$librariesDir = Join-Path $serverDir "libraries"
+if (!(Test-Path $librariesDir)) {
+    throw "Server/libraries fehlt. Starte den Server einmal (Server/start.bat), damit Paper die Bibliotheken herunterlaedt, und fuehre den Build danach erneut aus."
+}
+
+$serverJars = Get-ChildItem -Path $librariesDir -Recurse -Filter "*.jar" | Select-Object -ExpandProperty FullName
+if (!$serverJars) {
+    throw "In Server/libraries liegt keine JAR. Starte den Server einmal (Server/start.bat), damit Paper die Bibliotheken herunterlaedt."
+}
 
 # Optionale Zusatz-JARs (z. B. JetBrains Annotations) nur einbinden, wenn vorhanden.
 $extraJars = @(
