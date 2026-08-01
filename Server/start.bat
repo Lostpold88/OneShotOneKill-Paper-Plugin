@@ -21,7 +21,7 @@ REM  -XX:+UnlockExperimentalVMOptions MUSS vor G1NewSizePercent und
 REM  G1MaxNewSizePercent stehen, sonst weist die JVM sie ab.
 REM ===================================================================
 
-"C:\Program Files\Zulu\zulu-25\bin\java.exe" ^
+java ^
   -Xms6G -Xmx6G ^
   --add-modules=jdk.incubator.vector ^
   -XX:+UseG1GC ^
@@ -44,6 +44,6 @@ REM ===================================================================
   -XX:MaxTenuringThreshold=1 ^
   -Dusing.aikars.flags=https://mcflags.emc.gs ^
   -Daikars.new.flags=true ^
-  -jar paper.jar nogui
+  -jar server.jar nogui
 
 pause
