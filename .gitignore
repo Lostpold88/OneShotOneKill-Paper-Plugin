@@ -1,9 +1,33 @@
-*.log
+# ===================================================================
+#  Build-Artefakte
+#
+#  Die Plugin-JAR wog 20 MB (sie buendelt Standard.zip und DustPvP.zip)
+#  und lag in 91 Commits - allein das waren 1,6 GB Historie. build.ps1
+#  erzeugt sie in Sekunden neu; fuer Veroeffentlichungen gehoert sie an
+#  ein GitHub-Release, nicht in die Historie.
+# ===================================================================
 *.class
-OneShotOneKill_26.2/bin/
-Server/logs/*
-Server/crash-reports/*
+OneShotOneKill_*/bin/
+OneShotOneKill_*/OneShotOneKill_*.jar
+Server/plugins/OneShotOneKill_*.jar
+
+# ===================================================================
+#  Vom Server selbst erzeugt oder heruntergeladen
+#
+#  cache/ und versions/ packt Paperclip beim ersten Start aus server.jar
+#  aus bzw. laedt sie nach. world/ wird beim Start neu angelegt - die
+#  Arenen entpackt das Plugin ohnehin bei jedem Start frisch aus der JAR
+#  (siehe WorldManager#setupWorld).
+# ===================================================================
+Server/cache/
+Server/versions/
+Server/world/
+Server/logs/
+Server/crash-reports/
 Server/usercache.json
+Server/.console_history
+*.log
+
+# Sperrdateien laufender Server
+*.lock
 Server/session.lock
-Server/world/session.lock
-Server/world/dimensions/minecraft/osok/session.lock
