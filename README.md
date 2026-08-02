@@ -211,10 +211,15 @@ Der Ordner **`Server/`** enthaelt einen startbereiten Paper-Server. Versioniert 
 der Server beim ersten Start selbst an: Bibliotheken, Welten, Logs und die uebrigen Konfigurationen mit
 ihren Standardwerten.
 
+> **Die Plugin-JAR liegt nicht im Repository.** `Server/plugins/OneShotOneKill_26.2.jar` ist ein
+> Build-Artefakt (20 MB, weil die beiden Maps eingebettet sind) und wird von `.gitignore`
+> ausgeschlossen. Nach einem frischen Clone ist der `plugins/`-Ordner deshalb leer — das ist kein
+> Fehler, die JAR entsteht in Sekunden aus `build.ps1`. `Server/start.bat` meldet es, falls sie fehlt.
+
 > **Reihenfolge beim ersten Mal**: `build.ps1` kompiliert gegen die Paper-API aus `Server/libraries/`,
 > und dieser Ordner entsteht erst, wenn Paper ihn beim Start herunterlaedt. Nach einem frischen Clone
-> also **zuerst `Server/start.bat` einmal starten**, dann bauen. Das Build-Skript weist mit einer
-> entsprechenden Meldung darauf hin, falls der Ordner fehlt.
+> also **zuerst `Server/start.bat` einmal starten**, dann bauen, dann erneut starten. Das Build-Skript
+> weist mit einer entsprechenden Meldung darauf hin, falls der Ordner fehlt.
 
 ---
 

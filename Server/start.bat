@@ -2,6 +2,28 @@
 title Minecraft Server (Paper Java 25)
 
 REM ===================================================================
+REM  Die Plugin-JAR ist ein Build-Artefakt und liegt bewusst NICHT im
+REM  Repository (20 MB pro Commit, siehe .gitignore). Nach einem frischen
+REM  Clone fehlt sie also - ohne diesen Hinweis startet der Server
+REM  kommentarlos ohne OneShotOneKill.
+REM ===================================================================
+if not exist "%~dp0plugins\OneShotOneKill_26.2.jar" (
+  echo.
+  echo ###################################################################
+  echo  HINWEIS: plugins\OneShotOneKill_26.2.jar fehlt.
+  echo.
+  echo  Die JAR wird nicht versioniert, sondern gebaut:
+  echo      powershell -ExecutionPolicy Bypass -File "%~dp0..\build.ps1"
+  echo.
+  echo  Der Build braucht Server\libraries - diesen Ordner laedt Paper
+  echo  beim ersten Start selbst herunter. Beim allerersten Mal also:
+  echo  Server jetzt starten, wieder beenden, bauen, erneut starten.
+  echo ###################################################################
+  echo.
+  pause
+)
+
+REM ===================================================================
 REM  Aikar-Flags fuer Paper - auf Performance optimiert.
 REM
 REM  Grundprinzip: FESTER Heap. Xms und Xmx sind identisch und
