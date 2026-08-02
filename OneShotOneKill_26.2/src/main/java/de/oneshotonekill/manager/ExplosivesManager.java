@@ -64,6 +64,8 @@ public class ExplosivesManager implements Listener {
     private static final NamespacedKey KEY_OWNER = new NamespacedKey("oneshotonekill", "explosive_owner");
     private static final NamespacedKey KEY_TARGET_X = new NamespacedKey("oneshotonekill", "airstrike_target_x");
     private static final NamespacedKey KEY_TARGET_Z = new NamespacedKey("oneshotonekill", "airstrike_target_z");
+    /** Auf welchen Spieler ein Sektor zeigt - erlaubt das Zielen auf die Live-Position. */
+    private static final NamespacedKey KEY_TARGET_PLAYER = new NamespacedKey("oneshotonekill", "airstrike_target_player");
 
     /** Sprengkraft einer Air-Strike-Bombe. Vanilla-TNT liegt bei 4.0. */
     private static final float AIRSTRIKE_BLAST_POWER = 8.0f;
@@ -76,7 +78,15 @@ public class ExplosivesManager implements Listener {
     /** Vorwarnzeit zwischen Zielmarkierung und Einschlag. */
     private static final long AIRSTRIKE_DELAY_TICKS = 45L;
     private static final int AIRSTRIKE_BOMB_COUNT = 8;
-    private static final double AIRSTRIKE_SPREAD = 3.5;
+    /**
+     * Streuradius der Bomben um den Zielpunkt.
+     * <p>
+     * Bewusst eng: Das Raster kann die Arena nur auf 9x6 Truhenfelder abbilden, ein Sektor ist
+     * also mehrere Bloecke breit. Zusammen mit dem Zielen auf die Live-Position (siehe
+     * {@link #onAirStrikeMapClick}) landet der Abwurf dadurch dicht am Gegner statt irgendwo im
+     * Sektor - das war der Kern von Issue #8, Punkt 3.
+     */
+    private static final double AIRSTRIKE_SPREAD = 2.0;
     /** Abwurfhoehe ueber der Arena-Oberkante, sofern keine Decke im Weg ist. */
     private static final double AIRSTRIKE_HEIGHT_ABOVE_ARENA = 15.0;
     private static final int BOMB_SAFETY_FUSE_TICKS = 400;
@@ -91,8 +101,25 @@ public class ExplosivesManager implements Listener {
 
     private static final Random RANDOM = new Random();
 
-    /** So lange nach einer Sprengung zaehlt ein Tod noch als deren Kill. */
-    private static final long BLAST_CREDIT_MILLIS = 6000L;
+    /**
+     * So lange nach einer Sprengung zaehlt ein Tod noch als deren Kill.
+     * <p>
+     * Bewusst grosszuegig: Eine C4 mit Staerke 12 schleudert Getroffene dutzende Bloecke hoch.
+     * Steigen und Fallen zusammen dauern regelmaessig laenger als die frueheren 6 Sekunden -
+     * lief das Fenster mitten im Flug ab, wurde der Aufprall als "ist gestorben" gemeldet und
+     * der Zuender ging leer aus (Issue #8).
+     */
+    private static final long BLAST_CREDIT_MILLIS = 12000L;
+
+    /**
+     * Verhaeltnis von Schadensreichweite zu Sprengkraft.
+     * <p>
+     * {@code ServerExplosion#hurtEntities} sucht die Opfer im Umkreis {@code radius * 2.0} -
+     * eine C4 mit Staerke 12 trifft also noch auf 24 Bloecke. Der Merkzettel wurde frueher nur
+     * mit {@code power} gefuellt und liess damit die aeussere Haelfte der Druckwelle aus: Wer
+     * dort hochgeschleudert wurde, starb ohne Zuordnung.
+     */
+    private static final double EXPLOSION_DAMAGE_RADIUS_FACTOR = 2.0;
 
     /** Merkzettel: Wer hat die Sprengung ausgeloest, die diesen Spieler erwischt hat? */
     private record BlastCredit(UUID owner, long expiresAt) { }
@@ -140,19 +167,35 @@ public class ExplosivesManager implements Listener {
         return (owner != null && owner.isOnline()) ? owner : null;
     }
 
-    /** Vermerkt fuer alle Spieler in Reichweite, wer die Sprengung ausgeloest hat. */
+    /**
+     * Vermerkt fuer alle Spieler in Reichweite, wer die Sprengung ausgeloest hat.
+     * <p>
+     * Der Radius muss der <b>tatsaechlichen</b> Schadensreichweite entsprechen, nicht der
+     * Sprengkraft - siehe {@link #EXPLOSION_DAMAGE_RADIUS_FACTOR}.
+     */
     private void rememberBlastCredit(Location center, Player owner, float power) {
         if (owner == null) return;
 
         long expiresAt = System.currentTimeMillis() + BLAST_CREDIT_MILLIS;
         // Paper Spatial Entity Index: direkte Spieler-Abfrage statt Entity-Box + instanceof
-        for (Player affected : center.getNearbyPlayers(power)) {
+        for (Player affected : center.getNearbyPlayers(power * EXPLOSION_DAMAGE_RADIUS_FACTOR)) {
             if (affected.getUniqueId().equals(owner.getUniqueId())) continue;
             blastCredits.put(affected.getUniqueId(), new BlastCredit(owner.getUniqueId(), expiresAt));
         }
 
         // Abgelaufene Eintraege bei der Gelegenheit wegraeumen
         blastCredits.values().removeIf(entry -> System.currentTimeMillis() > entry.expiresAt());
+    }
+
+    /**
+     * Loescht den Merkzettel-Eintrag eines Spielers.
+     * <p>
+     * Wird aufgerufen, sobald seine Eliminierung abgewickelt ist. Ohne das bliebe der Eintrag
+     * bis zum Ablauf des Zeitfensters stehen und ein voellig unabhaengiger Sturz kurz nach dem
+     * Respawn wuerde faelschlich noch dem Zuender gutgeschrieben.
+     */
+    public void clearBlastCredit(UUID victimId) {
+        blastCredits.remove(victimId);
     }
 
     // ==================================================================
@@ -231,7 +274,7 @@ public class ExplosivesManager implements Listener {
             if (slot < 0) continue;
 
             boolean self = shown.getUniqueId().equals(user.getUniqueId());
-            gui.setItem(slot, createPlayerCell(shown, cellCenterOfSlot(map, world, slot), self));
+            gui.setItem(slot, createPlayerCell(shown, self));
         }
 
         user.openInventory(gui);
@@ -243,10 +286,6 @@ public class ExplosivesManager implements Listener {
         double x = map.getMinX() + (map.getMaxX() - map.getMinX()) * ((col + 0.5) / GUI_COLS);
         double z = map.getMinZ() + (map.getMaxZ() - map.getMinZ()) * ((row + 0.5) / GUI_ROWS);
         return new Location(world, x, map.getMinY(), z);
-    }
-
-    private Location cellCenterOfSlot(MapConfig map, World world, int slot) {
-        return cellCenter(map, world, slot % GUI_COLS, slot / GUI_COLS);
     }
 
     /** Rasterfeld einer Weltposition, oder -1 wenn ausserhalb. */
@@ -264,11 +303,16 @@ public class ExplosivesManager implements Listener {
 
     private ItemStack createTerrainCell(Location cell) {
         ItemStack item = ItemStack.of(Material.LIGHT_GRAY_STAINED_GLASS_PANE);
-        applyCellMeta(item, MiniMessage.miniMessage().deserialize("<gray>Sektor</gray>"), cell, false);
+        applyCellMeta(item, MiniMessage.miniMessage().deserialize("<gray>Sektor</gray>"), cell, null);
         return item;
     }
 
-    private ItemStack createPlayerCell(Player shown, Location cell, boolean self) {
+    /**
+     * Kopf-Feld eines Spielers. Der Zielpunkt ist seine <b>eigene</b> Position, nicht die
+     * Sektormitte - ein Sektor ist mehrere Bloecke breit, die Mitte lag also regelmaessig
+     * neben dem Gegner.
+     */
+    private ItemStack createPlayerCell(Player shown, boolean self) {
         ItemStack item = ItemStack.of(Material.PLAYER_HEAD);
         Component name = self
                 ? MiniMessage.miniMessage().deserialize("<aqua><b>" + shown.getName() + "</b> <gray>(du)</gray></aqua>")
@@ -278,27 +322,34 @@ public class ExplosivesManager implements Listener {
         // getItemMeta/setItemMeta-Runden pro Kopf - bei 54 Feldern pro Menue spuerbar.
         item.editMeta(SkullMeta.class, meta -> {
             meta.setOwningPlayer(shown);
-            writeCellMeta(meta, name, cell, true);
+            writeCellMeta(meta, name, shown.getLocation(), shown.getUniqueId());
         });
         return item;
     }
 
-    private void applyCellMeta(ItemStack item, Component displayName, Location cell, boolean occupied) {
+    private void applyCellMeta(ItemStack item, Component displayName, Location cell, UUID targetPlayer) {
         // Paper editMeta: schreibt direkt, ohne die Meta zweimal zu kopieren
-        item.editMeta(meta -> writeCellMeta(meta, displayName, cell, occupied));
+        item.editMeta(meta -> writeCellMeta(meta, displayName, cell, targetPlayer));
     }
 
-    private void writeCellMeta(ItemMeta meta, Component displayName, Location cell, boolean occupied) {
+    /**
+     * @param aim          Zielpunkt des Feldes - Sektormitte, oder die Position des Gegners
+     * @param targetPlayer markierter Gegner, oder {@code null} fuer ein leeres Feld
+     */
+    private void writeCellMeta(ItemMeta meta, Component displayName, Location aim, UUID targetPlayer) {
         meta.displayName(displayName);
         meta.lore(List.of(
                 MiniMessage.miniMessage().deserialize(String.format(java.util.Locale.US,
-                        "<gray>X <white>%.0f</white>   Z <white>%.0f</white></gray>", cell.getX(), cell.getZ())),
-                MiniMessage.miniMessage().deserialize(occupied
+                        "<gray>X <white>%.0f</white>   Z <white>%.0f</white></gray>", aim.getX(), aim.getZ())),
+                MiniMessage.miniMessage().deserialize(targetPlayer != null
                         ? "<red>Gegner in diesem Sektor!</red>"
                         : "<dark_gray>leer</dark_gray>"),
                 MiniMessage.miniMessage().deserialize("<yellow>Klicken, um den Air-Strike anzufordern</yellow>")));
-        meta.getPersistentDataContainer().set(KEY_TARGET_X, PersistentDataType.DOUBLE, cell.getX());
-        meta.getPersistentDataContainer().set(KEY_TARGET_Z, PersistentDataType.DOUBLE, cell.getZ());
+        meta.getPersistentDataContainer().set(KEY_TARGET_X, PersistentDataType.DOUBLE, aim.getX());
+        meta.getPersistentDataContainer().set(KEY_TARGET_Z, PersistentDataType.DOUBLE, aim.getZ());
+        if (targetPlayer != null) {
+            meta.getPersistentDataContainer().set(KEY_TARGET_PLAYER, PersistentDataType.STRING, targetPlayer.toString());
+        }
     }
 
     @EventHandler
@@ -314,6 +365,20 @@ public class ExplosivesManager implements Listener {
         Double targetX = clicked.getPersistentDataContainer().get(KEY_TARGET_X, PersistentDataType.DOUBLE);
         Double targetZ = clicked.getPersistentDataContainer().get(KEY_TARGET_Z, PersistentDataType.DOUBLE);
         if (targetX == null || targetZ == null) return;
+
+        // Auf einen markierten Gegner wird seine Position im Moment des Klicks angepeilt, nicht
+        // die beim Oeffnen des Menues gespeicherte. Die Karte ist eine Momentaufnahme - bis zum
+        // Klick ist der Gegner laengst weitergelaufen, und der Abwurf ging ins Leere.
+        // Die Vorwarnzeit bis zum Einschlag bleibt unangetastet: Ausweichen ist weiter moeglich.
+        String markedId = clicked.getPersistentDataContainer().get(KEY_TARGET_PLAYER, PersistentDataType.STRING);
+        if (markedId != null) {
+            Player marked = Bukkit.getPlayer(UUID.fromString(markedId));
+            if (marked != null && marked.isOnline()
+                    && plugin.getArenaManager().isInArenaArea(marked.getLocation())) {
+                targetX = marked.getLocation().getX();
+                targetZ = marked.getLocation().getZ();
+            }
+        }
 
         user.closeInventory();
 
