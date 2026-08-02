@@ -95,8 +95,8 @@ public class WorldManager {
         osokWorld = Bukkit.createWorld(creator);
 
         if (osokWorld != null) {
+            // Setzt ueber applyGlobalGameRules auch Tageszeit und Wetter fest
             applyPaperGameRules(osokWorld);
-            osokWorld.setTime(MIDDAY_TICKS);
 
             for (org.bukkit.entity.Entity entity : osokWorld.getEntities()) {
                 if (!(entity instanceof Player)) {
@@ -212,8 +212,8 @@ public class WorldManager {
                 return;
             }
 
+            // Setzt ueber applyGlobalGameRules auch Tageszeit und Wetter fest
             applyPaperGameRules(osokWorld);
-            osokWorld.setTime(MIDDAY_TICKS);
 
             for (org.bukkit.entity.Entity entity : osokWorld.getEntities()) {
                 if (!(entity instanceof Player)) {
@@ -287,7 +287,13 @@ public class WorldManager {
         world.setGameRule(GameRules.ADVANCE_TIME, false);
         world.setGameRule(GameRules.ADVANCE_WEATHER, false);
 
-        world.setTime(MIDDAY_TICKS);
+        // Nether und End haben eine im DimensionType festgenagelte Tageszeit und damit keine
+        // Weltuhr. CraftWorld#setFullTime wirft dort IllegalArgumentException ("Cannot set time
+        // in world without world clock") - das hat beim Serverstart das komplette onEnable
+        // abgebrochen. Solche Welten brauchen die Korrektur ohnehin nicht: ihre Zeit steht schon.
+        if (!world.isFixedTime()) {
+            world.setTime(MIDDAY_TICKS);
+        }
         world.setStorm(false);
         world.setThundering(false);
         world.setWeatherDuration(0);
