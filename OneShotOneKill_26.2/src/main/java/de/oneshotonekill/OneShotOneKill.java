@@ -80,6 +80,7 @@ public class OneShotOneKill extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
         getServer().getPluginManager().registerEvents(this.specialItemListener, this);
         getServer().getPluginManager().registerEvents(new WorldRuleListener(), this);
+        getServer().getPluginManager().registerEvents(this.accessManager, this);
         getServer().getPluginManager().registerEvents(this.stealthBomberManager, this);
         getServer().getPluginManager().registerEvents(this.explosivesManager, this);
         getServer().getPluginManager().registerEvents(this.tacticalItemsManager, this);
