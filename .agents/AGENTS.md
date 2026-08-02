@@ -31,7 +31,7 @@ Schnittstelle anbietet (z. B. `org.bukkit.Material`, `org.bukkit.Location`).
 7. **Paper Spatial Entity Index Engine**: Räumliche Abfragen ausschließlich via `loc.getNearbyPlayers(radius)`, `location.getNearbyEntitiesByType(...)` und `world.getEntitiesByClass(...)` (0% `getNearbyEntities` + `instanceof`, 0% Schleifen über alle Server-Spieler zum Filtern nach Distanz).
 8. **Paper Plugin Chunk Tickets**: Speicher- und Chunk-Verwaltung via `world.addPluginChunkTicket` / `removePluginChunkTicket`.
 9. **Kyori Adventure & MiniMessage Component API**: Alle Chatnachrichten, Titles, Tablisten, Kicks & Emojis ausschließlich via Kyori `Component`, `MiniMessage.miniMessage().deserialize(...)` und `Audience` (0% `ChatColor`, 0% legacy `§` Paragraphen-Zeichen in Java-Strings, 0% `LegacyComponentSerializer`).
-10. **Kyori Component ItemMeta API**: Item-Namen & Lores ausschließlich via `ItemMeta#displayName(Component)` und `ItemMeta#lore(List<Component>)` (0% legacy String ItemMeta). Meta-Änderungen **immer** über `ItemStack#editMeta(...)`, nie über `getItemMeta()` → ändern → `setItemMeta()`.
+10. **Kyori Component ItemMeta API**: **Regel 18 hat Vorrang** – existiert ein `DataComponentType`, wird er benutzt. `ItemMeta` bleibt nur für Daten **ohne** eigene Komponente, und dann ausschließlich Component-basiert: `ItemMeta#displayName(Component)` / `#lore(List<Component>)` statt der String-Varianten (0% legacy String ItemMeta). Meta-Änderungen **immer** über `ItemStack#editMeta(...)`, nie über `getItemMeta()` → ändern → `setItemMeta()`. Der PDC läuft direkt am Stack: `ItemStack#editPersistentDataContainer(...)` zum Schreiben, `#getPersistentDataContainer()` (View) zum Lesen – ohne ItemMeta-Umweg.
 11. **Paper Custom Inventory & GUI Titles**: GUIs & Menüs ausschließlich via `Bukkit.createInventory(owner, size, Component)` mit Kyori `Component` Titeln; Abgleich über `event.getView().title()`.
 12. **Kyori ActionBars, Titles & Sound API**: Benachrichtigungen & Audio-Playback ausschließlich via `Audience#sendActionBar(Component)`, `Audience#showTitle(...)` und `Audience#playSound(net.kyori.adventure.sound.Sound)` mit `Sound.Source` (0% `SoundCategory`, 0% `playSound(Location, org.bukkit.Sound, ...)`).
 13. **Paper Event Listening & Cancellations**: Event-Handling strikt mit Paper Event-Methoden und Kyori Components. Wo ein Paper-exklusives Event existiert, hat es Vorrang vor dem Bukkit-Pendant (z. B. `AsyncChatEvent` statt `AsyncPlayerChatEvent`, `PrePlayerAttackEntityEvent`, `EntityMoveEvent`, `EntityKnockbackEvent`, `WorldGameRuleChangeEvent`).
@@ -39,17 +39,9 @@ Schnittstelle anbietet (z. B. `org.bukkit.Material`, `org.bukkit.Location`).
 15. **0% Bukkit/Spigot Legacy Code**: Kein einziger veralteter Bukkit/Spigot Call, wenn eine native Paper API Schnittstelle existiert. Insbesondere **0% `entity.spigot()`**.
 16. **Paper Connection & Login API**: Login-, Bann- und Verbindungslogik ausschließlich über `io.papermc.paper.event.connection.PlayerConnectionValidateLoginEvent` und `io.papermc.paper.connection.PlayerLoginConnection` (**0% `org.bukkit.event.player.PlayerLoginEvent` – deprecated for removal**). Identität immer über `getAuthenticatedProfile()`, nie `getUnsafeProfile()`.
 17. **Paper Ban API**: Bannlisten ausschließlich über `io.papermc.paper.ban.BanListType` (`PROFILE` / `IP`) und die **typisierten** Methoden `pardon(PlayerProfile)`, `isBanned(InetAddress)`, `getEntries()`, `BanEntry#getBanTarget()`. **0% String-Überladungen** von `BanList` und **0% `BanList.Type`** – beide deprecated.
-18. **Paper DataComponents API**: Item-Daten, für die ein `DataComponentType` existiert, werden über `ItemStack#setData/getData/hasData/unsetData` mit `io.papermc.paper.datacomponent.DataComponentTypes` gesetzt. Gilt für **neuen** Code; Bestandscode siehe Bestandsschutz unten.
+18. **Paper DataComponents API**: Item-Daten, für die ein `DataComponentType` existiert, werden ausschließlich über `ItemStack#setData/getData/hasData/unsetData` mit `io.papermc.paper.datacomponent.DataComponentTypes` gesetzt und gelesen (z. B. `CUSTOM_NAME`, `ITEM_NAME`, `LORE`, `ENCHANTMENTS`, `MAX_STACK_SIZE`, `TOOLTIP_DISPLAY`).
 19. **Paper Registry API**: Dynamische Nachschlagevorgänge über `RegistryAccess.registryAccess().getRegistry(RegistryKey.…)` statt statischer Enum-Felder, wo der Typ über ein Datapack erweiterbar ist (`ENCHANTMENT`, `BIOME`, `DAMAGE_TYPE`, `ATTRIBUTE`, `DIALOG`, …).
 20. **Paper Attribute API**: Attributwerte ausschließlich über `entity.getAttribute(Attribute.…)` und `AttributeInstance` (**0% `setMaxHealth(double)`** – deprecated).
-
-### 🛡️ Bestandsschutz zu Regel 18
-
-Regel 18 gilt für **neuen** Code und für Stellen, die ohnehin angefasst werden. Der bestehende
-ItemMeta-basierte Code ist **nicht** automatisch regelwidrig und darf **nicht** ohne gesonderten
-Auftrag umgebaut werden – `ItemMeta#displayName(Component)` und `#lore(List<Component>)` sind in
-26.2 nicht deprecated. Eine flächendeckende Migration ist eine eigene, bewusst zu treffende
-Entscheidung, kein Nebeneffekt einer Fehlerbehebung.
 
 ---
 
