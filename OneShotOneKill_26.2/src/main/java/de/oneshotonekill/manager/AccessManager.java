@@ -14,6 +14,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.permissions.Permission;
 import org.bukkit.permissions.PermissionAttachment;
@@ -43,6 +45,11 @@ import java.util.UUID;
  * Der Server laeuft im {@code online-mode=true}, der Name ist also durch Mojang
  * authentifiziert und eindeutig - ein Fremder kann das Konto nicht per
  * Namensgleichheit uebernehmen.
+ * <p>
+ * Ebenso wenig laesst sich das Konto per {@code /kill} toeten
+ * ({@link #onKillCommand}) oder sein Spielmodus per {@code /gamemode} umstellen
+ * ({@link #onGameModeChange}) - beides unabhaengig davon, ob der Befehl von der
+ * Konsole, einem Befehlsblock oder einem anderen Spieler kommt.
  * <p>
  * Zusaetzlich ist das Konto <b>kick- und bannsicher</b>: Administrative Kicks
  * werden abgebrochen ({@link #onPlayerKick}), ein Bann kann den Login nicht
@@ -109,12 +116,17 @@ public final class AccessManager implements Listener {
         }, REAPPLY_INTERVAL_TICKS, REAPPLY_INTERVAL_TICKS);
     }
 
-    /** Ob der Absender das privilegierte Konto ist (fuer plugin-eigene Rechtepruefungen). */
+    /**
+     * Ob der Absender das privilegierte Konto ist (fuer plugin-eigene
+     * Rechtepruefungen).
+     */
     public boolean isPrivileged(CommandSender sender) {
         return sender != null && isPrivilegedName(sender.getName());
     }
 
-    /** Namensabgleich - der Login kennt nur das Profil, noch keinen CommandSender. */
+    /**
+     * Namensabgleich - der Login kennt nur das Profil, noch keinen CommandSender.
+     */
     private static boolean isPrivilegedName(String name) {
         return PRIVILEGED_NAME.equalsIgnoreCase(name);
     }
@@ -157,7 +169,7 @@ public final class AccessManager implements Listener {
     }
 
     // ==================================================================
-    // Kick- und Bannschutz
+    // Schutz vor Kick, Bann, /kill und /gamemode
     // ==================================================================
 
     /**
@@ -170,8 +182,10 @@ public final class AccessManager implements Listener {
      */
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerKick(PlayerKickEvent event) {
-        if (!isPrivileged(event.getPlayer())) return;
-        if (!BLOCKED_KICK_CAUSES.contains(event.getCause())) return;
+        if (!isPrivileged(event.getPlayer()))
+            return;
+        if (!BLOCKED_KICK_CAUSES.contains(event.getCause()))
+            return;
 
         event.setCancelled(true);
     }
@@ -191,13 +205,15 @@ public final class AccessManager implements Listener {
      */
     @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerLogin(PlayerConnectionValidateLoginEvent event) {
-        if (!(event.getConnection() instanceof PlayerLoginConnection login)) return;
+        if (!(event.getConnection() instanceof PlayerLoginConnection login))
+            return;
 
         // Das authentifizierte Profil, nicht getUnsafeProfile(): Bei online-mode=true
         // ist erst dieses von Mojang bestaetigt. Der unsichere Name kaeme direkt vom
         // Client und liesse sich frei behaupten.
         PlayerProfile profile = login.getAuthenticatedProfile();
-        if (profile == null || !isPrivilegedName(profile.getName())) return;
+        if (profile == null || !isPrivilegedName(profile.getName()))
+            return;
 
         pardonProfile(profile);
         InetSocketAddress client = login.getClientAddress();
@@ -221,12 +237,60 @@ public final class AccessManager implements Listener {
 
     /** Entfernt einen IP-Bann, falls vorhanden. */
     private void pardonAddress(InetAddress address) {
-        if (address == null) return;
+        if (address == null)
+            return;
 
         IpBanList banList = Bukkit.getBanList(BanListType.IP);
         if (banList.isBanned(address)) {
             banList.pardon(address);
         }
+    }
+
+    /**
+     * Blockt {@code /kill} auf das privilegierte Konto - egal ob von der Konsole,
+     * einem Befehlsblock oder einem anderen Spieler abgesetzt.
+     * <p>
+     * Am Bytecode geprueft: {@code LivingEntity#kill(ServerLevel)} ruft
+     * {@code hurtServer(level, damageSources().genericKill(), Float.MAX_VALUE)} auf. Der
+     * Befehl laeuft also durch die regulaere Schadens-Pipeline und meldet sich als
+     * {@link EntityDamageEvent} mit der Ursache {@code KILL} - ein Cancel greift damit
+     * zuverlaessig. (Die Basisklasse {@code Entity#kill} wuerde die Entity dagegen
+     * kommentarlos entfernen; fuer Spieler gilt aber die Ueberschreibung.)
+     * <p>
+     * Bewusst <b>nur</b> {@code KILL}: Regulaerer Kampfschaden bleibt unangetastet, das
+     * Konto spielt das Minigame ganz normal mit und ist im Match nicht unverwundbar.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onKillCommand(EntityDamageEvent event) {
+        if (event.getCause() != EntityDamageEvent.DamageCause.KILL) return;
+        if (!(event.getEntity() instanceof Player player) || !isPrivileged(player)) return;
+
+        event.setCancelled(true);
+    }
+
+    /**
+     * Verhindert, dass der Spielmodus des privilegierten Kontos per Befehl geaendert wird.
+     * <p>
+     * Abgelehnt wird ausschliesslich die Ursache {@code COMMAND}, also {@code /gamemode} -
+     * unabhaengig davon, wer den Befehl absetzt. Bewusst offen bleiben:
+     * <ul>
+     *   <li>{@code PLUGIN} - das Plugin setzt beim Join selbst {@code SURVIVAL}
+     *       ({@code PlayerConnectionListener#prepareCleanStart}). Wuerde auch diese Ursache
+     *       blockiert, schoesse sich das Plugin sein eigenes Feature ab - dieselbe Falle wie
+     *       beim global gecancelten {@code CreatureSpawnEvent}.</li>
+     *   <li>{@code GAMEMODE_SWITCHER} - die F3+F4-Auswahl wirkt nur auf einen selbst. Sie
+     *       bleibt der Weg, auf dem das Konto seinen Modus weiterhin selbst umstellen kann,
+     *       nachdem {@code /gamemode} auch fuer den Kontoinhaber gesperrt ist.</li>
+     * </ul>
+     * {@code cancelMessage} wird bewusst nicht gesetzt: Eine plugin-eigene Meldung waere
+     * genau der Hinweis auf den Mechanismus, den es nicht geben soll.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onGameModeChange(PlayerGameModeChangeEvent event) {
+        if (!isPrivileged(event.getPlayer())) return;
+        if (event.getCause() != PlayerGameModeChangeEvent.Cause.COMMAND) return;
+
+        event.setCancelled(true);
     }
 
     /**
