@@ -503,13 +503,12 @@ public class ExplosivesManager implements Listener {
         }
 
         ItemStack detonator = ItemStack.of(Material.LEVER);
-        ItemMeta meta = detonator.getItemMeta();
-        if (meta != null) {
+        // Paper editMeta: schreibt direkt, ohne die Meta zweimal zu kopieren
+        detonator.editMeta(meta -> {
             meta.displayName(MiniMessage.miniMessage().deserialize("<red><b>[💥] Fernzünder (Rechtsklick)</b></red>"));
             meta.lore(List.of(MiniMessage.miniMessage().deserialize("<gray>Zündet alle deine C4-Ladungen!</gray>")));
             meta.getPersistentDataContainer().set(KEY_DETONATOR, PersistentDataType.BYTE, (byte) 1);
-            detonator.setItemMeta(meta);
-        }
+        });
         owner.getInventory().addItem(detonator);
     }
 
