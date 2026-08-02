@@ -53,11 +53,11 @@ public class ItemWeightGui implements Listener {
     private static final int BLOCK_ONE_ITEM_START = COLS;          // Reihe 1
     private static final int BLOCK_TWO_ITEM_START = COLS * 4;      // Reihe 4
     private static final int BLOCK_ONE_CAPACITY = 9;
-    /** Reihe 4 laesst zwei Spalten fuer Reset und Schliessen frei. */
-    private static final int BLOCK_TWO_CAPACITY = 7;
+    /** Reihe 4 laesst Platz fuer Reset und Reihe 5 fuer Schliessen. */
+    private static final int BLOCK_TWO_CAPACITY = 8;
 
-    private static final int SLOT_RESET = COLS * 4 + 7;
-    private static final int SLOT_CLOSE = COLS * 4 + 8;
+    private static final int SLOT_RESET = COLS * 4 + 8;
+    private static final int SLOT_CLOSE = COLS * 5 + 8;
 
     private static final int SMALL_STEP = 1;
     private static final int LARGE_STEP = 5;

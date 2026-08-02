@@ -259,7 +259,7 @@ also beliebig verschoben oder umbenannt werden. Bricht `javac` oder `jar` ab, sc
 | `/osok itemmode <mode>` | Wechselt zwischen `STREAK`, `SPAWN` und `BOTH` (gilt bis zum nächsten `/osok start`) | Operator (OP) |
 | `/osok itemgewichtung` | Öffnet das **Menü** für die Spawnwahrscheinlichkeit je Spezial-Item | Operator (OP) |
 | `/osok camper` | Öffnet das **Menü** für Anti-Camping: an/aus, Zeit und Radius | Operator (OP) |
-| `/osok itemtest` | Öffnet Admin-Test-GUI für alle 16 Spezial-Items | Operator (OP) |
+| `/osok itemtest` | Öffnet Admin-Test-GUI für alle 17 Spezial-Items | Operator (OP) |
 | `/osok clearpfeile` | Entfernt herumliegende Pfeile in allen Welten | Operator (OP) |
 | `/osok setspawn` | Setzt den Lobby-Spawnpunkt der aktiven Map | Operator (OP) |
 | `/osok resetstats` | Setzt Kills, Tode & Scoreboard-Statistiken zurück | Operator (OP) |

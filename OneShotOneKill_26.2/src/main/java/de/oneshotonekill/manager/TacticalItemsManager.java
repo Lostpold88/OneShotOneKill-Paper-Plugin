@@ -16,6 +16,9 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
 import org.bukkit.World;
+import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Arrow;
+import org.bukkit.entity.AbstractArrow;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
@@ -72,6 +75,23 @@ public class TacticalItemsManager implements Listener {
     private static final double GLIDE_MAX_SPEED = 1.7;
     /** Spielraum ueber der Arena-Oberkante, den der Gleitflug nutzen darf. */
     private static final double GLIDE_HEADROOM = 8.0;
+    // ---------------- Geschützturm (Sentry Turret) ----------------
+    private static final int TURRET_DURATION_TICKS = 400; // 20 Sekunden
+    private static final long TURRET_FIRE_INTERVAL_TICKS = 8L; // alle 0.4s
+    private static final double TURRET_RANGE = 14.0;
+
+    private static final class ActiveTurret {
+        private final ArmorStand entity;
+        private final UUID ownerId;
+        private ScheduledTask task;
+        private int ticksRemaining;
+
+        private ActiveTurret(ArmorStand entity, UUID ownerId, int durationTicks) {
+            this.entity = entity;
+            this.ownerId = ownerId;
+            this.ticksRemaining = durationTicks;
+        }
+    }
 
     private static final NamespacedKey KEY_SINGULARITY_ORB = new NamespacedKey("oneshotonekill", "singularity_orb");
     private static final NamespacedKey KEY_GLIDER_WINGS = new NamespacedKey("oneshotonekill", "glider_wings");
@@ -89,6 +109,7 @@ public class TacticalItemsManager implements Listener {
     /** Laufende Singularitaeten, damit sie beim Aufraeumen abgebrochen werden koennen. */
     private final Set<ActiveSingularity> activeSingularities = new HashSet<>();
     private final Set<UUID> activeGliders = new HashSet<>();
+    private final Set<ActiveTurret> activeTurrets = new HashSet<>();
 
     public TacticalItemsManager(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -483,11 +504,134 @@ public class TacticalItemsManager implements Listener {
     }
 
     // ==================================================================
+    // 🤖 Geschützturm (Sentry Turret)
+    // ==================================================================
+
+    public boolean placeSentryTurret(Player owner, Location clickLoc) {
+        if (!plugin.getMatchManager().isMatchStarted() || plugin.getMatchManager().isMatchPaused()) {
+            owner.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] 🤖 Das Match ist nicht aktiv!</red>"));
+            owner.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
+            return false;
+        }
+        if (!plugin.getArenaManager().isInArenaArea(clickLoc)) {
+            owner.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] 🤖 Geschützturm kann nur in der Arena platziert werden!</red>"));
+            owner.playSound(Sound.sound(org.bukkit.Sound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f));
+            return false;
+        }
+
+        Location turretLoc = clickLoc.clone().add(0.5, 0.2, 0.5);
+        World world = turretLoc.getWorld();
+        if (world == null) return false;
+
+        ArmorStand stand = world.spawn(turretLoc, ArmorStand.class, armor -> {
+            armor.setInvisible(true);
+            armor.setSmall(true);
+            armor.setGravity(false);
+            armor.setMarker(false);
+            armor.getEquipment().setHelmet(ItemStack.of(Material.DISPENSER));
+            armor.customName(MiniMessage.miniMessage().deserialize("<gold>🤖 Geschützturm (<yellow>20s</yellow>)</gold>"));
+            armor.setCustomNameVisible(true);
+        });
+
+        world.playSound(Sound.sound(org.bukkit.Sound.BLOCK_ANVIL_USE, Sound.Source.MASTER, 1.0f, 1.4f), turretLoc.x(), turretLoc.y(), turretLoc.z());
+        world.spawnParticle(Particle.FLAME, turretLoc.clone().add(0, 0.8, 0), 20, 0.3, 0.3, 0.3, 0.05);
+
+        ActiveTurret activeTurret = new ActiveTurret(stand, owner.getUniqueId(), TURRET_DURATION_TICKS);
+        activeTurrets.add(activeTurret);
+
+        owner.sendMessage(MiniMessage.miniMessage().deserialize("<green>[OSOK] 🤖 <b>GESCHÜTZTURM PLATZIERT!</b> <gray>Er sichert den Bereich für 20 Sekunden.</gray></green>"));
+
+        stand.getScheduler().runAtFixedRate(plugin, new Consumer<ScheduledTask>() {
+            @Override
+            public void accept(ScheduledTask task) {
+                activeTurret.task = task;
+                activeTurret.ticksRemaining -= (int) TURRET_FIRE_INTERVAL_TICKS;
+
+                if (!stand.isValid() || activeTurret.ticksRemaining <= 0
+                        || !plugin.getMatchManager().isMatchStarted()
+                        || plugin.getMatchManager().isMatchPaused()) {
+                    task.cancel();
+                    removeTurret(activeTurret);
+                    return;
+                }
+
+                int secondsLeft = Math.max(1, (activeTurret.ticksRemaining + 19) / 20);
+                stand.customName(MiniMessage.miniMessage().deserialize(
+                        "<gold>🤖 Geschützturm (<yellow>" + secondsLeft + "s</yellow>)</gold>"));
+
+                Location turretEye = stand.getLocation().add(0, 0.8, 0);
+                Player nearestTarget = null;
+                double nearestDistSq = TURRET_RANGE * TURRET_RANGE;
+
+                for (Player candidate : turretEye.getNearbyPlayers(TURRET_RANGE)) {
+                    if (candidate.getUniqueId().equals(owner.getUniqueId())) continue;
+                    if (candidate.isDead() || !candidate.isOnline()) continue;
+                    if (candidate.getGameMode() != org.bukkit.GameMode.SURVIVAL && candidate.getGameMode() != org.bukkit.GameMode.ADVENTURE) continue;
+                    if (!plugin.getArenaManager().isInArenaArea(candidate.getLocation())) continue;
+
+                    Vector toCandidate = candidate.getEyeLocation().toVector().subtract(turretEye.toVector());
+                    double dist = toCandidate.length();
+                    if (dist > 0.1) {
+                        RayTraceResult ray = world.rayTraceBlocks(turretEye, toCandidate.normalize(), dist, FluidCollisionMode.NEVER, true);
+                        if (ray != null && ray.getHitBlock() != null) {
+                            continue;
+                        }
+                    }
+
+                    double distSq = candidate.getLocation().distanceSquared(turretEye);
+                    if (distSq < nearestDistSq) {
+                        nearestDistSq = distSq;
+                        nearestTarget = candidate;
+                    }
+                }
+
+                if (nearestTarget != null) {
+                    Vector dir = nearestTarget.getEyeLocation().toVector().subtract(turretEye.toVector()).normalize();
+                    Location aimLoc = turretEye.clone();
+                    aimLoc.setDirection(dir);
+                    stand.teleport(aimLoc);
+
+                    Arrow arrow = world.spawn(turretEye.clone().add(dir.clone().multiply(0.4)), Arrow.class, a -> {
+                        a.setShooter(owner);
+                        a.setPickupStatus(AbstractArrow.PickupStatus.DISALLOWED);
+                        a.setVelocity(dir.multiply(1.8));
+                    });
+
+                    world.playSound(Sound.sound(org.bukkit.Sound.BLOCK_DISPENSER_LAUNCH, Sound.Source.MASTER, 1.0f, 1.4f), turretEye.x(), turretEye.y(), turretEye.z());
+
+                    Vector particleStep = dir.clone().multiply(0.5);
+                    Location pLoc = turretEye.clone();
+                    for (int i = 0; i < 8; i++) {
+                        pLoc.add(particleStep);
+                        world.spawnParticle(Particle.DUST, pLoc, 1, new Particle.DustOptions(Color.RED, 0.8f));
+                    }
+                }
+            }
+        }, null, 1L, TURRET_FIRE_INTERVAL_TICKS);
+
+        return true;
+    }
+
+    private void removeTurret(ActiveTurret turret) {
+        if (activeTurrets.remove(turret)) {
+            if (turret.task != null) {
+                turret.task.cancel();
+            }
+            if (turret.entity != null && turret.entity.isValid()) {
+                Location loc = turret.entity.getLocation();
+                loc.getWorld().spawnParticle(Particle.EXPLOSION, loc.clone().add(0, 0.5, 0), 2);
+                loc.getWorld().playSound(Sound.sound(org.bukkit.Sound.BLOCK_ANVIL_BREAK, Sound.Source.MASTER, 0.8f, 1.2f), loc.x(), loc.y(), loc.z());
+                turret.entity.remove();
+            }
+        }
+    }
+
+    // ==================================================================
     // Aufraeumen
     // ==================================================================
 
     /**
-     * Nimmt alles zurueck: laufende Singularitaeten, Gleitfluege samt Schwingen und
+     * Nimmt alles zurueck: laufende Singularitaeten, Gleitfluege samt Schwingen, Geschütztürme und
      * ladende Railguns. Wird bei Match-Start, Match-Ende, Map-Wechsel und Plugin-Stop gerufen.
      */
     public void clearAll() {
@@ -497,6 +641,11 @@ public class TacticalItemsManager implements Listener {
             }
         }
         activeSingularities.clear();
+
+        for (ActiveTurret turret : new HashSet<>(activeTurrets)) {
+            removeTurret(turret);
+        }
+        activeTurrets.clear();
 
         for (UUID gliderId : new ArrayList<>(activeGliders)) {
             Player player = Bukkit.getPlayer(gliderId);

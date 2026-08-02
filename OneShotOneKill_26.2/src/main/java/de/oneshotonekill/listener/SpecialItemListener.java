@@ -486,6 +486,21 @@ public class SpecialItemListener implements Listener {
                 return;
             }
 
+            // Geschützturm: Auf Block platzieren
+            if (KillstreakManager.KEY_SENTRY_TURRET.equals(typeId)) {
+                event.setCancelled(true);
+                Block clicked = event.getClickedBlock();
+                if (clicked == null) {
+                    player.sendMessage(MiniMessage.miniMessage().deserialize("<red>[OSOK] 🤖 Ziele auf einen Block, um den Geschützturm zu platzieren!</red>"));
+                    return;
+                }
+                Location targetLoc = clicked.getRelative(event.getBlockFace()).getLocation();
+                if (plugin.getTacticalItemsManager().placeSentryTurret(player, targetLoc)) {
+                    consumeItem(player, item);
+                }
+                return;
+            }
+
         }
     }
 

@@ -40,6 +40,7 @@ public class KillstreakManager {
     public static final String KEY_RAILGUN = "railgun";
     public static final String KEY_SINGULARITY = "singularity";
     public static final String KEY_GLIDER = "glider_flight";
+    public static final String KEY_SENTRY_TURRET = "sentry_turret";
 
     /**
      * Alle Spezial-Item-Typen in <b>Index-Reihenfolge</b>. Die Reihenfolge muss zu
@@ -49,7 +50,7 @@ public class KillstreakManager {
     public static final List<String> SPECIAL_ITEM_IDS = List.of(
             KEY_RADAR, KEY_EXPLOSIVE, KEY_REFLECTOR, KEY_SMOKE, KEY_FROST, KEY_MINIGUN,
             KEY_TELEPORT, KEY_INVISIBILITY, KEY_MAGNET, KEY_CHAIN_LIGHTNING, KEY_STEALTH_BOMBER,
-            KEY_AIRSTRIKE, KEY_C4, KEY_RAILGUN, KEY_SINGULARITY, KEY_GLIDER);
+            KEY_AIRSTRIKE, KEY_C4, KEY_RAILGUN, KEY_SINGULARITY, KEY_GLIDER, KEY_SENTRY_TURRET);
 
     /** Anzahl der verfuegbaren Spezial-Item-Typen (Indizes 0 bis SPECIAL_ITEM_COUNT-1). */
     public static final int SPECIAL_ITEM_COUNT = SPECIAL_ITEM_IDS.size();
@@ -303,8 +304,15 @@ public class KillstreakManager {
             case 12 -> createSpecialItem(Material.TNT_MINECART, "<gold><b>[💥] C4 (Auf Block platzieren)</b></gold>", "<gray>Platzieren und per Fernzünder auslösen!</gray>", KEY_C4);
             case 13 -> createSpecialItem(Material.SPYGLASS, "<white><b>[🔭] Railgun (Rechtsklick)</b></white>", "<gray>Lädt 1s und tötet dann alles auf der Sichtlinie!</gray>", KEY_RAILGUN);
             case 14 -> createSpecialItem(Material.ECHO_SHARD, "<dark_purple><b>[🕳] Singularität (Werfen)</b></dark_purple>", "<gray>Reißt 4s lang alle Spieler im Umkreis zusammen!</gray>", KEY_SINGULARITY);
-            default -> createGliderItem();
+            case 15 -> createGliderItem();
+            default -> createSentryTurretItem();
         };
+    }
+
+    private ItemStack createSentryTurretItem() {
+        return createSpecialItem(Material.DISPENSER,
+                "<gold><b>[🤖] Geschützturm (Auf Block platzieren)</b></gold>",
+                "<gray>Platziere einen automatischen Geschützturm (20s Dauerfeuer)!</gray>", KEY_SENTRY_TURRET);
     }
 
     /**
