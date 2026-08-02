@@ -1,6 +1,8 @@
 package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.Fireworks;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -11,16 +13,18 @@ import org.bukkit.Color;
 import org.bukkit.command.CommandSender;
 import org.bukkit.FireworkEffect;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import net.kyori.adventure.sound.Sound;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Firework;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.meta.FireworkMeta;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class MatchManager {
@@ -417,15 +421,18 @@ public class MatchManager {
                     // Paper spawn(..., Consumer): Effekt und Staerke stehen fest, BEVOR die
                     // Rakete in der Welt erscheint. Kein Cast, kein Meta-Nachtrag.
                     wLoc.getWorld().spawn(wLoc.clone().add(0, 1, 0), Firework.class, firework -> {
-                        FireworkMeta fwm = firework.getFireworkMeta();
-                        fwm.addEffect(FireworkEffect.builder()
-                                .withColor(Color.YELLOW, Color.ORANGE, Color.PURPLE)
-                                .withFade(Color.WHITE)
-                                .with(FireworkEffect.Type.BALL_LARGE)
-                                .withFlicker()
-                                .build());
-                        fwm.setPower(1);
-                        firework.setFireworkMeta(fwm);
+                        // Paper DataComponents statt FireworkMeta: Effekt und Flugdauer stehen
+                        // als FIREWORKS-Komponente am Raketen-Stack, den die Entity uebernimmt.
+                        ItemStack rocket = ItemStack.of(Material.FIREWORK_ROCKET);
+                        rocket.setData(DataComponentTypes.FIREWORKS, Fireworks.fireworks(
+                                List.of(FireworkEffect.builder()
+                                        .withColor(Color.YELLOW, Color.ORANGE, Color.PURPLE)
+                                        .withFade(Color.WHITE)
+                                        .with(FireworkEffect.Type.BALL_LARGE)
+                                        .withFlicker()
+                                        .build()),
+                                1));
+                        firework.setItem(rocket);
                     });
                 }
 

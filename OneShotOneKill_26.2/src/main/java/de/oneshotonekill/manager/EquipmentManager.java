@@ -1,6 +1,8 @@
 package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.ItemEnchantments;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
@@ -11,6 +13,7 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
+import java.util.Map;
 
 /**
  * Vergibt und entfernt die Grundausruestung.
@@ -42,21 +45,21 @@ public class EquipmentManager {
 
     private static ItemStack createSword() {
         ItemStack sword = ItemStack.of(Material.IRON_SWORD);
-        // Paper editMeta: kein getItemMeta/setItemMeta Umweg, also eine Kopie weniger
-        sword.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize("<red><b>⚔ OneShot Dolch</b></red>"));
-            meta.setUnbreakable(true);
-        });
+        // Paper DataComponents: schreibt direkt in die Vanilla-Komponenten, ohne Meta-Kopie
+        sword.setData(DataComponentTypes.CUSTOM_NAME,
+                MiniMessage.miniMessage().deserialize("<red><b>⚔ OneShot Dolch</b></red>"));
+        // UNBREAKABLE ist NonValued - es wird gesetzt, nicht mit einem Wert belegt
+        sword.setData(DataComponentTypes.UNBREAKABLE);
         return sword;
     }
 
     private static ItemStack createBow() {
         ItemStack bow = ItemStack.of(Material.BOW);
-        bow.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize("<yellow><b>⚡ OneShot Bogen</b></yellow>"));
-            meta.setUnbreakable(true);
-            meta.addEnchant(Enchantment.INFINITY, 1, true);
-        });
+        bow.setData(DataComponentTypes.CUSTOM_NAME,
+                MiniMessage.miniMessage().deserialize("<yellow><b>⚡ OneShot Bogen</b></yellow>"));
+        bow.setData(DataComponentTypes.UNBREAKABLE);
+        bow.setData(DataComponentTypes.ENCHANTMENTS,
+                ItemEnchantments.itemEnchantments(Map.of(Enchantment.INFINITY, 1)));
         return bow;
     }
 
