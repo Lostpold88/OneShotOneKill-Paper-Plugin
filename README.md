@@ -269,3 +269,11 @@ also beliebig verschoben oder umbenannt werden. Bricht `javac` oder `jar` ab, sc
 
 ## 📄 Lizenz & Credits
 Entwickelt als 100% natives Paper 26.2 Plugin.
+
+---
+
+## 👥 Contributors & Mitwirkende
+
+- **Lostpold** ([@Lostpold88](https://github.com/Lostpold88)) – Owner & Lead Developer
+- **jonasmzz** ([@jonasmzzz](https://github.com/jonasmzzz)) – Contributor & Server Admin
+
