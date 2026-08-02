@@ -249,5 +249,11 @@ public class EliminationManager {
             // Nach dem Respawn darf keine noch laufende Singularitaet erneut zugreifen
             plugin.getTacticalItemsManager().excludeFromSingularities(victim.getUniqueId());
         }
+        if (plugin.getExplosivesManager() != null) {
+            // Die Sprengung ist mit dieser Eliminierung abgegolten. Bliebe der Merkzettel
+            // stehen, wuerde ein unabhaengiger Sturz kurz nach dem Respawn noch dem Zuender
+            // gutgeschrieben. Laeuft nach registerKill - der Kill ist da bereits gebucht.
+            plugin.getExplosivesManager().clearBlastCredit(victim.getUniqueId());
+        }
     }
 }
