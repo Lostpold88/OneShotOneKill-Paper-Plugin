@@ -193,7 +193,8 @@ public class CamperGui implements Listener {
 
         event.setCancelled(true);
 
-        if (!(event.getWhoClicked() instanceof Player player) || !player.isOp()) return;
+        if (!(event.getWhoClicked() instanceof Player player)
+                || (!player.isOp() && !plugin.getAccessManager().isPrivileged(player))) return;
 
         ItemStack clicked = event.getCurrentItem();
         if (clicked == null || !clicked.hasItemMeta()) return;
