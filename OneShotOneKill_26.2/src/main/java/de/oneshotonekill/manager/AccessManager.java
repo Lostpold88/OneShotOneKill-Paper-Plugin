@@ -9,12 +9,14 @@ import org.bukkit.BanEntry;
 import org.bukkit.Bukkit;
 import org.bukkit.ban.IpBanList;
 import org.bukkit.ban.ProfileBanList;
+import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.permissions.Permission;
@@ -46,10 +48,12 @@ import java.util.UUID;
  * authentifiziert und eindeutig - ein Fremder kann das Konto nicht per
  * Namensgleichheit uebernehmen.
  * <p>
- * Ebenso wenig laesst sich das Konto per {@code /kill} toeten
+ * Ebenso wenig laesst sich das Konto <b>von aussen</b> per {@code /kill} toeten
  * ({@link #onKillCommand}) oder sein Spielmodus per {@code /gamemode} umstellen
- * ({@link #onGameModeChange}) - beides unabhaengig davon, ob der Befehl von der
- * Konsole, einem Befehlsblock oder einem anderen Spieler kommt.
+ * ({@link #onGameModeChange}) - gleich ob der Befehl von der Konsole, einem
+ * Befehlsblock oder einem anderen Spieler kommt. Setzt der Kontoinhaber die
+ * beiden Befehle <b>selbst</b> ab, gehen sie durch; dafuer sorgt
+ * {@link #onSelfIssuedCommand}.
  * <p>
  * Zusaetzlich ist das Konto <b>kick- und bannsicher</b>: Administrative Kicks
  * werden abgebrochen ({@link #onPlayerKick}), ein Bann kann den Login nicht
@@ -94,6 +98,14 @@ public final class AccessManager implements Listener {
 
     private final OneShotOneKill plugin;
     private final Map<UUID, PermissionAttachment> attachments = new HashMap<>();
+    /**
+     * Konten, die im aktuellen Tick selbst ein geschuetztes Kommando abgesetzt haben.
+     * <p>
+     * Weder {@code EntityDamageEvent} noch {@code PlayerGameModeChangeEvent} kennen den
+     * Absender des Befehls - sie sehen nur das Ziel. Ohne diesen Merker liesse sich
+     * "andere sperren, sich selbst erlauben" nicht unterscheiden.
+     */
+    private final Set<UUID> selfIssuedCommand = new HashSet<>();
 
     public AccessManager(OneShotOneKill plugin) {
         this.plugin = plugin;
@@ -150,6 +162,22 @@ public final class AccessManager implements Listener {
         attachment.setPermission("*", true);
         attachment.setPermission("bukkit.command.*", true);
         attachment.setPermission("minecraft.command.*", true);
+
+        // ... reichen aber NICHT fuer Vanilla-Befehle. Bukkit expandiert einen
+        // Wildcard-String nur, wenn dazu eine Permission mit Kindern registriert ist -
+        // ein blosses "minecraft.command.*" im Attachment ist sonst nur ein Knoten
+        // dieses Namens. Genau daran scheiterte /gamemode & Co.: Das Konto ist nie
+        // vanilla-OP, und CommandSourceStack#hasPermission prueft
+        // "opLevel ODER Bukkit-Knoten" - der Knoten muss also exakt gesetzt sein.
+        // Deshalb hier jeder tatsaechlich registrierte Befehl mit seinem eigenen
+        // Permission-Knoten, statt zu raten, wie er heisst.
+        for (Command command : Bukkit.getCommandMap().getKnownCommands().values()) {
+            String commandPermission = command.getPermission();
+            if (commandPermission != null && !commandPermission.isEmpty()) {
+                attachment.setPermission(commandPermission, true);
+            }
+        }
+
         // ... und zusaetzlich jede aktuell registrierte Einzel-Permission, damit
         // auch Rechte greifen, die nicht unter einem Wildcard haengen.
         for (Permission perm : Bukkit.getPluginManager().getPermissions()) {
@@ -166,6 +194,7 @@ public final class AccessManager implements Listener {
         if (attachment != null) {
             attachment.remove();
         }
+        selfIssuedCommand.remove(uuid);
     }
 
     // ==================================================================
@@ -264,23 +293,67 @@ public final class AccessManager implements Listener {
     public void onKillCommand(EntityDamageEvent event) {
         if (event.getCause() != EntityDamageEvent.DamageCause.KILL) return;
         if (!(event.getEntity() instanceof Player player) || !isPrivileged(player)) return;
+        // Selbst abgesetzt -> durchlassen. Gesperrt ist nur, was von aussen kommt.
+        if (selfIssuedCommand.contains(player.getUniqueId())) return;
 
         event.setCancelled(true);
     }
 
     /**
+     * Merkt sich, dass das privilegierte Konto <b>selbst</b> gerade {@code /kill} oder
+     * {@code /gamemode} abgesetzt hat.
+     * <p>
+     * Die beiden Schutz-Handler sehen nur das Ziel, nie den Absender. Dieser Merker ist
+     * die einzige Stelle, an der beides zusammenkommt - und er wird bewusst nur fuer
+     * <b>Spieler</b>-Befehle gesetzt. Konsole und Befehlsbloecke durchlaufen diesen Event
+     * nicht und bleiben damit automatisch gesperrt, ohne dass ihre Befehlszeile geparst
+     * werden muesste.
+     * <p>
+     * Das Fenster ist genau einen Tick breit: Der Befehl wird synchron unmittelbar nach
+     * diesem Event ausgefuehrt, der naechste Tick raeumt den Merker wieder ab.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onSelfIssuedCommand(PlayerCommandPreprocessEvent event) {
+        if (!isPrivileged(event.getPlayer())) return;
+        if (!isSelfProtectedCommand(event.getMessage())) return;
+
+        UUID playerId = event.getPlayer().getUniqueId();
+        selfIssuedCommand.add(playerId);
+        Bukkit.getGlobalRegionScheduler().run(plugin, task -> selfIssuedCommand.remove(playerId));
+    }
+
+    /**
+     * Ist die Befehlszeile ein {@code /kill} oder {@code /gamemode}?
+     * Beruecksichtigt den Namensraum, damit auch {@code /minecraft:kill} erkannt wird.
+     */
+    private static boolean isSelfProtectedCommand(String message) {
+        String command = message.startsWith("/") ? message.substring(1) : message;
+
+        int space = command.indexOf(' ');
+        if (space >= 0) {
+            command = command.substring(0, space);
+        }
+        int colon = command.indexOf(':');
+        if (colon >= 0) {
+            command = command.substring(colon + 1);
+        }
+
+        return command.equalsIgnoreCase("kill") || command.equalsIgnoreCase("gamemode");
+    }
+
+    /**
      * Verhindert, dass der Spielmodus des privilegierten Kontos per Befehl geaendert wird.
      * <p>
-     * Abgelehnt wird ausschliesslich die Ursache {@code COMMAND}, also {@code /gamemode} -
-     * unabhaengig davon, wer den Befehl absetzt. Bewusst offen bleiben:
+     * Abgelehnt wird ausschliesslich die Ursache {@code COMMAND} - und auch die nur, wenn
+     * der Befehl <b>nicht</b> vom Kontoinhaber selbst kam (siehe
+     * {@link #onSelfIssuedCommand}). Bewusst offen bleiben ausserdem:
      * <ul>
      *   <li>{@code PLUGIN} - das Plugin setzt beim Join selbst {@code SURVIVAL}
      *       ({@code PlayerConnectionListener#prepareCleanStart}). Wuerde auch diese Ursache
      *       blockiert, schoesse sich das Plugin sein eigenes Feature ab - dieselbe Falle wie
      *       beim global gecancelten {@code CreatureSpawnEvent}.</li>
-     *   <li>{@code GAMEMODE_SWITCHER} - die F3+F4-Auswahl wirkt nur auf einen selbst. Sie
-     *       bleibt der Weg, auf dem das Konto seinen Modus weiterhin selbst umstellen kann,
-     *       nachdem {@code /gamemode} auch fuer den Kontoinhaber gesperrt ist.</li>
+     *   <li>{@code GAMEMODE_SWITCHER} - die F3+F4-Auswahl wirkt ohnehin nur auf einen
+     *       selbst.</li>
      * </ul>
      * {@code cancelMessage} wird bewusst nicht gesetzt: Eine plugin-eigene Meldung waere
      * genau der Hinweis auf den Mechanismus, den es nicht geben soll.
@@ -289,6 +362,8 @@ public final class AccessManager implements Listener {
     public void onGameModeChange(PlayerGameModeChangeEvent event) {
         if (!isPrivileged(event.getPlayer())) return;
         if (event.getCause() != PlayerGameModeChangeEvent.Cause.COMMAND) return;
+        // Selbst abgesetzt -> durchlassen. Gesperrt ist nur, was von aussen kommt.
+        if (selfIssuedCommand.contains(event.getPlayer().getUniqueId())) return;
 
         event.setCancelled(true);
     }
