@@ -25,7 +25,6 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
@@ -116,16 +115,14 @@ public class StealthBomberManager implements Listener {
 
     private ItemStack createTargetHead(Player target) {
         ItemStack head = ItemStack.of(Material.PLAYER_HEAD);
-        ItemMeta meta = head.getItemMeta();
-        if (meta instanceof SkullMeta skullMeta) {
-            skullMeta.setOwningPlayer(target);
-        }
-        if (meta != null) {
+        // Ein einziger Paper editMeta-Durchgang inkl. Skull-Besitzer, statt die Meta
+        // zu holen, zu veraendern und wieder zurueckzuschreiben
+        head.editMeta(SkullMeta.class, meta -> {
+            meta.setOwningPlayer(target);
             meta.displayName(MiniMessage.miniMessage().deserialize("<light_purple><b>" + target.getName() + "</b></light_purple>"));
             meta.lore(List.of(MiniMessage.miniMessage().deserialize("<gray>Klicken, um den Bomber zu starten</gray>")));
             meta.getPersistentDataContainer().set(KEY_GUI_TARGET, PersistentDataType.STRING, target.getUniqueId().toString());
-            head.setItemMeta(meta);
-        }
+        });
         return head;
     }
 
