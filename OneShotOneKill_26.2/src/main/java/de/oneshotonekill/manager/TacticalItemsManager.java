@@ -3,6 +3,7 @@ package de.oneshotonekill.manager;
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.model.MapConfig;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.ItemLore;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.sound.SoundStop;
@@ -442,15 +443,16 @@ public class TacticalItemsManager implements Listener {
      */
     private ItemStack createGliderWings() {
         ItemStack wings = ItemStack.of(Material.ELYTRA);
-        wings.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize("<aqua><b>🦅 Gleitflug-Schwingen</b></aqua>"));
-            meta.lore(List.of(MiniMessage.miniMessage().deserialize("<gray>Verschwinden am Ende des Fluges.</gray>")));
-            meta.setUnbreakable(true);
-            meta.getPersistentDataContainer().set(KEY_GLIDER_WINGS, PersistentDataType.BYTE, (byte) 1);
-        });
-        // Paper Data Components: Gleit-Faehigkeit und Glanz direkt am Item
+        // Paper DataComponents durchgehend - Name, Lore, Unzerstoerbarkeit,
+        // Gleit-Faehigkeit und Glanz direkt am Item
+        wings.setData(DataComponentTypes.CUSTOM_NAME,
+                MiniMessage.miniMessage().deserialize("<aqua><b>🦅 Gleitflug-Schwingen</b></aqua>"));
+        wings.setData(DataComponentTypes.LORE,
+                ItemLore.lore(List.of(MiniMessage.miniMessage().deserialize("<gray>Verschwinden am Ende des Fluges.</gray>"))));
+        wings.setData(DataComponentTypes.UNBREAKABLE);
         wings.setData(DataComponentTypes.GLIDER);
         wings.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
+        wings.editPersistentDataContainer(pdc -> pdc.set(KEY_GLIDER_WINGS, PersistentDataType.BYTE, (byte) 1));
         return wings;
     }
 

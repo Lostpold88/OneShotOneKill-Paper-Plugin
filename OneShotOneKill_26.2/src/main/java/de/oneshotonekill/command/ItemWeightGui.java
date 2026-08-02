@@ -2,6 +2,8 @@ package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.manager.KillstreakManager;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.ItemLore;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -135,57 +137,53 @@ public class ItemWeightGui implements Listener {
         ItemStack display = ItemStack.of(killstreak.createSpecificSpecialItem(index).getType(),
                 Math.max(1, Math.min(weight, 64)));
 
-        display.editMeta(meta -> {
-            meta.displayName(killstreak.getItemDisplayName(typeId));
-            meta.lore(List.of(
-                    MiniMessage.miniMessage().deserialize("<gray>Gewicht: <yellow><b>" + weight + "</b></yellow>"
-                            + (weight == 0 ? " <red>(spawnt nie)</red>" : "")),
-                    MiniMessage.miniMessage().deserialize("<gray>Spawnchance: <aqua>"
-                            + String.format(Locale.GERMANY, "%.1f", killstreak.getSpawnChance(typeId)) + " %</aqua>"),
-                    Component.empty(),
-                    MiniMessage.miniMessage().deserialize("<dark_gray>ID: " + typeId + "</dark_gray>")));
-        });
+        display.setData(DataComponentTypes.CUSTOM_NAME, killstreak.getItemDisplayName(typeId));
+        display.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(
+                MiniMessage.miniMessage().deserialize("<gray>Gewicht: <yellow><b>" + weight + "</b></yellow>"
+                        + (weight == 0 ? " <red>(spawnt nie)</red>" : "")),
+                MiniMessage.miniMessage().deserialize("<gray>Spawnchance: <aqua>"
+                        + String.format(Locale.GERMANY, "%.1f", killstreak.getSpawnChance(typeId)) + " %</aqua>"),
+                Component.empty(),
+                MiniMessage.miniMessage().deserialize("<dark_gray>ID: " + typeId + "</dark_gray>"))));
         return display;
     }
 
     private ItemStack arrowButton(String typeId, boolean increase) {
         ItemStack button = ItemStack.of(increase ? Material.LIME_STAINED_GLASS_PANE : Material.RED_STAINED_GLASS_PANE);
-        button.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize(increase
-                    ? "<green><b>▲ Gewicht erhöhen</b></green>"
-                    : "<red><b>▼ Gewicht senken</b></red>"));
-            meta.lore(List.of(
-                    MiniMessage.miniMessage().deserialize("<gray>Linksklick: <yellow>" + SMALL_STEP + "</yellow></gray>"),
-                    MiniMessage.miniMessage().deserialize("<gray>Rechtsklick: <yellow>" + LARGE_STEP + "</yellow></gray>")));
-            meta.getPersistentDataContainer().set(KEY_ITEM_TARGET, PersistentDataType.STRING, typeId);
-            meta.getPersistentDataContainer().set(KEY_DIRECTION, PersistentDataType.INTEGER, increase ? 1 : -1);
+        button.setData(DataComponentTypes.CUSTOM_NAME, MiniMessage.miniMessage().deserialize(increase
+                ? "<green><b>▲ Gewicht erhöhen</b></green>"
+                : "<red><b>▼ Gewicht senken</b></red>"));
+        button.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(
+                MiniMessage.miniMessage().deserialize("<gray>Linksklick: <yellow>" + SMALL_STEP + "</yellow></gray>"),
+                MiniMessage.miniMessage().deserialize("<gray>Rechtsklick: <yellow>" + LARGE_STEP + "</yellow></gray>"))));
+        button.editPersistentDataContainer(pdc -> {
+            pdc.set(KEY_ITEM_TARGET, PersistentDataType.STRING, typeId);
+            pdc.set(KEY_DIRECTION, PersistentDataType.INTEGER, increase ? 1 : -1);
         });
         return button;
     }
 
     private ItemStack resetButton() {
         ItemStack button = ItemStack.of(Material.BARREL);
-        button.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize("<gold><b>🔄 Zurücksetzen</b></gold>"));
-            meta.lore(List.of(MiniMessage.miniMessage().deserialize(
-                    "<gray>Setzt alle Gewichte auf <yellow>" + KillstreakManager.DEFAULT_ITEM_WEIGHT + "</yellow>.</gray>")));
-            meta.getPersistentDataContainer().set(KEY_ACTION, PersistentDataType.STRING, ACTION_RESET);
-        });
+        button.setData(DataComponentTypes.CUSTOM_NAME,
+                MiniMessage.miniMessage().deserialize("<gold><b>🔄 Zurücksetzen</b></gold>"));
+        button.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(MiniMessage.miniMessage().deserialize(
+                "<gray>Setzt alle Gewichte auf <yellow>" + KillstreakManager.DEFAULT_ITEM_WEIGHT + "</yellow>.</gray>"))));
+        button.editPersistentDataContainer(pdc -> pdc.set(KEY_ACTION, PersistentDataType.STRING, ACTION_RESET));
         return button;
     }
 
     private ItemStack closeButton() {
         ItemStack button = ItemStack.of(Material.BARRIER);
-        button.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize("<red><b>✖ Schließen</b></red>"));
-            meta.getPersistentDataContainer().set(KEY_ACTION, PersistentDataType.STRING, ACTION_CLOSE);
-        });
+        button.setData(DataComponentTypes.CUSTOM_NAME,
+                MiniMessage.miniMessage().deserialize("<red><b>✖ Schließen</b></red>"));
+        button.editPersistentDataContainer(pdc -> pdc.set(KEY_ACTION, PersistentDataType.STRING, ACTION_CLOSE));
         return button;
     }
 
     private ItemStack filler() {
         ItemStack pane = ItemStack.of(Material.GRAY_STAINED_GLASS_PANE);
-        pane.editMeta(meta -> meta.displayName(Component.empty()));
+        pane.setData(DataComponentTypes.CUSTOM_NAME, Component.empty());
         return pane;
     }
 

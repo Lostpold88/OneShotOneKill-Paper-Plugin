@@ -1,6 +1,7 @@
 package de.oneshotonekill.listener;
 
 import de.oneshotonekill.OneShotOneKill;
+import io.papermc.paper.datacomponent.DataComponentTypes;
 import net.kyori.adventure.sound.Sound;
 import de.oneshotonekill.manager.GlowManager;
 import de.oneshotonekill.manager.KillstreakManager;
@@ -21,7 +22,6 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.util.Vector;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -210,8 +210,8 @@ public class SpecialItemListener implements Listener {
         if (!(event.getEntity() instanceof Player player)) return;
         Item item = event.getItem();
         if (item.getPersistentDataContainer().has(KillstreakManager.KEY_GROUND_SPECIAL_PDC, PersistentDataType.BYTE)) {
-            ItemMeta meta = item.getItemStack().hasItemMeta() ? item.getItemStack().getItemMeta() : null;
-            Component nameComp = meta != null && meta.hasDisplayName() ? meta.displayName() : Component.text("Spezial-Item");
+            Component customName = item.getItemStack().getData(DataComponentTypes.CUSTOM_NAME);
+            Component nameComp = customName != null ? customName : Component.text("Spezial-Item");
             
             // Zaehlt fuer die Match-Zusammenfassung - bei eingefrorener Wertung nicht
             if (!plugin.getMatchManager().isStatsPaused()) {

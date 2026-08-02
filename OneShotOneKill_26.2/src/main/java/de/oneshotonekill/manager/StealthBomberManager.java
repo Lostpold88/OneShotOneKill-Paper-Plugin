@@ -2,6 +2,9 @@ package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.model.MapConfig;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.ItemLore;
+import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
@@ -25,7 +28,6 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
 
@@ -115,14 +117,15 @@ public class StealthBomberManager implements Listener {
 
     private ItemStack createTargetHead(Player target) {
         ItemStack head = ItemStack.of(Material.PLAYER_HEAD);
-        // Ein einziger Paper editMeta-Durchgang inkl. Skull-Besitzer, statt die Meta
-        // zu holen, zu veraendern und wieder zurueckzuschreiben
-        head.editMeta(SkullMeta.class, meta -> {
-            meta.setOwningPlayer(target);
-            meta.displayName(MiniMessage.miniMessage().deserialize("<light_purple><b>" + target.getName() + "</b></light_purple>"));
-            meta.lore(List.of(MiniMessage.miniMessage().deserialize("<gray>Klicken, um den Bomber zu starten</gray>")));
-            meta.getPersistentDataContainer().set(KEY_GUI_TARGET, PersistentDataType.STRING, target.getUniqueId().toString());
-        });
+        // Paper DataComponents: Kopfbesitzer, Name und Lore als Vanilla-Komponenten.
+        // PROFILE ersetzt SkullMeta#setOwningPlayer - kein SkullMeta mehr noetig.
+        head.setData(DataComponentTypes.PROFILE, ResolvableProfile.resolvableProfile(target.getPlayerProfile()));
+        head.setData(DataComponentTypes.CUSTOM_NAME,
+                MiniMessage.miniMessage().deserialize("<light_purple><b>" + target.getName() + "</b></light_purple>"));
+        head.setData(DataComponentTypes.LORE,
+                ItemLore.lore(List.of(MiniMessage.miniMessage().deserialize("<gray>Klicken, um den Bomber zu starten</gray>"))));
+        head.editPersistentDataContainer(pdc ->
+                pdc.set(KEY_GUI_TARGET, PersistentDataType.STRING, target.getUniqueId().toString()));
         return head;
     }
 
