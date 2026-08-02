@@ -26,7 +26,8 @@ Schnittstelle anbietet (z. B. `org.bukkit.Material`, `org.bukkit.Location`).
 3. **Paper Entity & Region Schedulers**: Thread-safe Aufgabenverwaltung ausschließlich über `player.getScheduler()`, `Bukkit.getGlobalRegionScheduler()`, `Bukkit.getRegionScheduler()` und `Bukkit.getAsyncScheduler()` (0% veraltete `Bukkit.getScheduler()` / `BukkitRunnable` Aufrufe).
 4. **PersistentDataContainer (PDC)**: `NamespacedKey` zur Item- und Entitäts-Markierung (0% String-Name-Vergleiche, 0% Bukkit Metadata API, 0% NBT-Reflection).
 5. **Native Paper Scoreboard API**: `Criteria.DUMMY` statt String-Kriterien, Zeilen als Component über `Score#customName(Component)`, Zahlen ausblenden via `Objective#numberFormat(NumberFormat.blank())` und `Score#numberFormat(NumberFormat.blank())` (0% NMS-Reflection, 0% veraltete Score-Tricks).
-6. **Asynchrone Teleportation**: Spieler-Teleports ausschließlich via `player.teleportAsync(location)` zur Vermeidung von Main-Thread Lagspikes. Ergebnisse über `.thenAccept(...)` verarbeiten. Mehrere Teleports abwarten via `CompletableFuture.allOf(...)`. Feinsteuerung über `TeleportFlag`.
+6. **Asynchrone Teleportation**: **Spieler**-Teleports ausschließlich via `player.teleportAsync(location)` zur Vermeidung von Main-Thread Lagspikes. Ergebnisse über `.thenAccept(...)` verarbeiten. Mehrere Teleports abwarten via `CompletableFuture.allOf(...)`. Feinsteuerung über `TeleportFlag.Relative` (`X`, `Y`, `Z`, `YAW`, `PITCH`, `VELOCITY_*`) und `TeleportFlag.EntityState` (`RETAIN_PASSENGERS`, `RETAIN_VEHICLE`, `RETAIN_OPEN_INVENTORY`).
+   **Geltungsbereich:** Die Regel gilt Spielern. Wird eine Entity **jeden Tick** in derselben Welt umpositioniert (Zielchunk garantiert geladen, Aufruf bereits auf dem Main-Thread), ist das synchrone `entity.teleport(loc)` die richtige Wahl – `teleportAsync` mehrfach anzustoßen, bevor der vorherige Teleport aufgelöst ist, blockiert die Bewegung. Werden dabei Flags gebraucht, liefert sie Papers Überladung `teleport(loc, TeleportFlag…)`. Beides ist regelkonform, keine Ausnahme.
 7. **Paper Spatial Entity Index Engine**: Räumliche Abfragen ausschließlich via `loc.getNearbyPlayers(radius)`, `location.getNearbyEntitiesByType(...)` und `world.getEntitiesByClass(...)` (0% `getNearbyEntities` + `instanceof`, 0% Schleifen über alle Server-Spieler zum Filtern nach Distanz).
 8. **Paper Plugin Chunk Tickets**: Speicher- und Chunk-Verwaltung via `world.addPluginChunkTicket` / `removePluginChunkTicket`.
 9. **Kyori Adventure & MiniMessage Component API**: Alle Chatnachrichten, Titles, Tablisten, Kicks & Emojis ausschließlich via Kyori `Component`, `MiniMessage.miniMessage().deserialize(...)` und `Audience` (0% `ChatColor`, 0% legacy `§` Paragraphen-Zeichen in Java-Strings, 0% `LegacyComponentSerializer`).
@@ -273,15 +274,17 @@ Tick-Task) · `EntityKnockbackEvent` (Rückstoß abfangen/ändern, u. a. bei Exp
 
 ---
 
-## ⚠️ Dokumentierte Ausnahmen
+## ⚠️ Verifizierte Verhaltensfallen
 
-Diese Regeln **blind** anzuwenden hat im Projekt nachweislich Bugs erzeugt. Abweichungen sind hier
-erlaubt und **müssen im Code kommentiert werden**:
+**Es gibt keine Ausnahmen vom Paper-Grundsatz.** Jede Zeile im Projekt benutzt die Paper-API.
 
-- **Regel 6 gilt Spielern, nicht jeder Entity.** Wird eine Entity jeden Tick in derselben Welt
-  umpositioniert (Zielchunk garantiert geladen, Aufruf bereits auf dem Main-Thread), ist
-  `entity.teleport(loc)` korrekt. `teleportAsync` mehrfach anzustoßen, bevor der vorherige Teleport
-  aufgelöst ist, blockiert die Bewegung.
+Was hier steht, sind **keine** Abweichungen von den 20 Vorgaben, sondern Verhalten von Paper und
+Vanilla, das die Regeln nicht abdecken können – jeder Punkt ist mit einem echten Bug im Projekt
+bezahlt. Alle genannten Aufrufe (`setAware`, `setInvulnerable`, `setPhase`, `getScore`,
+`createExplosion`) **sind** die aktuelle, nicht-deprecatete API; es gibt zu keinem davon eine
+Paper-Alternative, die man stattdessen nehmen könnte. Wer einen dieser Punkte im Code umsetzt,
+kommentiert ihn dort.
+
 - **`setAI(false)` niemals auf `EnderDragon`.** Das NoAI-Flag wird zum Client synchronisiert; der
   Drache ist ein mehrteiliges Modell, dessen Segmente clientseitig in `aiStep()` nachgeführt werden.
   Mit NoAI bleibt das Modell optisch stehen, obwohl die Entity serverseitig korrekt wandert.
@@ -291,8 +294,8 @@ erlaubt und **müssen im Code kommentiert werden**:
   Teleport muss die Phase neu gesetzt werden, sonst fliegt er zurück.
 - **Scoreboard-Zeilen brauchen den String-Entry.** `Objective` bietet zwar auch
   `getScore(OfflinePlayer)` und `getScoreFor(Entity)` – für freie Textzeilen taugt aber nur
-  `getScore(String)`. Der Entry-String ist dabei nur ein unsichtbarer Schlüssel; die sichtbare
-  Zeile entsteht über `Score#customName(Component)`.
+  `getScore(String)`. Das ist die aktuelle API, kein Legacy-Rückfall: Der Entry-String ist ein
+  unsichtbarer Schlüssel, die sichtbare Zeile entsteht über `Score#customName(Component)`.
 - **Eigene Listener können eigene Features blockieren.** Beispiel: `CreatureSpawnEvent` global zu
   canceln verhindert auch plugin-eigene Spawns – `SpawnReason.CUSTOM` ausnehmen.
 - **`world.createExplosion` trifft doppelt so weit wie die Sprengkraft.**
