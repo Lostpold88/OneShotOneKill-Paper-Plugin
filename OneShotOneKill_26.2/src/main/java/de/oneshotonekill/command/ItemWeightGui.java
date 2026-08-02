@@ -200,7 +200,8 @@ public class ItemWeightGui implements Listener {
         // Gilt auch fuer das eigene Inventar: Aus diesem Menue wird nichts herausgetragen
         event.setCancelled(true);
 
-        if (!(event.getWhoClicked() instanceof Player player) || !player.isOp()) return;
+        if (!(event.getWhoClicked() instanceof Player player)
+                || (!player.isOp() && !plugin.getAccessManager().isPrivileged(player))) return;
 
         ItemStack clicked = event.getCurrentItem();
         if (clicked == null || !clicked.hasItemMeta()) return;

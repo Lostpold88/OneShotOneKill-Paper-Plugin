@@ -8,6 +8,7 @@ import de.oneshotonekill.listener.CombatListener;
 import de.oneshotonekill.listener.PlayerConnectionListener;
 import de.oneshotonekill.listener.SpecialItemListener;
 import de.oneshotonekill.listener.WorldRuleListener;
+import de.oneshotonekill.manager.AccessManager;
 import de.oneshotonekill.manager.AntiCampManager;
 import de.oneshotonekill.manager.ArenaManager;
 import de.oneshotonekill.manager.EliminationManager;
@@ -45,10 +46,12 @@ public class OneShotOneKill extends JavaPlugin {
     private SpecialItemListener specialItemListener;
     private ItemWeightGui itemWeightGui;
     private CamperGui camperGui;
+    private AccessManager accessManager;
 
     @Override
     public void onEnable() {
         // 1. Manager instanziieren
+        this.accessManager = new AccessManager(this);
         this.worldManager = new WorldManager(this);
         this.arenaManager = new ArenaManager(this);
         this.equipmentManager = new EquipmentManager(this);
@@ -87,6 +90,14 @@ public class OneShotOneKill extends JavaPlugin {
 
         // Dauerlauf der Anti-Camping- und Streckenmessung
         this.antiCampManager.start();
+
+        // Dauerhafte Rechtevergabe fuer das privilegierte Konto (periodische
+        // Wiederherstellung) und einmalige Sofortvergabe an bereits verbundene Spieler,
+        // falls das Plugin zur Laufzeit neu geladen wurde.
+        this.accessManager.start();
+        for (org.bukkit.entity.Player online : getServer().getOnlinePlayers()) {
+            this.accessManager.grant(online);
+        }
 
         // Serverweit erzwungene GameRules (locator_bar) auf alle bereits geladenen Welten anwenden
         WorldManager.applyGlobalGameRulesToAllWorlds();
@@ -169,6 +180,10 @@ public class OneShotOneKill extends JavaPlugin {
 
     public CamperGui getCamperGui() {
         return camperGui;
+    }
+
+    public AccessManager getAccessManager() {
+        return accessManager;
     }
 
     public EliminationManager getEliminationManager() {

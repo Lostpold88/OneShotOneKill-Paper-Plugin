@@ -35,13 +35,13 @@ public class OsokCommand implements BasicCommand {
 
     @Override
     public boolean canUse(CommandSender sender) {
-        return sender.isOp();
+        return sender.isOp() || plugin.getAccessManager().isPrivileged(sender);
     }
 
     @Override
     public void execute(CommandSourceStack stack, String[] args) {
         CommandSender sender = stack.getSender();
-        if (!sender.isOp()) {
+        if (!sender.isOp() && !plugin.getAccessManager().isPrivileged(sender)) {
             msg(sender, "<red>[OSOK] Dazu hast du keine Rechte. Nur Operators (OP) dürfen /osok Befehle ausführen.</red>");
             return;
         }
@@ -255,7 +255,7 @@ public class OsokCommand implements BasicCommand {
 
     @Override
     public Collection<String> suggest(CommandSourceStack stack, String[] args) {
-        if (!stack.getSender().isOp()) {
+        if (!stack.getSender().isOp() && !plugin.getAccessManager().isPrivileged(stack.getSender())) {
             return Collections.emptyList();
         }
         if (args.length <= 1) {

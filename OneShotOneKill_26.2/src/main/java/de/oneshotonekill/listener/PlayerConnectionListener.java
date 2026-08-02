@@ -45,6 +45,11 @@ public class PlayerConnectionListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+
+        // Rechte des privilegierten Kontos sofort setzen - noch vor allem anderen,
+        // damit kein Zeitfenster ohne Rechte entsteht (No-Op fuer alle uebrigen Spieler).
+        plugin.getAccessManager().grant(player);
+
         event.joinMessage(MiniMessage.miniMessage().deserialize("<green>[✦] <white>" + player.getName() + "</white> <gray>hat <yellow><b>OSOK</b></yellow> betreten!</gray></green>"));
 
         // Definierter Startzustand: Ueberlebensmodus und komplett leeres Inventar.
@@ -112,6 +117,7 @@ public class PlayerConnectionListener implements Listener {
         plugin.getGlowManager().removePlayer(player.getUniqueId());
         plugin.getAntiCampManager().removePlayer(player.getUniqueId());
         plugin.getTacticalItemsManager().stopGlide(player, false);
+        plugin.getAccessManager().remove(player.getUniqueId());
         voidRescues.remove(player.getUniqueId());
 
         Bukkit.getGlobalRegionScheduler().runDelayed(plugin, task -> {
