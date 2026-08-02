@@ -3,6 +3,7 @@ package de.oneshotonekill.manager;
 import de.oneshotonekill.OneShotOneKill;
 import net.kyori.adventure.sound.Sound;
 import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.ItemLore;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -11,7 +12,6 @@ import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
 
@@ -141,8 +141,9 @@ public class KillstreakManager {
         if (index < 0) {
             return Component.text(typeId);
         }
-        ItemMeta meta = createSpecificSpecialItem(index).getItemMeta();
-        return (meta != null && meta.hasDisplayName()) ? meta.displayName() : Component.text(typeId);
+        ItemStack sample = createSpecificSpecialItem(index);
+        Component name = sample.getData(DataComponentTypes.CUSTOM_NAME);
+        return name != null ? name : Component.text(typeId);
     }
 
     /**
@@ -325,8 +326,8 @@ public class KillstreakManager {
 
     public void giveSpecificSpecialItem(Player player, int itemType, int streak) {
         ItemStack item = createSpecificSpecialItem(itemType);
-        ItemMeta meta = item.getItemMeta();
-        Component itemNameComponent = meta != null && meta.hasDisplayName() ? meta.displayName() : Component.text("Spezial-Item");
+        Component customName = item.getData(DataComponentTypes.CUSTOM_NAME);
+        Component itemNameComponent = customName != null ? customName : Component.text("Spezial-Item");
 
         player.getInventory().addItem(item);
         player.playSound(Sound.sound(org.bukkit.Sound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.8f));
@@ -351,14 +352,15 @@ public class KillstreakManager {
 
     public ItemStack createSpecialItem(Material mat, String miniMessageName, String miniMessageLore, String itemTypeId) {
         ItemStack stack = ItemStack.of(mat);
-        // Paper editMeta: eine Kopie statt getItemMeta/setItemMeta
-        stack.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize(miniMessageName));
-            meta.lore(Collections.singletonList(MiniMessage.miniMessage().deserialize(miniMessageLore)));
-            if (itemTypeId != null) {
-                meta.getPersistentDataContainer().set(specialItemKey, PersistentDataType.STRING, itemTypeId);
-            }
-        });
+        // Paper DataComponents statt ItemMeta: schreibt direkt in die Vanilla-Komponenten
+        // custom_name und lore, ohne eine Meta-Kopie anzulegen.
+        stack.setData(DataComponentTypes.CUSTOM_NAME, MiniMessage.miniMessage().deserialize(miniMessageName));
+        stack.setData(DataComponentTypes.LORE,
+                ItemLore.lore(Collections.singletonList(MiniMessage.miniMessage().deserialize(miniMessageLore))));
+        if (itemTypeId != null) {
+            // Der PDC haengt am Stack, nicht an der Meta - gleicher Speicher, ein Zugriff weniger
+            stack.editPersistentDataContainer(pdc -> pdc.set(specialItemKey, PersistentDataType.STRING, itemTypeId));
+        }
         return stack;
     }
 

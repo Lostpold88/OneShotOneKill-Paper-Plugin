@@ -2,6 +2,8 @@ package de.oneshotonekill.command;
 
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.manager.AntiCampManager;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.ItemLore;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -104,82 +106,75 @@ public class CamperGui implements Listener {
     private ItemStack timeDisplay(AntiCampManager antiCamp) {
         int seconds = antiCamp.getCampSeconds();
         ItemStack display = ItemStack.of(Material.CLOCK, Math.max(1, Math.min(seconds, 64)));
-        display.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize(
-                    "<yellow><b>⏱ Zeit: " + seconds + "s</b></yellow>"));
-            meta.lore(List.of(
-                    MiniMessage.miniMessage().deserialize("<gray>So lange muss ein Spieler auf der Stelle</gray>"),
-                    MiniMessage.miniMessage().deserialize("<gray>bleiben, bis er markiert wird.</gray>"),
-                    Component.empty(),
-                    MiniMessage.miniMessage().deserialize("<dark_gray>Bereich: " + AntiCampManager.MIN_CAMP_SECONDS
-                            + "-" + AntiCampManager.MAX_CAMP_SECONDS + "s</dark_gray>")));
-        });
+        display.setData(DataComponentTypes.CUSTOM_NAME, MiniMessage.miniMessage().deserialize(
+                "<yellow><b>⏱ Zeit: " + seconds + "s</b></yellow>"));
+        display.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(
+                MiniMessage.miniMessage().deserialize("<gray>So lange muss ein Spieler auf der Stelle</gray>"),
+                MiniMessage.miniMessage().deserialize("<gray>bleiben, bis er markiert wird.</gray>"),
+                Component.empty(),
+                MiniMessage.miniMessage().deserialize("<dark_gray>Bereich: " + AntiCampManager.MIN_CAMP_SECONDS
+                        + "-" + AntiCampManager.MAX_CAMP_SECONDS + "s</dark_gray>"))));
         return display;
     }
 
     private ItemStack radiusDisplay(AntiCampManager antiCamp) {
         double radius = antiCamp.getCampRadius();
         ItemStack display = ItemStack.of(Material.COMPASS, Math.max(1, Math.min((int) Math.round(radius), 64)));
-        display.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize(
-                    "<aqua><b>⌖ Radius: " + String.format(Locale.GERMANY, "%.1f", radius) + " Blöcke</b></aqua>"));
-            meta.lore(List.of(
-                    MiniMessage.miniMessage().deserialize("<gray>Innerhalb dieses Umkreises gilt ein</gray>"),
-                    MiniMessage.miniMessage().deserialize("<gray>Spieler als \"steht noch da\".</gray>"),
-                    Component.empty(),
-                    MiniMessage.miniMessage().deserialize("<dark_gray>Bereich: "
-                            + String.format(Locale.GERMANY, "%.0f", AntiCampManager.MIN_CAMP_RADIUS) + "-"
-                            + String.format(Locale.GERMANY, "%.0f", AntiCampManager.MAX_CAMP_RADIUS) + " Blöcke</dark_gray>")));
-        });
+        display.setData(DataComponentTypes.CUSTOM_NAME, MiniMessage.miniMessage().deserialize(
+                "<aqua><b>⌖ Radius: " + String.format(Locale.GERMANY, "%.1f", radius) + " Blöcke</b></aqua>"));
+        display.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(
+                MiniMessage.miniMessage().deserialize("<gray>Innerhalb dieses Umkreises gilt ein</gray>"),
+                MiniMessage.miniMessage().deserialize("<gray>Spieler als \"steht noch da\".</gray>"),
+                Component.empty(),
+                MiniMessage.miniMessage().deserialize("<dark_gray>Bereich: "
+                        + String.format(Locale.GERMANY, "%.0f", AntiCampManager.MIN_CAMP_RADIUS) + "-"
+                        + String.format(Locale.GERMANY, "%.0f", AntiCampManager.MAX_CAMP_RADIUS) + " Blöcke</dark_gray>"))));
         return display;
     }
 
     private ItemStack toggleButton(AntiCampManager antiCamp) {
         boolean enabled = antiCamp.isEnabled();
         ItemStack button = ItemStack.of(enabled ? Material.LIME_DYE : Material.GRAY_DYE);
-        button.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize(enabled
-                    ? "<green><b>⏻ Markierung: AN</b></green>"
-                    : "<red><b>⏻ Markierung: AUS</b></red>"));
-            meta.lore(List.of(
-                    MiniMessage.miniMessage().deserialize("<gray>Klicken zum Umschalten.</gray>"),
-                    Component.empty(),
-                    MiniMessage.miniMessage().deserialize(
-                            "<dark_gray>Die Streckenmessung für die Match-</dark_gray>"),
-                    MiniMessage.miniMessage().deserialize(
-                            "<dark_gray>Zusammenfassung läuft unabhängig weiter.</dark_gray>")));
-            meta.getPersistentDataContainer().set(KEY_ACTION, PersistentDataType.STRING, ACTION_TOGGLE);
-        });
+        button.setData(DataComponentTypes.CUSTOM_NAME, MiniMessage.miniMessage().deserialize(enabled
+                ? "<green><b>⏻ Markierung: AN</b></green>"
+                : "<red><b>⏻ Markierung: AUS</b></red>"));
+        button.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(
+                MiniMessage.miniMessage().deserialize("<gray>Klicken zum Umschalten.</gray>"),
+                Component.empty(),
+                MiniMessage.miniMessage().deserialize(
+                        "<dark_gray>Die Streckenmessung für die Match-</dark_gray>"),
+                MiniMessage.miniMessage().deserialize(
+                        "<dark_gray>Zusammenfassung läuft unabhängig weiter.</dark_gray>"))));
+        button.editPersistentDataContainer(pdc -> pdc.set(KEY_ACTION, PersistentDataType.STRING, ACTION_TOGGLE));
         return button;
     }
 
     private ItemStack arrowButton(String action, boolean increase, String unit) {
         ItemStack button = ItemStack.of(increase ? Material.LIME_STAINED_GLASS_PANE : Material.RED_STAINED_GLASS_PANE);
-        button.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize(increase
-                    ? "<green><b>▲ Erhöhen</b></green>"
-                    : "<red><b>▼ Senken</b></red>"));
-            meta.lore(List.of(
-                    MiniMessage.miniMessage().deserialize("<gray>Linksklick: <yellow>" + SMALL_STEP + " " + unit + "</yellow></gray>"),
-                    MiniMessage.miniMessage().deserialize("<gray>Rechtsklick: <yellow>" + LARGE_STEP + " " + unit + "</yellow></gray>")));
-            meta.getPersistentDataContainer().set(KEY_ACTION, PersistentDataType.STRING, action);
-            meta.getPersistentDataContainer().set(KEY_DIRECTION, PersistentDataType.INTEGER, increase ? 1 : -1);
+        button.setData(DataComponentTypes.CUSTOM_NAME, MiniMessage.miniMessage().deserialize(increase
+                ? "<green><b>▲ Erhöhen</b></green>"
+                : "<red><b>▼ Senken</b></red>"));
+        button.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(
+                MiniMessage.miniMessage().deserialize("<gray>Linksklick: <yellow>" + SMALL_STEP + " " + unit + "</yellow></gray>"),
+                MiniMessage.miniMessage().deserialize("<gray>Rechtsklick: <yellow>" + LARGE_STEP + " " + unit + "</yellow></gray>"))));
+        button.editPersistentDataContainer(pdc -> {
+            pdc.set(KEY_ACTION, PersistentDataType.STRING, action);
+            pdc.set(KEY_DIRECTION, PersistentDataType.INTEGER, increase ? 1 : -1);
         });
         return button;
     }
 
     private ItemStack closeButton() {
         ItemStack button = ItemStack.of(Material.BARRIER);
-        button.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize("<red><b>✖ Schließen</b></red>"));
-            meta.getPersistentDataContainer().set(KEY_ACTION, PersistentDataType.STRING, ACTION_CLOSE);
-        });
+        button.setData(DataComponentTypes.CUSTOM_NAME,
+                MiniMessage.miniMessage().deserialize("<red><b>✖ Schließen</b></red>"));
+        button.editPersistentDataContainer(pdc -> pdc.set(KEY_ACTION, PersistentDataType.STRING, ACTION_CLOSE));
         return button;
     }
 
     private ItemStack filler() {
         ItemStack pane = ItemStack.of(Material.GRAY_STAINED_GLASS_PANE);
-        pane.editMeta(meta -> meta.displayName(Component.empty()));
+        pane.setData(DataComponentTypes.CUSTOM_NAME, Component.empty());
         return pane;
     }
 

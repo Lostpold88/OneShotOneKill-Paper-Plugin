@@ -2,6 +2,9 @@ package de.oneshotonekill.manager;
 
 import de.oneshotonekill.OneShotOneKill;
 import de.oneshotonekill.model.MapConfig;
+import io.papermc.paper.datacomponent.DataComponentTypes;
+import io.papermc.paper.datacomponent.item.ItemLore;
+import io.papermc.paper.datacomponent.item.ResolvableProfile;
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
@@ -27,8 +30,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.Vector;
 
@@ -303,7 +304,7 @@ public class ExplosivesManager implements Listener {
 
     private ItemStack createTerrainCell(Location cell) {
         ItemStack item = ItemStack.of(Material.LIGHT_GRAY_STAINED_GLASS_PANE);
-        applyCellMeta(item, MiniMessage.miniMessage().deserialize("<gray>Sektor</gray>"), cell, null);
+        writeCellData(item, MiniMessage.miniMessage().deserialize("<gray>Sektor</gray>"), cell, null);
         return item;
     }
 
@@ -318,38 +319,36 @@ public class ExplosivesManager implements Listener {
                 ? MiniMessage.miniMessage().deserialize("<aqua><b>" + shown.getName() + "</b> <gray>(du)</gray></aqua>")
                 : MiniMessage.miniMessage().deserialize("<red><b>" + shown.getName() + "</b></red>");
 
-        // Ein einziger editMeta-Durchgang inkl. Skull-Besitzer. Vorher liefen hier zwei
-        // getItemMeta/setItemMeta-Runden pro Kopf - bei 54 Feldern pro Menue spuerbar.
-        item.editMeta(SkullMeta.class, meta -> {
-            meta.setOwningPlayer(shown);
-            writeCellMeta(meta, name, shown.getLocation(), shown.getUniqueId());
-        });
+        // PROFILE ersetzt SkullMeta#setOwningPlayer - kein SkullMeta und keine Meta-Kopie
+        // mehr, was bei 54 Feldern pro Menue spuerbar ist.
+        item.setData(DataComponentTypes.PROFILE, ResolvableProfile.resolvableProfile(shown.getPlayerProfile()));
+        writeCellData(item, name, shown.getLocation(), shown.getUniqueId());
         return item;
     }
 
-    private void applyCellMeta(ItemStack item, Component displayName, Location cell, UUID targetPlayer) {
-        // Paper editMeta: schreibt direkt, ohne die Meta zweimal zu kopieren
-        item.editMeta(meta -> writeCellMeta(meta, displayName, cell, targetPlayer));
-    }
-
     /**
+     * Schreibt Name, Lore und Zielkoordinaten eines Rasterfeldes als Paper DataComponents
+     * bzw. in den PDC des Stacks.
+     *
      * @param aim          Zielpunkt des Feldes - Sektormitte, oder die Position des Gegners
      * @param targetPlayer markierter Gegner, oder {@code null} fuer ein leeres Feld
      */
-    private void writeCellMeta(ItemMeta meta, Component displayName, Location aim, UUID targetPlayer) {
-        meta.displayName(displayName);
-        meta.lore(List.of(
+    private void writeCellData(ItemStack item, Component displayName, Location aim, UUID targetPlayer) {
+        item.setData(DataComponentTypes.CUSTOM_NAME, displayName);
+        item.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(
                 MiniMessage.miniMessage().deserialize(String.format(java.util.Locale.US,
                         "<gray>X <white>%.0f</white>   Z <white>%.0f</white></gray>", aim.getX(), aim.getZ())),
                 MiniMessage.miniMessage().deserialize(targetPlayer != null
                         ? "<red>Gegner in diesem Sektor!</red>"
                         : "<dark_gray>leer</dark_gray>"),
-                MiniMessage.miniMessage().deserialize("<yellow>Klicken, um den Air-Strike anzufordern</yellow>")));
-        meta.getPersistentDataContainer().set(KEY_TARGET_X, PersistentDataType.DOUBLE, aim.getX());
-        meta.getPersistentDataContainer().set(KEY_TARGET_Z, PersistentDataType.DOUBLE, aim.getZ());
-        if (targetPlayer != null) {
-            meta.getPersistentDataContainer().set(KEY_TARGET_PLAYER, PersistentDataType.STRING, targetPlayer.toString());
-        }
+                MiniMessage.miniMessage().deserialize("<yellow>Klicken, um den Air-Strike anzufordern</yellow>"))));
+        item.editPersistentDataContainer(pdc -> {
+            pdc.set(KEY_TARGET_X, PersistentDataType.DOUBLE, aim.getX());
+            pdc.set(KEY_TARGET_Z, PersistentDataType.DOUBLE, aim.getZ());
+            if (targetPlayer != null) {
+                pdc.set(KEY_TARGET_PLAYER, PersistentDataType.STRING, targetPlayer.toString());
+            }
+        });
     }
 
     @EventHandler
@@ -503,12 +502,12 @@ public class ExplosivesManager implements Listener {
         }
 
         ItemStack detonator = ItemStack.of(Material.LEVER);
-        // Paper editMeta: schreibt direkt, ohne die Meta zweimal zu kopieren
-        detonator.editMeta(meta -> {
-            meta.displayName(MiniMessage.miniMessage().deserialize("<red><b>[💥] Fernzünder (Rechtsklick)</b></red>"));
-            meta.lore(List.of(MiniMessage.miniMessage().deserialize("<gray>Zündet alle deine C4-Ladungen!</gray>")));
-            meta.getPersistentDataContainer().set(KEY_DETONATOR, PersistentDataType.BYTE, (byte) 1);
-        });
+        // Paper DataComponents statt ItemMeta
+        detonator.setData(DataComponentTypes.CUSTOM_NAME,
+                MiniMessage.miniMessage().deserialize("<red><b>[💥] Fernzünder (Rechtsklick)</b></red>"));
+        detonator.setData(DataComponentTypes.LORE,
+                ItemLore.lore(List.of(MiniMessage.miniMessage().deserialize("<gray>Zündet alle deine C4-Ladungen!</gray>"))));
+        detonator.editPersistentDataContainer(pdc -> pdc.set(KEY_DETONATOR, PersistentDataType.BYTE, (byte) 1));
         owner.getInventory().addItem(detonator);
     }
 
