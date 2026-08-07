@@ -106,15 +106,29 @@ JAR gepackt.
 
 ## ✅ Pflicht-Vorgehen vor jeder Änderung
 
-**Nicht raten, nachsehen.** API-Signatur, Nullability und Deprecation immer gegen die JAR prüfen:
+**Nicht raten, nachsehen.** Signatur, Nullability, Deprecation **und Wertebereich** immer gegen die
+JAR prüfen (im Cache liegt nur die Fassung des aktuellen Servers, `head -1` trifft also immer die
+richtige):
 
 ```bash
 J=$(find ~/.gradle/caches/modules-2/files-2.1/io.papermc.paper/paper-api -name "*.jar" | head -1)
-javap -cp $J org.bukkit.entity.Player | grep -i "<methode>"        # Signatur
-javap -v -cp $J org.bukkit.entity.Player | grep -B5 "Nullable"      # Nullability
-javap -v -cp $J org.bukkit.BanList | grep -A12 "public .* pardon"   # Deprecation
+javap -cp $J org.bukkit.entity.Player | grep -i "<methode>"           # Signatur
+javap -v -cp $J org.bukkit.entity.Player | grep -B5 "Nullable"         # Nullability
+javap -v -cp $J org.bukkit.BanList | grep -A12 "public .* pardon"      # Deprecation
+javap -c -cp $J 'org.bukkit.Particle$DustOptions' \
+  | grep -B4 -E "requireRange|checkArgument|checkNotNull"              # Wertebereich
 unzip -l $J | grep -oE "io/papermc/paper/[a-z0-9/]+/" | sort | uniq -c | sort -rn
 ```
+
+> ⚠️ **Wertebereiche stehen im Rumpf, nicht in der Signatur.** Wer einen Zahlenwert an eine fremde
+> API übergibt, sieht sich deshalb den Konstruktor bzw. Setter mit `javap -c` an – die Grenzen
+> stehen als `ldc`-Konstanten direkt vor dem `requireRange`/`checkArgument`-Aufruf.
+> `Particle.DustOptions(Color, float)` sieht in der Signatur aus wie „irgendein Float", prüft die
+> Größe aber mit `requireRange(size, "size", 0.01F, 4.0F)`. Ein Wert daneben fliegt erst zur
+> Laufzeit auf – und steht die Konstante in einem `companion object`, schon beim **Laden der
+> Klasse**: Dann aktiviert sich das Plugin gar nicht erst. Genau so ist der Nuke-Nebel einmal am
+> Serverstart gescheitert. Ist der exakte Betrag ohnehin Geschmackssache, gehört der Wert zusätzlich
+> geklemmt (`coerceIn`), statt sich auf die Grenze zu verlassen.
 
 > ⚠️ **Deprecation immer im Block der einzelnen Methode prüfen** (`grep -A12` auf die Signatur).
 > `Deprecated: true` steht im `javap -v`-Strom **nach** der Signatur; ein `grep -B` ordnet es leicht
