@@ -19,6 +19,7 @@ import de.oneshotonekill.manager.KillEffectManager
 import de.oneshotonekill.manager.KillstreakManager
 import de.oneshotonekill.manager.MatchManager
 import de.oneshotonekill.manager.MatchSummaryManager
+import de.oneshotonekill.manager.NukeManager
 import de.oneshotonekill.manager.ScoreboardManager
 import de.oneshotonekill.manager.StealthBomberManager
 import de.oneshotonekill.manager.TacticalItemsManager
@@ -61,12 +62,26 @@ class OneShotOneKill : JavaPlugin() {
         private set
     lateinit var matchSummaryManager: MatchSummaryManager
         private set
+    lateinit var nukeManager: NukeManager
+        private set
     lateinit var specialItemListener: SpecialItemListener
         private set
     lateinit var itemWeightGui: ItemWeightGui
         private set
     lateinit var camperGui: CamperGui
         private set
+
+    /**
+     * `onEnable` ist vollstaendig durchgelaufen.
+     *
+     * Paper ruft `onDisable` **auch dann**, wenn `onEnable` mittendrin abbricht - und dann sind
+     * die spaeteren `lateinit`-Manager noch nicht gesetzt. Frueher stand hier die Pruefung auf
+     * einen einzelnen Manager; die haelt nur so lange, wie er der letzte in der Reihe ist. Ein
+     * neuer Manager dahinter (der `NukeManager`) hat genau das aufgedeckt: Der eigentliche
+     * Startfehler ging in einer zweiten, irrefuehrenden `UninitializedPropertyAccessException`
+     * unter. Dieses Flag haengt an keiner Reihenfolge.
+     */
+    private var enableCompleted = false
 
     override fun onEnable() {
         // 1. Manager instanziieren
@@ -85,6 +100,7 @@ class OneShotOneKill : JavaPlugin() {
         tacticalItemsManager = TacticalItemsManager(this)
         antiCampManager = AntiCampManager(this)
         matchSummaryManager = MatchSummaryManager(this)
+        nukeManager = NukeManager(this)
 
         // 2. Map & Welt laden
         worldManager.setupWorld()
@@ -105,6 +121,7 @@ class OneShotOneKill : JavaPlugin() {
             explosivesManager,
             tacticalItemsManager,
             antiCampManager,
+            nukeManager,
             itemTestCommand,
             itemWeightGui,
             camperGui,
@@ -122,9 +139,10 @@ class OneShotOneKill : JavaPlugin() {
         // Serverweit erzwungene GameRules (locator_bar) auf alle bereits geladenen Welten anwenden
         WorldManager.applyGlobalGameRulesToAllWorlds()
 
-        // Beim Start aufraeumen: Drachen und TNT aus einem vorherigen Lauf entfernen
+        // Beim Start aufraeumen: Drachen, TNT und Nuke-Reste aus einem vorherigen Lauf entfernen
         stealthBomberManager.clearAll()
         explosivesManager.clearAll()
+        nukeManager.clearAll()
 
         // 4. Paper Dynamic Lifecycle Command Registration (Brigadier BasicCommand)
         lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
@@ -135,15 +153,16 @@ class OneShotOneKill : JavaPlugin() {
         // 5. Scoreboards fuer alle bereits verbundenen Spieler aktualisieren
         scoreboardManager.updateAllScoreboards()
 
+        enableCompleted = true
+
         logger.info("=========================================")
         logger.info("  ONESHOT-ONEKILL NATIVE PAPER PLUGIN    ")
         logger.info("=========================================")
     }
 
     override fun onDisable() {
-        // Kein lateinit-Zugriff ohne Initialisierung: Bricht onEnable vorzeitig ab, ruft Paper
-        // trotzdem onDisable - die Pruefung faengt genau diesen Fall ab.
-        if (!::scoreboardManager.isInitialized) return
+        // Kein lateinit-Zugriff ohne vollstaendigen Start - siehe enableCompleted
+        if (!enableCompleted) return
 
         scoreboardManager.resetAllStats()
         matchManager.stopVictoryTasks()
@@ -152,6 +171,7 @@ class OneShotOneKill : JavaPlugin() {
         stealthBomberManager.clearAll()
         explosivesManager.clearAll()
         tacticalItemsManager.clearAll()
+        nukeManager.clearAll()
         // Frost-Traps zuletzt: Sie veraendern Bloecke und muessen weg, bevor die Welt gesichert wird
         specialItemListener.clearAllTraps()
         specialItemListener.clearAllVanish()

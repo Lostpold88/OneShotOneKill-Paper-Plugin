@@ -3,6 +3,7 @@ package de.oneshotonekill.listener
 import de.oneshotonekill.OneShotOneKill
 import de.oneshotonekill.manager.GlowManager
 import de.oneshotonekill.manager.KillstreakManager
+import de.oneshotonekill.manager.NukeManager
 import de.oneshotonekill.util.mini
 import io.papermc.paper.datacomponent.DataComponentTypes
 import net.kyori.adventure.sound.Sound
@@ -422,6 +423,12 @@ class SpecialItemListener(private val plugin: OneShotOneKill) : Listener {
                 if (plugin.tacticalItemsManager.startGlide(player)) {
                     item.subtract(1)
                 }
+            }
+
+            // Nuke: oeffnet das Freigabemenue. Der Auslöser wird erst beim Abschuss verbraucht.
+            NukeManager.KEY_NUKE -> {
+                event.isCancelled = true
+                plugin.nukeManager.openCodeGui(player)
             }
 
             // Geschuetzturm: auf Block platzieren

@@ -210,11 +210,18 @@ class PlayerConnectionListener(private val plugin: OneShotOneKill) : Listener {
      * gewertet.
      */
     private fun rescueFromVoid(player: Player) {
+        // Zuschauer des Nuke-Finales fallen nicht fest - sie fliegen. Eine Rettung wuerde sie nur
+        // aus der vergasten Arena reissen, der sie gerade zusehen sollen.
+        if (player.gameMode == GameMode.SPECTATOR) return
+
         // Rettung laeuft bereits, der Spieler faellt nur noch bis zum Teleport
         if (!voidRescues.add(player.uniqueId)) return
 
         val matchRunning = isMatchRunning
-        val target: Location? = (if (matchRunning) plugin.arenaManager.getRandomArenaLocation() else null)
+        // Waehrend des Nuke-Finales gehoert der Spieler zurueck in die Arena - aber ohne Waffen:
+        // Gekaempft wird nicht mehr, gestorben wird am Gas.
+        val intoArena = matchRunning || plugin.nukeManager.isRunning
+        val target: Location? = (if (intoArena) plugin.arenaManager.getRandomArenaLocation() else null)
             ?: plugin.worldManager.spawnLocation
 
         if (target == null) {

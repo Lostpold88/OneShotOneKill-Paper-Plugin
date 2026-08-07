@@ -23,6 +23,15 @@ class CombatListener(private val plugin: OneShotOneKill) : Listener {
     fun onEntityDamage(event: EntityDamageEvent) {
         val player = event.entity as? Player ?: return
 
+        // Waehrend des Nuke-Finales ist JEDER Schaden abgeschaltet - auch /kill und Void. Das
+        // TNT-Bombardement ist reine Kulisse: Sterben soll man ausschliesslich am Giftgas, und das
+        // wickelt der NukeManager selbst ab. Ohne diese Sperre waere die halbe Runde tot, bevor das
+        // Gas ueberhaupt austritt.
+        if (plugin.nukeManager.isRunning) {
+            event.isCancelled = true
+            return
+        }
+
         // /kill und Void-Sturz muessen als echte Tode durchgehen
         if (event.cause == EntityDamageEvent.DamageCause.KILL ||
             event.cause == EntityDamageEvent.DamageCause.VOID

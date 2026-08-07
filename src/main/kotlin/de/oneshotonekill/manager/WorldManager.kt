@@ -138,6 +138,9 @@ class WorldManager(private val plugin: OneShotOneKill) {
         plugin.killstreakManager.clearAllGroundItems()
         plugin.stealthBomberManager.clearAll()
         plugin.explosivesManager.clearAll()
+        // Gaswolken und Nuke-TNT haengen ebenfalls an der alten Welt; der Aufruf holt zugleich
+        // Zuschauer eines laufenden Finales zurueck in den Ueberlebensmodus
+        plugin.nukeManager.clearAll()
         // Frost-Traps MUESSEN vor dem Entladen weg - danach ist die alte Welt nicht mehr
         // erreichbar und die gespeicherten Locations zeigen ins Leere
         plugin.specialItemListener.clearAllTraps()

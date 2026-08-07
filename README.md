@@ -174,6 +174,30 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - Ausblendung der roten Sidebar-Zahlen nativ über `Objective#numberFormat(NumberFormat.blank())` (0% NMS-Reflection).
   - Tablisten-Namen mit Live-Stats über `Player#playerListName(Component)`.
 
+- **☢ Nuke-Finale – so endet eine Runde**:
+  - **Das Match-Ziel gewinnt die Runde nicht mehr von selbst.** Wer das Kill-Limit erreicht – oder bei Ablauf der Zeit vorne liegt – bekommt den **Nuke-Auslöser** ins Inventar. Das Match läuft normal weiter, bis er ihn benutzt; beendet wird die Runde ausschließlich durch die Nuke.
+  - Freigeschaltet ist immer nur **einer**: Erreichen zwei Spieler das Ziel kurz hintereinander, bleibt es beim Ersten. Verlässt der Freigeschaltete den Server, wandert der Auslöser an den aktuell Führenden – sonst hinge die Runde fest.
+  - **Freigabemenü mit vierstelligem Code**: Rechtsklick öffnet ein Menü, in dem der Code steht und über Zifferntasten abgetippt werden muss. Darunter liegen **Abbrechen** und **Bestätigen**; bestätigen lässt sich erst, wenn vier Ziffern eingegeben sind, und ein falscher Code setzt die Eingabe zurück. Der Code wird bei jedem Öffnen neu gewürfelt, *Abbrechen* behält den Auslöser.
+
+    ```
+    Reihe 0  · · C C C C · · ·     Code zum Abtippen
+    Reihe 1  · · E E E E · · ·     Eingabe
+    Reihe 2  · · · · · · · · ·
+    Reihe 3  1 2 3 4 5 6 7 8 9     Zifferntasten
+    Reihe 4  · · ⌫ · 0 · · · ·     Löschen / Null
+    Reihe 5  · · ✖ · · · ✔ · ·     Abbrechen / Bestätigen
+    ```
+  - **Ablauf des Angriffs**: Über der ganzen Arena geht **TNT** nieder – 12 Wellen, alle halbe Sekunde. Die Blockliste jeder Explosion wird geleert, die **Map bleibt unversehrt**, und **sterben kann daran niemand**: Solange das Finale läuft, ist jeder Schadensweg abgeschaltet. Das Bombardement ist Kulisse, getötet wird ausschließlich vom Gas.
+  - **Dann tritt Giftgas aus** – dichte, giftgrüne Schwaden über der ganzen Karte. Die Optik entsteht auf zwei Wegen:
+      - **Volumen um jeden Betrachter**: Fünfmal pro Sekunde bekommt jeder Spieler seinen eigenen Gasquader gelegt (±14 Blöcke breit, 5 hoch), dazu ein dichter Bodenteppich an seinen Füßen. Gezeichnet wird über `Particle.DUST` mit `DustOptions` – nur damit lässt sich ein Partikel wirklich einfärben – in **zwei Grüntönen** übereinander, damit die Wolke Tiefe bekommt statt wie eine flache Wand zu wirken, plus etwas Rauch für Struktur.
+      - **Warum pro Spieler und nicht über die Welt?** `World#spawnParticle` schickt jede Schwade an alle Umstehenden; bei fünf Spielern käme dieselbe Wolke fünffach an. `Player#spawnParticle` zeichnet nur für den einen Betrachter – und weil das Volumen ohnehin um ihn herum liegt, sieht er exakt dasselbe. Dazu kommt: Die Streuwerte spannen einen Quader auf, in dem **der Client** die hunderte Partikel selbst verteilt. Aus *einem* Paket wird die ganze Wolke, der Server zählt sie nicht einmal.
+      - **Fernwirkung** über ein überlappendes Raster aus `AreaEffectCloud`-Schwaden (Abstand 10, Radius 10) in derselben Farbe – damit die Karte auch dort vergast aussieht, wo gerade niemand steht.
+      - Die Schwaden laufen **über das Rundenende hinaus**: Die Zuschauer sollen auf eine vergaste Karte blicken, nicht auf klare Luft. Erst der nächste `/osok start` räumt sie weg.
+  - Die *Wirkung* hängt bewusst **nicht** an den Wolken (deren Trefferprüfung ist flach und endet an Wänden), sondern an einer eigenen Dosis-Buchführung: Jede Sekunde steigt die Dosis, Sicht und Tempo brechen ein, die Lebensanzeige sinkt sichtbar mit – und nach **12 Sekunden** erstickt der Spieler. Kurz vor Schluss wird es zusätzlich schwarz vor Augen.
+  - Die Lebensanzeige geht dabei **nie auf null**: Ein echter Tod würde den Respawn-Bildschirm zeigen und an der Buchführung vorbeilaufen. Wer erstickt, wandert sofort in den **Zuschauermodus**.
+  - **Erst wenn alle erstickt sind**, werden alle Zuschauer in die Mitte der vergasten Arena gesetzt – und **danach** wird der Sieger ausgerufen. Die Ausrufung wartet ausdrücklich auf die Teleports (`CompletableFuture.allOf`), sonst stünde der Siegertext im Chat, während die Spieler noch auf ihrem Sterbepunkt hängen.
+  - Der nächste `/osok start` (oder `/osok stop`, oder ein Map-Wechsel) räumt alles ab: Gaswolken, liegengebliebenes TNT, den Auslöser – und holt **nur die Zuschauer zurück, die das Finale selbst gesetzt hat**. Wer freiwillig zuschaut, bleibt Zuschauer.
+
 - **🏆 Match-Manager & Dauer-Einstellung**:
   - **Match-Ziel immer sichtbar**: Sobald ein Kill- oder Zeitlimit konfiguriert ist, steht es auf dem Scoreboard **jedes** Spielers.
   - **Wertung einfrieren (`/osok pausestats`)**: Kills, Tode und Streaks werden nicht mehr gezählt, der Match-Timer läuft nicht weiter und das Scoreboard bleibt stehen. Anders als `/osok pause` bleibt das Match spielbar – Treffer wirken normal (Effekt, Respawn), zählen aber nicht. Ein erneuter Aufruf setzt die Wertung fort.
@@ -182,7 +206,8 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - `/osok stop` beendet das Spiel: Statistiken zurückgesetzt, Ausrüstung und Effekte entfernt, alle Spieler in der Lobby der aktiven Map.
   - Konfigurierbare Kills-, Minuten- und Sekunden-Limits (`/osok dauer kills <n>`, `/osok dauer minuten <n>`, `/osok dauer sekunden <n>`, `/osok dauer off`).
   - **Verzögerter Start**: Festgelegte Limits werden gespeichert und erst beim Ausführen von `/osok start` im Scoreboard sichtbar & als Timer gestartet.
-  - Gewinner-Titel, Siegeshymne (Notenblock-Song) & Feuerwerksspektakel.
+  - **Erreichtes Kill-Limit und abgelaufene Zeit schalten die Nuke frei** (siehe oben) statt sofort einen Sieger auszurufen.
+  - Gewinner-Titel & Feuerwerksspektakel – **ohne Musik**: Der Notenblock-Song lief früher in Dauerschleife bis zum nächsten Match-Start.
 
 - **🌍 Welt-Handling & GameRules**:
   - Automatische Extraktion von `Standard.zip` bzw. `DustPvP.zip` aus den Plugin-Ressourcen in die Server-Welt.

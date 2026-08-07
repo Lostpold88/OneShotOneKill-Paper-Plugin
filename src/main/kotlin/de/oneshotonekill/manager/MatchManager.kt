@@ -21,7 +21,6 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 import java.util.Locale
-import kotlin.math.pow
 import kotlin.math.sin
 import org.bukkit.Sound as BukkitSound
 
@@ -54,7 +53,6 @@ class MatchManager(private val plugin: OneShotOneKill) {
         private set
 
     private var timerTask: ScheduledTask? = null
-    private var victoryMusicTask: ScheduledTask? = null
     private var victoryEffectsTask: ScheduledTask? = null
     private var victoryTitleTask: ScheduledTask? = null
 
@@ -210,6 +208,8 @@ class MatchManager(private val plugin: OneShotOneKill) {
         plugin.killstreakManager.clearAllGroundItems()
         plugin.stealthBomberManager.clearAll()
         plugin.explosivesManager.clearAll()
+        // Holt auch Zuschauer aus dem Nuke-Finale zurueck in den Ueberlebensmodus
+        plugin.nukeManager.clearAll()
         clearAllItemEffects()
 
         // Zusammenfassung VOR dem Zuruecksetzen - danach sind die Statistiken leer
@@ -286,45 +286,60 @@ class MatchManager(private val plugin: OneShotOneKill) {
     }
 
     fun stopVictoryTasks() {
-        victoryMusicTask?.cancel()
-        victoryMusicTask = null
         victoryEffectsTask?.cancel()
         victoryEffectsTask = null
         victoryTitleTask?.cancel()
         victoryTitleTask = null
     }
 
+    /**
+     * Das Kill-Ziel beendet das Match **nicht** mehr von selbst: Wer es erreicht, bekommt den
+     * Nuke-Auslöser und beendet die Runde damit selbst (siehe [de.oneshotonekill.manager.NukeManager]).
+     */
     fun checkKillWinner(killer: Player, currentKills: Int) {
         if (isMatchEnded || killLimit <= 0) return
 
         if (currentKills >= killLimit) {
-            celebrateWinner(killer)
+            plugin.nukeManager.arm(killer, "$currentKills Kills")
         }
     }
 
+    /**
+     * Zeit abgelaufen: Der Fuehrende bekommt den Nuke-Auslöser. Das Match laeuft weiter, bis er ihn
+     * benutzt - beendet wird die Runde ausschliesslich durch die Nuke.
+     */
     fun triggerTimeLimitWinner() {
         if (isMatchEnded) return
 
-        val winner = Bukkit.getOnlinePlayers().maxByOrNull { plugin.scoreboardManager.getKills(it.uniqueId) }
+        val leader = Bukkit.getOnlinePlayers().maxByOrNull { plugin.scoreboardManager.getKills(it.uniqueId) }
 
-        if (winner != null) {
-            celebrateWinner(winner)
+        if (leader != null) {
+            plugin.nukeManager.arm(leader, "Zeit abgelaufen")
         } else {
-            broadcast("<red>[OSOK] ⏱ Die Zeit ist abgelaufen! Keines Match-Ergebnis.</red>")
+            broadcast("<red>[OSOK] ⏱ Die Zeit ist abgelaufen! Kein Match-Ergebnis.</red>")
         }
     }
 
-    fun celebrateWinner(winner: Player) {
+    /**
+     * Gemeinsamer Anfang jedes Match-Endes: Kampf aus, Timer aus, Item-Wirkungen weg.
+     *
+     * Der `NukeManager` ruft das beim Abschuss - ab da soll niemand mehr kaempfen, waehrend das
+     * Bombardement laeuft.
+     */
+    fun beginFinale() {
         isMatchEnded = true
         stopTimer()
         clearAllItemEffects()
+    }
+
+    /**
+     * Sieger-Zeremonie. Bewusst **ohne Musik**: Der Notenblock-Song lief frueher in Dauerschleife
+     * bis zum naechsten Match-Start.
+     */
+    fun celebrateWinner(winner: Player) {
+        beginFinale()
 
         val winnerKills = plugin.scoreboardManager.getKills(winner.uniqueId)
-
-        // Initialer Sound fuer alle Spieler
-        Bukkit.getServer().playSound(
-            Sound.sound(BukkitSound.UI_TOAST_CHALLENGE_COMPLETE, Sound.Source.MASTER, 1.0f, 1.0f)
-        )
 
         // Chat-Ankuendigung mit Regenbogen-Gradient
         broadcast(" ")
@@ -345,7 +360,7 @@ class MatchManager(private val plugin: OneShotOneKill) {
         winner.addPotionEffect(PotionEffect(PotionEffectType.GLOWING, WINNER_EFFECT_TICKS, 0))
         winner.addPotionEffect(PotionEffect(PotionEffectType.SPEED, WINNER_EFFECT_TICKS, 2))
 
-        // Megalovania-Endlosschleife, Regenbogen-Title-Animation & Sieger-Spektakel starten!
+        // Regenbogen-Title-Animation & Sieger-Spektakel starten
         playWinnerCelebrationLoop(winner, winnerKills)
     }
 
@@ -385,10 +400,7 @@ class MatchManager(private val plugin: OneShotOneKill) {
             2L,
         )
 
-        // 2. Paper Native Global Region Scheduler: Musik-Song (Undertale Megalovania)
-        playMegalovaniaSong()
-
-        // 3. Paper Native Global Region Scheduler: Feuerwerk & Partikel-Spektakel
+        // 2. Paper Native Global Region Scheduler: Feuerwerk & Partikel-Spektakel
         var effectTicks = 0
         victoryEffectsTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
             plugin,
@@ -436,57 +448,6 @@ class MatchManager(private val plugin: OneShotOneKill) {
             1L,
             10L,
         )
-    }
-
-    private fun playMegalovaniaSong() {
-        val noteClicks = buildMegalovaniaTrack()
-        var currentTick = 0
-
-        victoryMusicTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
-            plugin,
-            { task ->
-                if (!isMatchEnded) {
-                    task.cancel()
-                    victoryMusicTask = null
-                    return@runAtFixedRate
-                }
-
-                val clicks = noteClicks[currentTick % noteClicks.size]
-                if (clicks >= 0) {
-                    val pitch = 2.0.pow((clicks - 12.0) / 12.0).toFloat()
-                    // Laeuft jeden Tick: ueber die Server-Audience statt drei Aufrufe pro Spieler
-                    val server = Bukkit.getServer()
-                    server.playSound(Sound.sound(BukkitSound.BLOCK_NOTE_BLOCK_BIT, Sound.Source.MASTER, 1.0f, pitch))
-                    server.playSound(Sound.sound(BukkitSound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 0.8f, pitch))
-                    server.playSound(
-                        Sound.sound(BukkitSound.BLOCK_NOTE_BLOCK_BASS, Sound.Source.MASTER, 1.0f, pitch * 0.5f)
-                    )
-                }
-
-                currentTick++
-            },
-            1L,
-            1L,
-        )
-    }
-
-    /**
-     * Baut die Notenspur: `-1` bedeutet Pause, jeder andere Wert ist die Anzahl der
-     * Notenblock-Klicks, aus der sich die Tonhoehe ergibt.
-     */
-    private fun buildMegalovaniaTrack(): IntArray {
-        val startClicks = intArrayOf(6, 4, 3, 2)
-        val offsets = intArrayOf(0, 2, 5, 10, 17, 22, 27, 32, 35, 37)
-        val restClicks = intArrayOf(-1, -1, 18, 13, 12, 11, 9, 6, 9, 11)
-
-        val track = IntArray(SONG_LENGTH_TICKS) { -1 }
-        for (pass in 0 until SONG_PASSES) {
-            val baseTick = pass * SONG_PASS_TICKS
-            offsets.forEachIndexed { index, offset ->
-                track[baseTick + offset] = if (index < 2) startClicks[pass] else restClicks[index]
-            }
-        }
-        return track
     }
 
     fun togglePause(sender: Player?) {
@@ -561,6 +522,8 @@ class MatchManager(private val plugin: OneShotOneKill) {
         plugin.killstreakManager.clearAllGroundItems()
         plugin.stealthBomberManager.clearAll()
         plugin.explosivesManager.clearAll()
+        // Muss vor dem Teleport laufen: Holt die Zuschauer des letzten Finales zurueck ins Spiel
+        plugin.nukeManager.clearAll()
         clearAllItemEffects()
 
         val spawn = plugin.worldManager.spawnLocation
@@ -615,9 +578,5 @@ class MatchManager(private val plugin: OneShotOneKill) {
 
         /** Leuchten und Tempo des Siegers: 6 Minuten. */
         const val WINNER_EFFECT_TICKS = 7200
-
-        const val SONG_LENGTH_TICKS = 170
-        const val SONG_PASSES = 4
-        const val SONG_PASS_TICKS = 42
     }
 }
