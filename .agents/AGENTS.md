@@ -187,7 +187,7 @@ Adventure-Klassen liegen in `Server/libraries/net/kyori/adventure-api/...` – i
 
 ## 🗺️ Paper-API-Landkarte
 
-Alles hier ist gegen `paper-api-26.2.build.87-stable.jar` verifiziert. Reihenfolge: Einsatzgebiet →
+Alles hier ist gegen die `paper-api` der 26.2-Reihe verifiziert. Reihenfolge: Einsatzgebiet →
 Einstiegspunkt → **Vorzug** gegenüber der Bukkit-Lösung.
 
 ### 1. Plugin-Start & Lebenszyklus
@@ -423,10 +423,21 @@ selbst in den Gradle-Cache).
 `deployPlugin` baut `OneShotOneKill_26.2.jar` und kopiert sie nach `Server/plugins/`. Nur bauen
 ohne Deploy: `.\gradlew.bat build`.
 
-Der Build zieht `io.papermc.paper:paper-api:26.2.build.87-stable` von `repo.papermc.io` – exakt die
-Version des laufenden Servers. Wird der Server aktualisiert, wird die Version in
-`gradle/libs.versions.toml` mitgezogen. `Server/libraries/` wird **nicht** mehr als Klassenpfad
-gebraucht; der Build läuft auch, wenn der Server noch nie gestartet wurde.
+**Die paper-api-Version pflegt sich selbst.** Der Build liest sie aus `Server/server.jar`
+(Paperclip führt seine Bibliotheken unter `META-INF/libraries/…` mit) und kompiliert gegen exakt
+die API, die der Server fährt – ohne dass der Server dafür gestartet worden sein muss. Fehlt die
+Server-JAR, greift `Server/libraries/`, danach der Pin in `gradle/libs.versions.toml`. Der Build
+gibt bei jedem Lauf aus, welche Version er benutzt und woher sie stammt.
+
+Daraus abgeleitet werden auch `api-version` und `name` in `paper-plugin.yml`, die Plugin-Version
+und der JAR-Dateiname. **Nirgends im Projekt steht eine Build-Nummer von Hand** – wer eine
+hineinschreibt, baut genau die Abweichung ein, die diese Mechanik verhindert.
+
+Nach einem Server-Update den Pin nachziehen (nur für Clones ohne Server relevant):
+
+```bash
+./gradlew syncPaperVersion
+```
 
 `build.ps1` existiert weiterhin, ist aber nur noch ein Wrapper auf `gradlew deployPlugin`.
 

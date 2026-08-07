@@ -238,11 +238,37 @@ Die fertige `build/libs/OneShotOneKill_26.2.jar` in den `plugins/`-Ordner des Se
 den Server neu starten — ein laufender Server lädt die JAR nicht neu.
 
 **Was der Build macht:**
-1. Kompiliert den Kotlin-Quellcode gegen `io.papermc.paper:paper-api:26.2.build.87-stable`.
+1. Ermittelt die `paper-api`-Version **automatisch aus `Server/server.jar`** und kompiliert gegen
+   genau die API, die dein Server fährt (siehe unten).
 2. Bündelt die `kotlin-stdlib` in die JAR — Paper bringt sie nicht mit, und `paper-plugin.yml` hat
    kein `libraries:`-Feld.
-3. Packt `paper-plugin.yml` (die Version kommt aus dem Build) sowie `Standard.zip` und `DustPvP.zip`
-   dazu.
+3. Packt `paper-plugin.yml` sowie `Standard.zip` und `DustPvP.zip` dazu.
+
+### 🔄 Paper-Version: keine Handarbeit
+
+Gebaut wird immer gegen die API, die der Server tatsächlich benutzt — sonst fallen Abweichungen
+erst zur Laufzeit auf, im schlimmsten Fall als `NoSuchMethodError`. Die Version wird in dieser
+Reihenfolge gesucht:
+
+| Quelle | Wann sie greift |
+| :--- | :--- |
+| `Server/server.jar` | Immer, wenn eine Server-JAR da ist — die Paperclip-JAR führt ihre Bibliotheken unter `META-INF/libraries/…` mit. **Der Server muss dafür nie gestartet worden sein.** |
+| `Server/libraries/…` | Wenn nur die entpackten Bibliotheken vorliegen |
+| `gradle/libs.versions.toml` | Frischer Clone ohne Server |
+
+Der Build sagt bei jedem Lauf, was er gewählt hat:
+
+```
+Paper-API: 26.2.build.110-stable  (aus Server/server.jar)
+```
+
+Daraus leiten sich `api-version`, `name` und `version` in `paper-plugin.yml` sowie der
+JAR-Dateiname ab. Nach einem Server-Update passiert also **nichts weiter als ein erneuter Build**.
+Nur der Rückfallwert für Clones ohne Server will einmal nachgezogen werden:
+
+```bash
+./gradlew syncPaperVersion
+```
 
 Wer einen Testserver unter `Server/` liegen hat (nicht versioniert), bekommt die JAR mit
 `./gradlew deployPlugin` direkt dorthin kopiert. `build.ps1` ist ein Wrapper auf genau diesen Task.

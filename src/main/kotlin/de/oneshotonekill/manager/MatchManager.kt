@@ -69,7 +69,7 @@ class MatchManager(private val plugin: OneShotOneKill) {
         if (isStatsPaused) {
             broadcast(
                 "<gold>[OSOK] ⏸ <b>STATISTIK EINGEFROREN!</b> <gray>Kills und Zeit werden nicht mehr " +
-                    "gewertet, das Scoreboard bleibt stehen.</gray></gold>"
+                        "gewertet, das Scoreboard bleibt stehen.</gray></gold>"
             )
             Bukkit.getServer().playSound(
                 Sound.sound(BukkitSound.BLOCK_NOTE_BLOCK_BASS, Sound.Source.MASTER, 1.0f, 0.7f)
@@ -77,7 +77,7 @@ class MatchManager(private val plugin: OneShotOneKill) {
         } else {
             broadcast(
                 "<green>[OSOK] ▶ <b>STATISTIK LÄUFT WEITER!</b> <gray>Kills und Zeit werden wieder " +
-                    "gewertet.</gray></green>"
+                        "gewertet.</gray></green>"
             )
             Bukkit.getServer().playSound(
                 Sound.sound(BukkitSound.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1.0f, 1.5f)
@@ -110,7 +110,7 @@ class MatchManager(private val plugin: OneShotOneKill) {
         plugin.scoreboardManager.updateAllScoreboards()
         broadcast(
             "<yellow>[OSOK] 🎯 Match-Ziel gesetzt: <green><b>$kills Kills</b></green> " +
-                "<gray>(wird bei /start aktiv)!</gray></yellow>"
+                    "<gray>(wird bei /start aktiv)!</gray></yellow>"
         )
     }
 
@@ -122,7 +122,7 @@ class MatchManager(private val plugin: OneShotOneKill) {
         applyTimeLimit(minutes * 60)
         broadcast(
             "<yellow>[OSOK] ⏱ Match-Zeit gesetzt: <green><b>$minutes Minuten</b></green> " +
-                "<gray>(wird bei /start aktiv)!</gray></yellow>"
+                    "<gray>(wird bei /start aktiv)!</gray></yellow>"
         )
     }
 
@@ -134,7 +134,7 @@ class MatchManager(private val plugin: OneShotOneKill) {
         applyTimeLimit(seconds)
         broadcast(
             "<yellow>[OSOK] ⏱ Match-Zeit gesetzt: <green><b>${formatTime(seconds)}</b></green> " +
-                "<gray>(${seconds}s) (wird bei /start aktiv)!</gray></yellow>"
+                    "<gray>(${seconds}s) (wird bei /start aktiv)!</gray></yellow>"
         )
     }
 
@@ -332,7 +332,7 @@ class MatchManager(private val plugin: OneShotOneKill) {
         broadcast("<rainbow><b>   🏆 MATCH BEENDET - MATCH GEWINNER!   </b></rainbow>")
         broadcast(
             "<white>  Gewinner: <yellow><b>${winner.name}</b></yellow> " +
-                "<gray>mit <green><b>$winnerKills Kills</b></green>!</gray></white>"
+                    "<gray>mit <green><b>$winnerKills Kills</b></green>!</gray></white>"
         )
         broadcast("<gray>  Starte ein neues Match mit: <yellow>/start</yellow></gray>")
         broadcast("<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff><b>=======================================</b></gradient>")
@@ -369,10 +369,10 @@ class MatchManager(private val plugin: OneShotOneKill) {
 
                 val mainTitle = "<rainbow:$rainbowPhase><b>🏆 GEWINNER! 🏆</b></rainbow>".mini()
                 val subTitle = (
-                    "<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff:$gradPhase>" +
-                        "<b>${winner.name}</b></gradient> <gray>hat gewonnen! " +
-                        "(<green>$winnerKills Kills</green>)</gray>"
-                    ).mini()
+                        "<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff:$gradPhase>" +
+                                "<b>${winner.name}</b></gradient> <gray>hat gewonnen! " +
+                                "(<green>$winnerKills Kills</green>)</gray>"
+                        ).mini()
 
                 val times = Title.Times.times(Ticks.duration(0), Ticks.duration(30), Ticks.duration(10))
 

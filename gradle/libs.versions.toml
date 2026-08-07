@@ -1,7 +1,11 @@
 [versions]
-# An den laufenden Server gepinnt: Server/libraries/io/papermc/paper/paper-api/26.2.build.87-stable.
-# Wird der Server aktualisiert, wandert die neue Build-Nummer hierher - an genau einer Stelle.
-paper = "26.2.build.87-stable"
+# Rueckfallwert fuer den Fall, dass kein lokaler Server vorliegt (frischer Clone).
+#
+# Liegt Server/server.jar vor, liest der Build die paper-api-Version direkt daraus und ignoriert
+# diesen Pin - siehe build.gradle.kts. Nachziehen laesst er sich mit:
+#     ./gradlew syncPaperVersion
+# Von Hand muss hier also nichts gepflegt werden.
+paper = "26.2.build.110-stable"
 kotlin = "2.4.10"
 
 [libraries]
