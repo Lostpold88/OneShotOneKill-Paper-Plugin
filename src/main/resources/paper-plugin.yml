@@ -1,0 +1,6 @@
+name: OneShotOneKill_26.2
+version: '${version}'
+main: de.oneshotonekill.OneShotOneKill
+api-version: '26.2'
+description: OneShotOneKill 1-Hit Kill Minigame Plugin built natively for Paper 26.2 in Kotlin
+author: Lostpold88

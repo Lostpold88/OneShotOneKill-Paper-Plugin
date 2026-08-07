@@ -1,0 +1,51 @@
+# ===================================================================
+#  Zeilenenden und Dateitypen
+#
+#  Ohne diese Datei entscheidet allein core.autocrlf (hier: true), wie
+#  Git Zeilenenden umschreibt - daher die staendigen Warnungen
+#  "LF will be replaced by CRLF the next time Git touches it".
+#  Hier steht es jetzt explizit, unabhaengig von der lokalen Config.
+# ===================================================================
+
+# Textdateien im Repository immer mit LF, Erkennung automatisch
+* text=auto eol=lf
+
+# Windows-Skripte brauchen CRLF, sonst stolpert cmd.exe ueber die Zeilen
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# PowerShell kommt mit LF zurecht, bleibt aber der Konsistenz halber bei CRLF
+*.ps1 text eol=crlf
+
+# ===================================================================
+#  Binaerdateien: niemals anfassen
+#
+#  Wichtig fuer die Welt-Dateien: .mca und .dat enthalten roh gepackte
+#  Bytes. Wuerde Git sie faelschlich als Text einstufen und Zeilenenden
+#  umschreiben, waere die Welt beschaedigt. Die automatische Erkennung
+#  faengt das normalerweise ab - hier ist es garantiert.
+# ===================================================================
+*.jar binary
+*.zip binary
+*.gz binary
+*.mca binary
+*.dat binary
+*.dat_old binary
+*.nbt binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.lock binary
+
+# ===================================================================
+#  Sprachstatistik von GitHub
+#
+#  Der Gradle-Wrapper ist mitgeliefertes Fremdmaterial und soll die
+#  Sprachstatistik nicht verfaelschen - sonst weist GitHub das
+#  Repository nicht als Kotlin-Projekt aus.
+# ===================================================================
+*.jar linguist-vendored
+gradlew linguist-vendored
+gradlew.bat linguist-vendored
+gradle/wrapper/** linguist-vendored
+Server/** linguist-vendored

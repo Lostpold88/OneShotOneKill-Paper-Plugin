@@ -1,0 +1,14 @@
+[versions]
+# An den laufenden Server gepinnt: Server/libraries/io/papermc/paper/paper-api/26.2.build.87-stable.
+# Wird der Server aktualisiert, wandert die neue Build-Nummer hierher - an genau einer Stelle.
+paper = "26.2.build.87-stable"
+kotlin = "2.4.10"
+
+[libraries]
+paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
+# Wird in die Plugin-JAR gebuendelt: Paper bringt die stdlib nicht mit und paper-plugin.yml hat
+# kein libraries-Feld. Warum Papers PluginLoader hier ausscheidet, steht in .agents/AGENTS.md.
+kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

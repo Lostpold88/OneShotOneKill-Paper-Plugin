@@ -1,0 +1,38 @@
+# ===================================================================
+#  Build-Artefakte
+#
+#  Die Plugin-JAR wog 20 MB (sie buendelt Standard.zip und DustPvP.zip)
+#  und lag in 91 Commits - allein das waren 1,6 GB Historie. Der Build
+#  erzeugt sie in Sekunden neu; fuer Veroeffentlichungen gehoert sie an
+#  ein GitHub-Release, nicht in die Historie.
+# ===================================================================
+*.class
+*.log
+build/
+.gradle/
+
+# Der Wrapper wird bewusst versioniert - er ist der Grund, warum der
+# Build ohne Gradle-Installation im PATH funktioniert.
+!gradle/wrapper/gradle-wrapper.jar
+
+# ===================================================================
+#  Server: nur das Startskript
+#
+#  Der Testserver ist lokale Laufzeitumgebung und gehoert nicht ins
+#  Repository - weder der Laufzeitzustand (world, logs, Spielerdaten,
+#  libraries, versions, cache) noch server.jar oder die Konfigurationen.
+#  Versioniert ist ausschliesslich start.bat mit den Aikar-Flags.
+#
+#  Muster-Hinweis: Hier steht bewusst "Server/*" und nicht "Server/".
+#  Git kann eine Datei nicht wieder einschliessen, wenn bereits ihr
+#  Elternordner ausgeschlossen ist - mit "Server/" wuerde das folgende
+#  "!Server/start.bat" wirkungslos bleiben.
+# ===================================================================
+Server/*
+!Server/start.bat
+
+# Sperrdateien laufender Server
+*.lock
+
+# IDE-Ausgabeordner (VS Code Java-Extension legt hier Kopien ab)
+bin/
