@@ -5,7 +5,7 @@
 # diesen Pin - siehe build.gradle.kts. Nachziehen laesst er sich mit:
 #     ./gradlew syncPaperVersion
 # Von Hand muss hier also nichts gepflegt werden.
-paper = "26.2.build.110-stable"
+paper = "26.2.build.111-stable"
 kotlin = "2.4.10"
 
 [libraries]
