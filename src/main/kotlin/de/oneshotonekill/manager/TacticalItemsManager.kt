@@ -4,10 +4,12 @@ import de.oneshotonekill.OneShotOneKill
 import de.oneshotonekill.util.mini
 import io.papermc.paper.datacomponent.DataComponentTypes
 import io.papermc.paper.datacomponent.item.ItemLore
+import io.papermc.paper.math.Angle
 import io.papermc.paper.raytracing.RayTraceTarget
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.sound.SoundStop
+import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import org.bukkit.Color
 import org.bukkit.FluidCollisionMode
@@ -31,6 +33,7 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
+import org.bukkit.util.EulerAngle
 import org.bukkit.util.Vector
 import java.util.UUID
 import kotlin.math.cos
@@ -38,21 +41,42 @@ import kotlin.math.sin
 import org.bukkit.Sound as BukkitSound
 
 /**
- * Drei taktische Spezial-Items, die sich Infrastruktur teilen (Partikelstrahl, Aufraeumen,
+ * Vier taktische Spezial-Items, die sich Infrastruktur teilen (Partikelstrahl, Aufraeumen,
  * Arena-Grenzpruefung):
  *
  * - **🔭 Railgun** - Hitscan-Schuss per `World#rayTrace`. Sichtlinie = Kill.
  * - **🕳 Singularitaet** - Wurfgeschoss, das 4s lang alle Spieler zum Zentrum zieht.
  * - **🦅 Gleitflug** - 8s Elytra-Flug mit Schubstoessen, gedeckelt durch die Map-Decke.
+ * - **🤖 Geschuetzturm** - 20s Automat, der Gegner in Sichtlinie beschiesst. Als einzige Waffe im
+ *   Spiel toetet er **nicht** mit einem Treffer, sondern erst mit dem dritten.
  *
- * Alle drei sind ueber [clearAll] restlos zurueckzunehmen, damit Match-Ende, Map-Wechsel und
+ * Alle vier sind ueber [clearAll] restlos zurueckzunehmen, damit Match-Ende, Map-Wechsel und
  * Plugin-Stop keine Reste hinterlassen.
  */
 class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
 
-    private class ActiveTurret(val entity: ArmorStand, var ticksRemaining: Int) {
+    /**
+     * Ein laufender Geschuetzturm.
+     *
+     * Der Besitzer steckt als UUID darin und **nicht** als [Player]-Referenz: Der Turm laeuft 20
+     * Sekunden, und eine so lange festgehaltene Spieler-Instanz zeigt nach einem Rejoin auf eine
+     * tote Verbindung.
+     */
+    private class ActiveTurret(val entity: ArmorStand, val ownerId: UUID, var ticksRemaining: Int) {
         var task: ScheduledTask? = null
+
+        /** Aktuell anvisierter Gegner - siehe [acquireTarget]. */
+        var targetId: UUID? = null
+
+        /** Zielposition des vorigen Takts. Daraus entsteht der Vorhalt auf laufende Ziele. */
+        var lastTargetPos: Vector? = null
+
+        /** Zuletzt in den Namen geschriebene Restsekunde; verhindert unnoetiges Neu-Parsen. */
+        var shownSeconds = -1
     }
+
+    /** Trefferkonto eines Spielers gegenueber Geschuetztuermen. */
+    private class TurretHits(var count: Int, var lastHitTick: Int)
 
     /**
      * Eine laufende Singularitaet. Jede fuehrt ihre **eigene** Ausschlussliste - zwei gleichzeitig
@@ -67,6 +91,12 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
     private val activeSingularities = mutableSetOf<ActiveSingularity>()
     private val activeGliders = mutableSetOf<UUID>()
     private val activeTurrets = mutableSetOf<ActiveTurret>()
+
+    /**
+     * Turmtreffer je Opfer. Der Geschuetzturm ist die einzige Waffe im Spiel, die nicht sofort
+     * toetet - deshalb ist er auch der einzige, der eine Buchfuehrung braucht.
+     */
+    private val turretHits = mutableMapOf<UUID, TurretHits>()
 
     // ==================================================================
     // 🔭 Railgun
@@ -170,12 +200,20 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
         )
     }
 
+    /**
+     * Einschlaege beider hier verwalteter Geschosse: Singularitaets-Kugel und Turmpfeil.
+     */
     @EventHandler
     fun onProjectileHit(event: ProjectileHitEvent) {
-        val orb = event.entity as? Snowball ?: return
-        if (!orb.persistentDataContainer.has(KEY_SINGULARITY_ORB, PersistentDataType.BYTE)) return
+        when (val projectile = event.entity) {
+            is Snowball ->
+                if (projectile.persistentDataContainer.has(KEY_SINGULARITY_ORB, PersistentDataType.BYTE)) {
+                    openSingularity(projectile.location.clone(), projectile.shooter as? Player)
+                }
 
-        openSingularity(orb.location.clone(), orb.shooter as? Player)
+            is Arrow ->
+                if (isTurretArrow(projectile)) handleTurretArrowHit(projectile, event)
+        }
     }
 
     /**
@@ -463,6 +501,11 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
     // 🤖 Geschuetzturm (Sentry Turret)
     // ==================================================================
 
+    /**
+     * Stellt einen Geschuetzturm auf den angeklickten Block.
+     *
+     * @return `false`, wenn nicht platziert werden durfte (Item nicht verbrauchen)
+     */
     fun placeSentryTurret(owner: Player, clickLoc: Location): Boolean {
         val match = plugin.matchManager
         if (!match.isMatchStarted || match.isMatchPaused) {
@@ -487,7 +530,7 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
             armor.setGravity(false)
             armor.isMarker = false
             armor.equipment.setHelmet(ItemStack.of(Material.DISPENSER))
-            armor.customName("<gold>🤖 Geschützturm (<yellow>20s</yellow>)</gold>".mini())
+            armor.customName(turretName(TURRET_DURATION_TICKS / 20))
             armor.isCustomNameVisible = true
             // Nicht speichern und per PDC markieren: Ohne beides bliebe nach einem Serverabsturz
             // ein unsichtbarer Stand fuer immer in der Map liegen, den clearAll() nicht mehr
@@ -512,17 +555,18 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
         )
         world.spawnParticle(Particle.FLAME, turretLoc.clone().add(0.0, 0.8, 0.0), 20, 0.3, 0.3, 0.3, 0.05)
 
-        val activeTurret = ActiveTurret(stand, TURRET_DURATION_TICKS)
+        val activeTurret = ActiveTurret(stand, owner.uniqueId, TURRET_DURATION_TICKS)
         activeTurrets.add(activeTurret)
 
         owner.sendMessage(
-            ("<green>[OSOK] 🤖 <b>GESCHÜTZTURM PLATZIERT!</b> <gray>Er sichert den Bereich " +
-                "für 20 Sekunden.</gray></green>").mini()
+            ("<green>[OSOK] 🤖 <b>GESCHÜTZTURM PLATZIERT!</b> <gray>Er sichert den Bereich für " +
+                "20 Sekunden - <yellow>$TURRET_HITS_TO_KILL Treffer</yellow> schalten einen " +
+                "Gegner aus.</gray></green>").mini()
         )
 
-        stand.scheduler.runAtFixedRate(
+        activeTurret.task = stand.scheduler.runAtFixedRate(
             plugin,
-            { task -> tickTurret(activeTurret, task, stand, owner, world) },
+            { task -> tickTurret(activeTurret, task) },
             // retired: Paper ruft das, wenn die Entity verschwindet, bevor der Takt endet
             // (Chunk-Entladung, fremdes Plugin, /kill). Mit null bliebe ein Karteileichen-Eintrag
             // in activeTurrets stehen.
@@ -534,64 +578,284 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
         return true
     }
 
-    private fun tickTurret(
-        turret: ActiveTurret,
-        task: ScheduledTask,
-        stand: ArmorStand,
-        owner: Player,
-        world: World,
-    ) {
-        turret.task = task
+    /**
+     * Ein Feuertakt: Restzeit fortschreiben, Ziel bestimmen, ausrichten, schiessen.
+     *
+     * Der Besitzer wird in **jedem** Takt frisch aufgeloest. Ist er offline, endet der Turm - ohne
+     * Schuetzen liesse sich kein Treffer mehr zuordnen.
+     */
+    private fun tickTurret(turret: ActiveTurret, task: ScheduledTask) {
+        val stand = turret.entity
         turret.ticksRemaining -= TURRET_FIRE_INTERVAL_TICKS.toInt()
 
         val match = plugin.matchManager
-        if (!stand.isValid || turret.ticksRemaining <= 0 || !match.isMatchStarted || match.isMatchPaused) {
+        val owner = Bukkit.getPlayer(turret.ownerId)
+        if (owner == null || !stand.isValid || turret.ticksRemaining <= 0 ||
+            !match.isMatchStarted || match.isMatchPaused
+        ) {
             task.cancel()
             removeTurret(turret)
             return
         }
 
+        val world = stand.world
         val secondsLeft = maxOf(1, (turret.ticksRemaining + 19) / 20)
-        stand.customName("<gold>🤖 Geschützturm (<yellow>${secondsLeft}s</yellow>)</gold>".mini())
+        // Der Name wird nur beim echten Sekundenwechsel neu gebaut - sonst parst MiniMessage
+        // mehrmals pro Sekunde denselben Text.
+        if (secondsLeft != turret.shownSeconds) {
+            turret.shownSeconds = secondsLeft
+            stand.customName(turretName(secondsLeft))
+        }
 
-        val turretEye = stand.location.add(0.0, 0.8, 0.0)
-        val target = findTurretTarget(turretEye, owner, world) ?: return
+        val muzzle = stand.location.add(0.0, TURRET_MUZZLE_HEIGHT, 0.0)
+        val target = acquireTarget(turret, muzzle, owner) ?: return
 
-        val dir = target.eyeLocation.toVector().subtract(turretEye.toVector()).normalize()
-        // Nur die Blickrichtung aendern, NICHT die Position: turretEye liegt 0.8 Bloecke ueber dem
-        // Stand. Wurde dorthin teleportiert, stieg der Turm mit jedem Schuss um 0.8 auf und
-        // schwebte wegen setGravity(false) davon. Regel 6 erlaubt das synchrone teleport hier:
-        // dieselbe Welt, jeder Takt, Zielchunk geladen, Aufruf bereits auf dem Main-Thread.
-        stand.teleport(stand.location.apply { direction = dir })
+        val aim = predictAim(turret, target, muzzle)
+        val direction = aim.clone().subtract(muzzle.toVector()).normalize()
 
-        world.spawn(turretEye.clone().add(dir.clone().multiply(0.4)), Arrow::class.java) { arrow ->
+        // Nur die Ausrichtung aendern, NICHT die Position: Die Muendung liegt 0.8 Bloecke ueber dem
+        // Stand. Wurde der Stand dorthin teleportiert, stieg er mit jedem Schuss um 0.8 auf und
+        // schwebte wegen setGravity(false) davon. setRotation dreht ihn an Ort und Stelle und
+        // spart den Teleport ganz ein.
+        val facing = stand.location.setDirection(direction)
+        stand.setRotation(Angle.absolute(facing.yaw), Angle.absolute(facing.pitch))
+        // Der Dispenser sitzt auf dem Kopf: Ueber die Kopfhaltung neigt sich das Rohr sichtbar mit,
+        // statt nur den Koerper zu drehen.
+        stand.headPose = EulerAngle(Math.toRadians(facing.pitch.toDouble()), 0.0, 0.0)
+
+        val velocity = direction.clone().multiply(TURRET_ARROW_SPEED)
+        val barrel = muzzle.clone().add(direction.clone().multiply(TURRET_MUZZLE_OFFSET))
+
+        world.spawn(barrel, Arrow::class.java) { arrow ->
             arrow.shooter = owner
             arrow.pickupStatus = AbstractArrow.PickupStatus.DISALLOWED
-            arrow.velocity = dir.clone().multiply(1.8)
+            arrow.isCritical = false
+            // Der Turmpfeil richtet keinen Vanilla-Schaden an: Gezaehlt wird im
+            // ProjectileHitEvent, und ein Pfeiltreffer wuerde in diesem Spiel sofort toeten.
+            arrow.damage = 0.0
+            // Nicht speichern - sonst laege nach einem Absturz Munition in der Map
+            arrow.isPersistent = false
+            arrow.persistentDataContainer.set(KEY_SENTRY_TURRET_ARROW, PersistentDataType.BYTE, 1.toByte())
+            arrow.velocity = velocity
         }
 
         world.playSound(
             Sound.sound(BukkitSound.BLOCK_DISPENSER_LAUNCH, Sound.Source.MASTER, 1.0f, 1.4f),
-            turretEye.x(), turretEye.y(), turretEye.z(),
+            muzzle.x(), muzzle.y(), muzzle.z(),
         )
 
-        val particleStep = dir.clone().multiply(0.5)
-        val particleLoc = turretEye.clone()
-        repeat(TURRET_TRACER_STEPS) {
-            particleLoc.add(particleStep)
-            world.spawnParticle(Particle.DUST, particleLoc, 1, Particle.DustOptions(Color.RED, 0.8f))
+        drawTracer(world, barrel, velocity)
+    }
+
+    /**
+     * Liefert das Ziel des naechsten Schusses.
+     *
+     * Ein einmal gefasstes Ziel wird **gehalten**, solange es gueltig bleibt. Das ist keine
+     * Bequemlichkeit, sondern Voraussetzung: Der Turm braucht drei Treffer fuer eine Eliminierung,
+     * und wer seine Schuesse reihum auf alle Gegner in Reichweite verteilt, kommt nie auf drei.
+     * Nebeneffekt: Der teure Sichtlinien-Strahl laeuft nur, wenn das Ziel wirklich neu gesucht
+     * werden muss.
+     */
+    private fun acquireTarget(turret: ActiveTurret, muzzle: Location, owner: Player): Player? {
+        val locked = turret.targetId?.let { Bukkit.getPlayer(it) }
+        if (locked != null && isTurretTarget(locked, muzzle, owner)) return locked
+
+        // Nach Entfernung sortiert und dann der erste gueltige: So wird nur so lange gestrahlt,
+        // bis ein Ziel feststeht - statt fuer jeden Kandidaten in Reichweite.
+        val next = muzzle.getNearbyPlayers(TURRET_RANGE)
+            .sortedBy { it.location.distanceSquared(muzzle) }
+            .firstOrNull { isTurretTarget(it, muzzle, owner) }
+
+        turret.targetId = next?.uniqueId
+        // Ein neues Ziel hat noch keine Vorgeschichte - ohne das Zuruecksetzen entstuende der
+        // Vorhalt aus der Positionsdifferenz zweier verschiedener Spieler.
+        turret.lastTargetPos = null
+        return next
+    }
+
+    /**
+     * Ein gueltiges Ziel ist online, spielt aktiv mit, steht in Reichweite **und** in der Arena,
+     * ist nicht unsichtbar und hat freie Sichtlinie.
+     *
+     * Die Unsichtbarkeitspruefung ist Absicht: Der Unsichtbarkeits-Mantel waere wertlos, wenn ein
+     * Automat weiterhin zielsicher darauf schoesse.
+     */
+    private fun isTurretTarget(candidate: Player, muzzle: Location, owner: Player): Boolean {
+        val world = muzzle.world ?: return false
+
+        return candidate.uniqueId != owner.uniqueId &&
+            candidate.isOnline && !candidate.isDead &&
+            (candidate.gameMode == GameMode.SURVIVAL || candidate.gameMode == GameMode.ADVENTURE) &&
+            !candidate.hasPotionEffect(PotionEffectType.INVISIBILITY) &&
+            candidate.world == world &&
+            candidate.location.distanceSquared(muzzle) <= TURRET_RANGE * TURRET_RANGE &&
+            plugin.arenaManager.isInArenaArea(candidate.location) &&
+            hasLineOfSight(muzzle, candidate, world)
+    }
+
+    /**
+     * Zielpunkt des naechsten Schusses: Brusthoehe des Gegners, um den Vorhalt auf seine Bewegung
+     * und um den Schwerkraftabfall des Pfeils versetzt.
+     *
+     * Der Vorhalt stammt aus der **selbst gemessenen** Positionsdifferenz zweier Takte.
+     * `Player#getVelocity` taugt dafuer nicht: Bei Spielern liefert es die serverseitige
+     * Delta-Bewegung, die aus Bewegungspaketen gar nicht gespeist wird und beim laufenden Spieler
+     * bei null bleibt (gegen die Server-JAR geprueft).
+     */
+    private fun predictAim(turret: ActiveTurret, target: Player, muzzle: Location): Vector {
+        val aim = target.eyeLocation.toVector().subtract(Vector(0.0, TURRET_AIM_CHEST_DROP, 0.0))
+        val previous = turret.lastTargetPos
+        turret.lastTargetPos = aim.clone()
+
+        var flightTicks = muzzle.toVector().distance(aim) / TURRET_ARROW_SPEED
+
+        if (previous != null) {
+            val perTick = aim.clone().subtract(previous).multiply(1.0 / TURRET_FIRE_INTERVAL_TICKS)
+            // Nur die waagerechte Bewegung: Spruenge sind zu kurz, um vorhaltbar zu sein, und
+            // wuerden den Schuss nur ueber den Kopf des Gegners lenken.
+            perTick.y = 0.0
+
+            val lead = perTick.multiply(flightTicks)
+            if (lead.length() > TURRET_MAX_LEAD) {
+                lead.normalize().multiply(TURRET_MAX_LEAD)
+            }
+            aim.add(lead)
+            flightTicks = muzzle.toVector().distance(aim) / TURRET_ARROW_SPEED
+        }
+
+        // Schwerkraftausgleich: Der Pfeil faellt pro Tick um ARROW_GRAVITY, aufsummiert ueber die
+        // Flugzeit. Ohne diesen Zuschlag schlaegt er am Reichweitenrand rund einen Block zu tief
+        // ein - genau dort, wo der Turm seine Ziele meistens hat.
+        aim.y += ARROW_GRAVITY * flightTicks * (flightTicks + 1.0) / 2.0
+        return aim
+    }
+
+    /**
+     * Zeichnet die Leuchtspur entlang der **tatsaechlichen** Flugbahn: dieselbe Schrittweite,
+     * dieselbe Luftreibung, dieselbe Schwerkraft wie beim Pfeil. Eine schnurgerade Linie wuerde
+     * eine Bahn zeigen, die der Pfeil gar nicht fliegt.
+     */
+    private fun drawTracer(world: World, from: Location, velocity: Vector) {
+        val point = from.clone()
+        val step = velocity.clone().multiply(1.0 / TURRET_TRACER_SUBSTEPS)
+
+        repeat(TURRET_TRACER_TICKS) {
+            repeat(TURRET_TRACER_SUBSTEPS) {
+                point.add(step)
+                world.spawnParticle(Particle.DUST, point, 1, TURRET_TRACER_DUST)
+            }
+            step.multiply(ARROW_DRAG)
+            step.y -= ARROW_GRAVITY / TURRET_TRACER_SUBSTEPS
         }
     }
 
-    /** Naechster erreichbarer Gegner in Reichweite - Waende blocken die Sichtlinie. */
-    private fun findTurretTarget(turretEye: Location, owner: Player, world: World): Player? =
-        turretEye.getNearbyPlayers(TURRET_RANGE)
-            .filter { it.uniqueId != owner.uniqueId }
-            .filterNot { it.isDead || !it.isOnline }
-            .filter { it.gameMode == GameMode.SURVIVAL || it.gameMode == GameMode.ADVENTURE }
-            .filter { plugin.arenaManager.isInArenaArea(it.location) }
-            .filter { hasLineOfSight(turretEye, it, world) }
-            .minByOrNull { it.location.distanceSquared(turretEye) }
+    // ---------------- Treffer-Buchfuehrung ----------------
+
+    /**
+     * Erkennt einen Turmpfeil an seiner PDC-Markierung.
+     *
+     * Oeffentlich, weil auch der
+     * [de.oneshotonekill.listener.CombatListener] ihn kennen muss: Dort endet jeder Pfeiltreffer
+     * sonst in der Sofort-Eliminierung.
+     */
+    fun isTurretArrow(arrow: Arrow): Boolean =
+        arrow.persistentDataContainer.has(KEY_SENTRY_TURRET_ARROW, PersistentDataType.BYTE)
+
+    /**
+     * Ein Turmpfeil ist eingeschlagen.
+     *
+     * Die Auswertung sitzt bewusst im `ProjectileHitEvent` und **nicht** im Schadensweg des
+     * `CombatListener`:
+     *
+     * - Vanilla laesst nach einem Treffer 10 Ticks Unverwundbarkeit folgen und verschluckt gleich
+     *   starke Folgetreffer **vor** jedem Schadensevent. Bei 0,4 s Feuertakt ginge damit jeder
+     *   zweite Turmtreffer verloren und drei Treffer waeren kaum erreichbar.
+     * - Der Projektil-Treffer laeuft davor: `Projectile#preHitTargetOrDeflectSelf` feuert diesen
+     *   Event und ueberspringt bei einem Cancel den gesamten Treffer (gegen die Server-JAR
+     *   geprueft). Der Pfeil richtet also garantiert keinen Schaden an.
+     */
+    private fun handleTurretArrowHit(arrow: Arrow, event: ProjectileHitEvent) {
+        val shooter = arrow.shooter as? Player
+        val victim = event.hitEntity as? Player
+        val impact = arrow.velocity
+
+        // Der Pfeil ist mit dem Einschlag verbraucht: Sonst bliebe er im Block stecken oder pralle
+        // vom gecancelten Treffer ab und flaege weiter. Der kurze Funke ersetzt den steckenden
+        // Pfeil als sichtbares Einschlagzeichen.
+        arrow.world.spawnParticle(Particle.CRIT, arrow.location, 4, 0.05, 0.05, 0.05, 0.02)
+        arrow.remove()
+        if (victim == null) return
+
+        event.isCancelled = true
+
+        val match = plugin.matchManager
+        if (!match.isMatchStarted || match.isMatchPaused || match.isMatchEnded) return
+        if (!plugin.arenaManager.isInArenaArea(victim.location)) return
+
+        // Ein Streuschuss auf den eigenen Besitzer zaehlt nicht: Der Turm nimmt ihn nie ins Visier,
+        // ein Treffer ist also ein Artefakt der Flugbahn und keine Entscheidung.
+        if (shooter == null || shooter.uniqueId == victim.uniqueId) return
+
+        registerTurretHit(victim, shooter, impact)
+    }
+
+    /**
+     * Verbucht einen Turmtreffer und eliminiert beim [TURRET_HITS_TO_KILL]-ten.
+     *
+     * Alte Treffer verfallen nach [TURRET_HIT_MEMORY_TICKS]: Wer sich lange genug aus der
+     * Schusslinie haelt, faengt wieder bei null an - sonst summierten sich Streifschuesse ueber ein
+     * ganzes Match zu einer Eliminierung.
+     */
+    private fun registerTurretHit(victim: Player, shooter: Player, impact: Vector) {
+        val now = Bukkit.getCurrentTick()
+        val account = turretHits[victim.uniqueId]
+        val hits = if (account == null || now - account.lastHitTick > TURRET_HIT_MEMORY_TICKS) {
+            1
+        } else {
+            account.count + 1
+        }
+
+        if (hits >= TURRET_HITS_TO_KILL) {
+            turretHits.remove(victim.uniqueId)
+            plugin.eliminationManager.eliminate(victim, shooter)
+            return
+        }
+
+        turretHits[victim.uniqueId] = TurretHits(hits, now)
+
+        victim.world.spawnParticle(
+            Particle.DAMAGE_INDICATOR, victim.location.add(0.0, 1.0, 0.0), 6, 0.3, 0.4, 0.3, 0.05,
+        )
+        // Leichter Rueckstoss statt des weggefallenen Vanilla-Pfeilschadens: Der Treffer soll
+        // spuerbar sein, darf den Getroffenen aber nicht von der Plattform schieben - ein Sturz
+        // toetet in dieser Arena sofort und wuerde die Drei-Treffer-Regel aushebeln. Nur beim
+        // nicht-toedlichen Treffer, denn eine gesetzte Geschwindigkeit ueberlebt den
+        // Respawn-Teleport.
+        if (impact.lengthSquared() > 0.0) {
+            val push = impact.clone().normalize().multiply(TURRET_KNOCKBACK)
+            push.y = 0.0
+            victim.velocity = victim.velocity.add(push)
+        }
+
+        victim.playSound(Sound.sound(BukkitSound.ENTITY_ARROW_HIT_PLAYER, Sound.Source.MASTER, 1.0f, 0.8f))
+        victim.sendActionBar(
+            ("<red>🤖 Geschützturm-Treffer <b>$hits</b>/<b>$TURRET_HITS_TO_KILL</b> " +
+                "<gray>(${shooter.name})</gray></red>").mini()
+        )
+        shooter.playSound(Sound.sound(BukkitSound.ENTITY_ARROW_HIT_PLAYER, Sound.Source.MASTER, 0.7f, 1.6f))
+    }
+
+    /**
+     * Loescht das Turm-Trefferkonto eines Spielers. Wird bei jeder Eliminierung gerufen: Ein
+     * frisches Leben faengt mit leerem Konto an, sonst genuegte nach dem Respawn ploetzlich ein
+     * einziger Treffer.
+     */
+    fun clearTurretHits(playerId: UUID) {
+        turretHits.remove(playerId)
+    }
+
+    private fun turretName(secondsLeft: Int): Component =
+        "<gold>🤖 Geschützturm (<yellow>${secondsLeft}s</yellow>)</gold>".mini()
 
     private fun hasLineOfSight(turretEye: Location, candidate: Player, world: World): Boolean {
         val toCandidate = candidate.eyeLocation.toVector().subtract(turretEye.toVector())
@@ -643,6 +907,7 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
 
         activeTurrets.toList().forEach { removeTurret(it) }
         activeTurrets.clear()
+        turretHits.clear()
 
         activeGliders.toList().forEach { gliderId ->
             val player = Bukkit.getPlayer(gliderId)
@@ -654,7 +919,8 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
         Bukkit.getOnlinePlayers().forEach { removeGliderWings(it) }
 
         // Sicherheitsnetz fuer Geschuetztuerme: PDC-markierte Staende einsammeln, die nie
-        // registriert wurden oder einen Absturz ueberlebt haben.
+        // registriert wurden oder einen Absturz ueberlebt haben. Noch fliegende Turmpfeile kommen
+        // mit weg - sie wuerden sonst nach dem Match-Ende noch einschlagen.
         var orphans = 0
         for (world in Bukkit.getWorlds()) {
             world.getEntitiesByClass(ArmorStand::class.java)
@@ -663,6 +929,9 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
                     it.remove()
                     orphans++
                 }
+            world.getEntitiesByClass(Arrow::class.java)
+                .filter { isTurretArrow(it) }
+                .forEach { it.remove() }
         }
         if (orphans > 0) {
             plugin.logger.info("[OSOK] $orphans verwaiste Geschuetzturm-Staende entfernt.")
@@ -709,7 +978,49 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
         /** Alle 0,4 s. */
         const val TURRET_FIRE_INTERVAL_TICKS = 8L
         const val TURRET_RANGE = 14.0
-        const val TURRET_TRACER_STEPS = 8
+
+        /**
+         * So viele Treffer kostet eine Eliminierung durch den Geschuetzturm.
+         *
+         * Der Turm ist damit die einzige Waffe im Spiel, die nicht mit einem Schlag toetet: Er
+         * schiesst von allein und ohne Zielfehler - mit Sofort-Kill waere jede Deckung, die er
+         * einsieht, unbetretbar.
+         */
+        const val TURRET_HITS_TO_KILL = 3
+
+        /** Nach 8 Sekunden ohne Turmtreffer verfaellt das Trefferkonto. */
+        const val TURRET_HIT_MEMORY_TICKS = 160
+
+        /** Rueckstoss pro Treffer - spuerbar, aber zu schwach, um jemanden herunterzustossen. */
+        const val TURRET_KNOCKBACK = 0.25
+
+        /** Hoehe der Muendung ueber dem Fusspunkt des Stands. */
+        const val TURRET_MUZZLE_HEIGHT = 0.8
+
+        /** Abstand des Abschusspunkts vor der Muendung - sonst trifft der Pfeil den Turm selbst. */
+        const val TURRET_MUZZLE_OFFSET = 0.6
+
+        /** Startgeschwindigkeit des Turmpfeils in Bloecken pro Tick. */
+        const val TURRET_ARROW_SPEED = 2.2
+
+        /** Obergrenze des Vorhalts in Bloecken - gegen absurde Zielpunkte bei Teleports. */
+        const val TURRET_MAX_LEAD = 3.0
+
+        /** Zielpunkt unterhalb der Augen: Brusthoehe trifft auch geduckte Gegner. */
+        const val TURRET_AIM_CHEST_DROP = 0.35
+
+        /** Ticks Flugbahn, die die Leuchtspur vorzeichnet. */
+        const val TURRET_TRACER_TICKS = 5
+
+        /** Partikel je vorgezeichnetem Tick. */
+        const val TURRET_TRACER_SUBSTEPS = 4
+
+        /** Einmal angelegt statt je Partikel neu - die Optionen sind unveraenderlich. */
+        val TURRET_TRACER_DUST = Particle.DustOptions(Color.RED, 0.8f)
+
+        /** Vanilla-Pfeilphysik: Fall pro Tick und Luftreibung je Tick. */
+        const val ARROW_GRAVITY = 0.05
+        const val ARROW_DRAG = 0.99
 
         /**
          * Ausruestungsplaetze, die am Geschuetzturm gesperrt werden.
@@ -727,5 +1038,8 @@ class TacticalItemsManager(private val plugin: OneShotOneKill) : Listener {
 
         /** Markiert den ArmorStand eines Geschuetzturms, damit auch Waisen auffindbar bleiben. */
         val KEY_SENTRY_TURRET_ENTITY = NamespacedKey("oneshotonekill", "sentry_turret_entity")
+
+        /** Markiert einen Turmpfeil - er zaehlt, statt sofort zu toeten. */
+        val KEY_SENTRY_TURRET_ARROW = NamespacedKey("oneshotonekill", "sentry_turret_arrow")
     }
 }

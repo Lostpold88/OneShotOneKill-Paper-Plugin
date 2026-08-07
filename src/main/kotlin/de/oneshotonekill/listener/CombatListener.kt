@@ -4,6 +4,7 @@ import de.oneshotonekill.OneShotOneKill
 import de.oneshotonekill.util.mini
 import net.kyori.adventure.sound.Sound
 import org.bukkit.Material
+import org.bukkit.damage.DamageType
 import org.bukkit.entity.Arrow
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -58,14 +59,23 @@ class CombatListener(private val plugin: OneShotOneKill) : Listener {
         // Schaden nimmt. Dort gibt es also keine CausingEntity und die Zuordnung liefert der
         // ExplosivesManager.
         //
+        // Unterschieden wird ueber den **DamageType**, nicht ueber `DamageCause`. Der Grund ist
+        // eine Falle in der Ursachen-Zuordnung von CraftBukkit (gegen die Server-JAR geprueft,
+        // `CraftEventFactory#handleEntityDamageEvent`): Sie fragt zuerst
+        // `eventEntityDamager() ?: getDirectEntity()` ab. Ist beides null - und genau das ist eine
+        // Sprengung ohne Quell-Entity - laeuft sie in den Zweig ohne Entity und ohne Block, und
+        // dort wird `DamageTypes.EXPLOSION` **gar nicht geprueft**. Die Kette endet im
+        // Sammelfall `DamageCause.CUSTOM`. Air-Strike- und C4-Kills waren damit weder
+        // BLOCK_EXPLOSION noch ENTITY_EXPLOSION, fielen aus dem `when` und wurden als
+        // "ist gestorben" ohne Killer gemeldet. Der DamageType haengt dagegen direkt an der
+        // Schadensquelle und geht auf diesem Weg nicht verloren.
+        //
         // FALL zaehlt bewusst mit: Eine C4 schleudert Getroffene weit nach oben, und wer den
         // Treffer knapp ueberlebt, stirbt Sekunden spaeter am Aufprall. Ohne diesen Zweig blieb so
         // ein Tod unzugeordnet - genau der Fall aus Issue #2.
-        return when (event.cause) {
-            EntityDamageEvent.DamageCause.BLOCK_EXPLOSION,
-            EntityDamageEvent.DamageCause.ENTITY_EXPLOSION,
-            EntityDamageEvent.DamageCause.FALL,
-            -> plugin.explosivesManager.resolveBlastKiller(victim)
+        return when (event.damageSource.damageType) {
+            DamageType.EXPLOSION, DamageType.PLAYER_EXPLOSION, DamageType.FALL ->
+                plugin.explosivesManager.resolveBlastKiller(victim)
 
             else -> null
         }
@@ -109,6 +119,16 @@ class CombatListener(private val plugin: OneShotOneKill) : Listener {
                 it.sendMessage("<red>[OSOK] 🛡 Außerhalb der Arena ist Kämpfen deaktiviert!</red>".mini())
                 it.playSound(Sound.sound(BukkitSound.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1.0f, 1.0f))
             }
+            return
+        }
+
+        // Turmpfeile laufen nicht ueber den 1-Hit-Weg: Sie werden im TacticalItemsManager gezaehlt
+        // und toeten erst beim dritten Treffer. Der Einschlag wird bereits im ProjectileHitEvent
+        // abgefangen - dieser Zweig ist das Sicherheitsnetz, falls doch ein Schadensevent
+        // durchkommt. Ohne ihn wuerde jeder Turmtreffer sofort eliminieren und dem Besitzer
+        // nebenbei einen Pfeil ins Inventar nachfuellen.
+        if ((event.damager as? Arrow)?.let { plugin.tacticalItemsManager.isTurretArrow(it) } == true) {
+            event.isCancelled = true
             return
         }
 

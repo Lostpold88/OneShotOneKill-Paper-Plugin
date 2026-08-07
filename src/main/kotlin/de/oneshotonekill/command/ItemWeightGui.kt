@@ -32,9 +32,9 @@ import org.bukkit.Sound as BukkitSound
  *   Reihe 0  ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲     Gewicht erhoehen  (Items 1-9)
  *   Reihe 1  ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪     Items 1-9
  *   Reihe 2  ▼ ▼ ▼ ▼ ▼ ▼ ▼ ▼ ▼     Gewicht senken
- *   Reihe 3  ▲ ▲ ▲ ▲ ▲ ▲ ▲ · ·     Gewicht erhoehen  (Items 10-16)
- *   Reihe 4  ▪ ▪ ▪ ▪ ▪ ▪ ▪ R X     Items 10-16, Reset, Schliessen
- *   Reihe 5  ▼ ▼ ▼ ▼ ▼ ▼ ▼ · ·     Gewicht senken
+ *   Reihe 3  ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ·     Gewicht erhoehen  (Items 10-17)
+ *   Reihe 4  ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ R     Items 10-17, Reset
+ *   Reihe 5  ▼ ▼ ▼ ▼ ▼ ▼ ▼ ▼ X     Gewicht senken, Schliessen
  * ```
  *
  * Linksklick aendert um [SMALL_STEP], Rechtsklick um [LARGE_STEP].

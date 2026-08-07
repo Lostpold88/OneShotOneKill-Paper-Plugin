@@ -52,7 +52,7 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - Das Betreten des Arena-Bereichs wird während der Pause blockiert.
   - Beim Fortsetzen werden alle Spieler wieder **zufällig verteilt in die Arena** teleportiert.
 
-- **🎁 16 Spezial-Items (Powerups)**:
+- **🎁 17 Spezial-Items (Powerups)**:
   1. 👁️ **Radar-Puls** *(Enderauge)*: Lässt alle Feinde für 30s aufleuchten. **Geheim**: Umgesetzt über das Glow-Flag der Entity statt über `PotionEffectType.GLOWING` – dadurch erscheint beim Betroffenen **kein Eintrag im Effekt-Fenster des Inventars**, kein HUD-Icon und keine Partikel. (Einzige verbleibende Eigenwahrnehmung: der eigene Umriss in der Third-Person-Ansicht `F5`.)
   2. 💣 **Explosiv-Schuss** *(TNT)*: Nächster Pfeil erzeugt eine Explosion am Einschlagort.
   3. 🛡️ **Reflektor-Schild** *(Netherstern)*: Blockiert den nächsten tödlichen Treffer inkl. Schildbruch-Effekt. Die Prüfung sitzt zentral im `EliminationManager` und wirkt daher gegen **jede** Todesursache – auch Kettenblitz, Explosiv-Pfeil, Bomber-TNT, Air-Strike, C4 und Sturzschaden.
@@ -90,6 +90,16 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 
   > **Das Gleitflug-Item lässt sich nicht anziehen.** Die Elytra in der Hotbar bekommt über die Paper Data Components ausdrücklich `EQUIPPABLE` und `GLIDER` **entfernt** (`ItemStack#unsetData`). Ohne das könnte man sie einfach in den Brustslot ziehen und hätte unbegrenzten Flug statt der acht Sekunden. Die eigentlichen Schwingen setzen `GLIDER` umgekehrt **explizit**, damit das Flugverhalten nicht von der Standardbelegung des Materials abhängt.
 
+  17. 🤖 **Geschützturm** *(Spender)*: Wird per Rechtsklick auf einen Block in der Arena aufgestellt und beschießt **20 Sekunden** lang selbstständig jeden Gegner in Sichtlinie – alle 0,4 s ein Pfeil, Reichweite 14 Blöcke. Optisch ein Spender auf einem unsichtbaren Ständer, dessen Rohr sich sichtbar zum Ziel neigt; der Restzeit-Zähler steht über ihm. Er endet vorzeitig bei Match-Ende, Pause und wenn sein Besitzer den Server verlässt.
+      - **Drei Treffer töten, nicht einer.** Als einzige Waffe im Spiel tötet der Turm nicht mit einem Schlag: Er zielt automatisch und ohne Fehler – mit Sofort-Kill wäre jede Deckung, die er einsieht, schlicht unbetretbar. Der Getroffene sieht seinen Stand (`1/3`, `2/3`) in der Actionbar und bekommt einen leichten Rückstoß. Nach **8 Sekunden** ohne Turmtreffer verfällt das Konto, und jeder Respawn setzt es zurück – sonst summierten sich Streifschüsse über ein ganzes Match zu einer Eliminierung.
+      - **Der Turm hält sein Ziel fest**, solange es gültig bleibt, statt pro Schuss neu zu wählen. Ohne das verteilt er seine Treffer auf alle Gegner in Reichweite und kommt bei niemandem auf drei. Nebeneffekt: Der Sichtlinien-Strahl läuft nur, wenn wirklich neu gesucht werden muss.
+      - **Er zielt vor und rechnet den Pfeilabfall ein.** Der Vorhalt entsteht aus der selbst gemessenen Positionsdifferenz zweier Takte – `Player#getVelocity` taugt dafür nicht, weil die serverseitige Delta-Bewegung bei Spielern gar nicht aus den Bewegungspaketen gespeist wird. Die Leuchtspur zeichnet dieselbe Flugbahn nach, die der Pfeil wirklich fliegt (Schwerkraft `0.05`/Tick, Luftreibung `0.99`), statt eine gerade Linie zu behaupten.
+      - **Unsichtbare Spieler nimmt er nicht ins Visier** – der Unsichtbarkeits-Mantel wäre wertlos, wenn ein Automat weiter zielsicher darauf schösse. Ebenso ausgenommen: der eigene Besitzer, und zwar auch bei einem Streuschuss, der ihn zufällig trifft.
+
+  > **Turmtreffer werden im `ProjectileHitEvent` gezählt, nicht im Schadensweg.** Vanilla lässt nach einem Treffer 10 Ticks Unverwundbarkeit folgen und verschluckt gleich starke Folgetreffer **vor** jedem Schadensevent – bei 0,4 s Feuertakt wäre damit jeder zweite Turmtreffer verloren und drei Treffer kaum erreichbar. `Projectile#preHitTargetOrDeflectSelf` feuert den Treffer-Event dagegen davor und überspringt bei einem Cancel den gesamten Treffer, der Pfeil richtet also garantiert keinen Schaden an. Der `CombatListener` erkennt Turmpfeile trotzdem an ihrem PDC-Marker und lässt sie ausdrücklich am 1-Hit-Zweig vorbei – sonst würde ein durchkommendes Schadensevent sofort eliminieren und dem Besitzer nebenbei einen Pfeil nachfüllen.
+
+  > **Kill-Zuordnung bei Sprengungen läuft über den `DamageType`, nicht über `DamageCause`.** Eine Sprengung ohne Quell-Entity – und genau so sprengen Air-Strike und C4, damit auch der Auslöser getroffen wird – kommt als `DamageCause.CUSTOM` an: `CraftEventFactory` fragt zuerst nach Verursacher- und Direkt-Entity, landet ohne beide im Zweig ohne Entity und ohne Block, und dort wird `DamageTypes.EXPLOSION` gar nicht geprüft. Kills durch Air-Strike und C4 fielen dadurch aus der Zuordnung und wurden nur als „ist gestorben" gemeldet, statt dem Auslöser gutgeschrieben zu werden. Der `DamageType` (`EXPLOSION` / `PLAYER_EXPLOSION`) hängt direkt an der Schadensquelle und geht auf diesem Weg nicht verloren.
+
   > **Kill-Zuordnung bei Sprengungen**: Der Auslöser wird nicht nur während der Explosion festgehalten, sondern für **6 Sekunden** je getroffenem Spieler vermerkt. Das ist nötig, weil eine Sprengung nicht nur direkt tötet: Eine C4 mit Stärke 12 schleudert Getroffene weit nach oben, und wer den Treffer knapp überlebt, stirbt Sekunden später am Aufprall. Dieser Schaden trägt die Ursache `FALL` und gar keine Verursacher-Entity – der Kill blieb dadurch unzugeordnet und wurde nur als „ist gestorben" gemeldet.
 
   > **Sprengkraft von Air-Strike und C4**: Beide nutzen `createExplosion(…, breakBlocks = false)` mit Stärke `8.0` für eine Air-Strike-Bombe und `12.0` für eine C4-Ladung (Vanilla-TNT liegt bei `4.0`). Die Explosion ist damit gewaltig und im Zentrum tödlich, kann die Map aber **grundsätzlich nicht** beschädigen – es werden gar keine Blöcke angetastet, statt eine Blockliste nachträglich zu leeren.
@@ -112,19 +122,19 @@ Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
   - **`BOTH` ist der Standard und wird bei jedem `/osok start` erzwungen** – für beide Arenen gleichermaßen. Ein manueller Moduswechsel gilt damit nur bis zum nächsten Match-Start.
 
 - **🎲 Item-Gewichtung (`/osok itemgewichtung`)** – reines GUI, kein Textbefehl:
-  - Jedes der 16 Spezial-Items hat ein **Spawngewicht** (Standard `10`). Die Ziehung ist gewichtet: Ein Item mit Gewicht `20` kommt doppelt so oft wie eines mit `10`.
+  - Jedes der 17 Spezial-Items hat ein **Spawngewicht** (Standard `10`). Die Ziehung ist gewichtet: Ein Item mit Gewicht `20` kommt doppelt so oft wie eines mit `10`.
   - Gewicht **`0` nimmt ein Item vollständig aus dem Spiel**, ohne es aus dem Code zu entfernen – praktisch, um einzelne Items für eine Runde zu sperren.
   - Die Gewichte gelten für **beide Quellen**: Boden-Item-Boxen *und* Killstreak-/Kopfgeld-Belohnungen.
   - Stehen alle Gewichte auf `0`, wird weder eine Box gespawnt noch eine Streak-Belohnung vergeben; das Menü warnt davor.
-  - **Aufbau**: Jede Item-Reihe ist von Pfeilen eingerahmt – **darüber** ▲ erhöhen, **darunter** ▼ senken. Die 16 Items verteilen sich auf zwei Blöcke zu je drei Reihen:
+  - **Aufbau**: Jede Item-Reihe ist von Pfeilen eingerahmt – **darüber** ▲ erhöhen, **darunter** ▼ senken. Die 17 Items verteilen sich auf zwei Blöcke zu je drei Reihen:
 
     ```
     Reihe 0  ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲     erhöhen   (Items 1–9)
     Reihe 1  ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪     Items 1–9
     Reihe 2  ▼ ▼ ▼ ▼ ▼ ▼ ▼ ▼ ▼     senken
-    Reihe 3  ▲ ▲ ▲ ▲ ▲ ▲ ▲ · ·     erhöhen   (Items 10–16)
-    Reihe 4  ▪ ▪ ▪ ▪ ▪ ▪ ▪ 🔄 ✖    Items 10–16, Zurücksetzen, Schließen
-    Reihe 5  ▼ ▼ ▼ ▼ ▼ ▼ ▼ · ·     senken
+    Reihe 3  ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ·     erhöhen   (Items 10–17)
+    Reihe 4  ▪ ▪ ▪ ▪ ▪ ▪ ▪ ▪ 🔄    Items 10–17, Zurücksetzen
+    Reihe 5  ▼ ▼ ▼ ▼ ▼ ▼ ▼ ▼ ✖     senken, Schließen
     ```
   - **Linksklick ±1, Rechtsklick ±5.** Jedes Item zeigt Gewicht und resultierende Prozentchance; die Stapelgröße spiegelt das Gewicht (auf 1–64 begrenzt, der exakte Wert steht im Namen – `0` und Werte über 64 wären als Stapelgröße gar nicht darstellbar).
   - Nach jedem Klick wird das **gesamte** Menü neu aufgebaut: Ein einzelnes geändertes Gewicht verschiebt die Prozentchance *aller* anderen Items.

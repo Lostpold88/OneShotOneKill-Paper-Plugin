@@ -231,6 +231,9 @@ class EliminationManager(private val plugin: OneShotOneKill) {
         plugin.tacticalItemsManager.stopGlide(victim, false)
         // Nach dem Respawn darf keine noch laufende Singularitaet erneut zugreifen
         plugin.tacticalItemsManager.excludeFromSingularities(victim.uniqueId)
+        // Ein frisches Leben faengt mit leerem Turm-Trefferkonto an - sonst reichte nach dem
+        // Respawn ploetzlich ein einziger Geschuetzturm-Treffer.
+        plugin.tacticalItemsManager.clearTurretHits(victim.uniqueId)
 
         // Die Sprengung ist mit dieser Eliminierung abgegolten. Bliebe der Merkzettel stehen,
         // wuerde ein unabhaengiger Sturz kurz nach dem Respawn noch dem Zuender gutgeschrieben.
