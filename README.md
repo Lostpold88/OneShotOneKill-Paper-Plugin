@@ -307,6 +307,13 @@ legen, `.\build.ps1` ausführen. Alles Weitere zieht mit:
   `api-version: '26.3'`.
 - Der Deploy räumt JARs früherer Versionen aus `Server/plugins/` weg. Ohne das läge die alte neben
   der neuen, und Paper lüde **beide** Plugins.
+- Im Gradle-Cache bleibt ebenfalls nur die passende Fassung stehen: `deployPlugin` löscht alle
+  anderen `paper-api`-Versionen unter
+  `~/.gradle/caches/modules-2/files-2.1/io.papermc.paper/paper-api/`. Der Cache hält sonst jede je
+  gezogene Version dauerhaft vor — und beim Nachschlagen einer Signatur greift man dann leicht in
+  die falsche Fassung. Die aktuelle bleibt immer stehen; lässt sich ein Ordner nicht entfernen
+  (weil ein anderer Build ihn offen hält), gibt es eine Warnung statt eines Abbruchs, und Gradle
+  lädt Fehlendes ohnehin neu.
 
 Zwei Dinge, die dabei zu erwarten sind: Deprecatet die neue API etwas, das hier benutzt wird,
 **bricht der Build** — `allWarningsAsErrors` ist Absicht, so fällt es beim Bauen auf statt zur

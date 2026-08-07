@@ -169,4 +169,51 @@ tasks.register<Copy>("deployPlugin") {
         logger.lifecycle("Plugin deployt nach Server/plugins/$pluginJarName")
         logger.lifecycle("Ein laufender Server laedt die JAR nicht neu - Neustart noetig.")
     }
+
+    finalizedBy("pruneApiCache")
+}
+
+// ---------------------------------------------------------------------------------------------
+// pruneApiCache: alte paper-api-Fassungen aus dem Gradle-Cache werfen
+//
+// Der Cache haelt jede je gezogene Version dauerhaft vor. Gebraucht wird aber immer nur die eine,
+// die zur Server-JAR passt - jede weitere ist ein Zweitbestand, in den man beim Nachschlagen
+// versehentlich hineingreift und dann eine Signatur aus der falschen Fassung liest.
+//
+// Drei Absicherungen:
+//   - Die erkannte Version bleibt **immer** stehen; geloescht wird ausschliesslich daneben.
+//   - Angefasst wird nur der paper-api-Ordner, nichts sonst im Cache.
+//   - Laesst sich ein Ordner nicht entfernen (Windows-Sperre, weil ein anderer Gradle-Daemon die
+//     JAR offen haelt), gibt es eine Warnung statt eines Abbruchs. Fehlt eine Fassung spaeter doch,
+//     laedt Gradle sie ohnehin neu.
+//
+// Haengt als Finalizer an deployPlugin und ist nie "up to date": Ob der Cache aufgeraeumt gehoert,
+// haengt nicht daran, ob sich am Code etwas geaendert hat.
+// ---------------------------------------------------------------------------------------------
+tasks.register("pruneApiCache") {
+    group = "build setup"
+    description = "Entfernt alle paper-api-Fassungen im Gradle-Cache ausser der aus Server/server.jar."
+    outputs.upToDateWhen { false }
+
+    // Achtung, andere Ablage als in der JAR: Der Cache legt die Group-ID mit Punkten ab
+    // (io.papermc.paper/paper-api), nicht als Pfad (io/papermc/paper/paper-api).
+    val cacheDir = gradle.gradleUserHomeDir.resolve("caches/modules-2/files-2.1/io.papermc.paper/paper-api")
+    val keep = paperApiVersion
+
+    doLast {
+        val versions = cacheDir.listFiles { file -> file.isDirectory }
+        if (versions == null) {
+            // Kein stiller Rueckzug: Ein falscher Pfad saehe sonst aus wie "nichts aufzuraeumen".
+            logger.warn("paper-api-Cache nicht gefunden: $cacheDir")
+            return@doLast
+        }
+
+        versions.filter { it.name != keep }.forEach { old ->
+            if (old.deleteRecursively()) {
+                logger.lifecycle("Alte paper-api aus dem Cache entfernt: ${old.name}")
+            } else {
+                logger.warn("paper-api ${old.name} liess sich nicht entfernen - haelt ein anderer Build sie offen?")
+            }
+        }
+    }
 }

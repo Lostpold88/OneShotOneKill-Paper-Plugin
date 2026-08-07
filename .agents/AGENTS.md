@@ -305,6 +305,13 @@ compileOnly-Abhängigkeit, `api-version`, `name` und `version` in `paper-plugin.
 JAR-Name ab. **Nirgends steht eine Build-Nummer von Hand**, und ein Server-Update ist damit: neue
 `server.jar` hinlegen, `.\build.ps1`.
 
+> **Im Cache liegt nur noch die passende Fassung.** Der Deploy löscht alle übrigen
+> `paper-api`-Versionen unter `~/.gradle/caches/modules-2/files-2.1/io.papermc.paper/paper-api/`.
+> Für das Pflicht-Vorgehen heißt das: Der `javap`-Aufruf trifft immer die richtige JAR – aber eine
+> **Sources-JAR gibt es nur, wenn sie für genau diese Version veröffentlicht wurde**. Javadoc aus
+> einer Nachbarversion steht nicht mehr bereit; Signatur, Nullability und Deprecation liefert
+> `javap -v` ohnehin aus dem Bytecode.
+
 > Der **Configuration Cache muss aus bleiben** (Gradle bewirbt ihn bei jedem Lauf): Die Erkennung
 > liest die Server-JAR zur Konfigurationszeit, mit Cache friert der Wert beim ersten Lauf ein.
 
