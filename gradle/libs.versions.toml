@@ -1,15 +1,10 @@
 [versions]
-# Rueckfallwert fuer den Fall, dass kein lokaler Server vorliegt (frischer Clone).
-#
-# Liegt Server/server.jar vor, liest der Build die paper-api-Version direkt daraus und ignoriert
-# diesen Pin - siehe build.gradle.kts. Nachziehen laesst er sich mit:
-#     ./gradlew syncPaperVersion
-# Von Hand muss hier also nichts gepflegt werden.
-paper = "26.2.build.111-stable"
+# Die paper-api steht hier bewusst NICHT: Ihre Version liest der Build aus Server/server.jar und
+# hat damit genau eine Quelle - ein zweiter, gepinnter Wert koennte davon abweichen. Siehe
+# build.gradle.kts.
 kotlin = "2.4.10"
 
 [libraries]
-paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
 # Wird in die Plugin-JAR gebuendelt: Paper bringt die stdlib nicht mit und paper-plugin.yml hat
 # kein libraries-Feld. Warum Papers PluginLoader hier ausscheidet, steht in .agents/AGENTS.md.
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }

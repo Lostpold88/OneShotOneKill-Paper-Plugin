@@ -295,20 +295,17 @@ javap -p -c /tmp/x/net/minecraft/world/level/ServerExplosion.class | less
 
 **MANDATORY: der einzige zulässige Build-Aufruf.** Kein direkter `gradlew.bat`-Aufruf – weder
 `build` noch `deployPlugin` noch `jar`. Das Skript baut `OneShotOneKill_26.2.jar` und kopiert sie
-nach `Server/plugins/`. Gebraucht wird nur ein JDK 25; Gradle und der Kotlin-Compiler kommen über
-den Wrapper.
+nach `Server/plugins/`, wobei es JARs früherer Versionen dort wegräumt. Gebraucht wird nur ein
+JDK 25; Gradle und der Kotlin-Compiler kommen über den Wrapper.
 
-**Die paper-api-Version pflegt sich selbst.** Der Build liest sie aus `Server/server.jar`
-(`META-INF/libraries/…`), sonst aus `Server/libraries/`, sonst aus dem Pin in
-`gradle/libs.versions.toml`, und gibt bei jedem Lauf aus, welche er benutzt. Daraus leiten sich
-`api-version`, `name` und `version` in `paper-plugin.yml` sowie der JAR-Name ab. **Nirgends steht
-eine Build-Nummer von Hand.**
+**Die paper-api-Version kommt ausschließlich aus `Server/server.jar`** (`META-INF/libraries/…`) –
+kein Rückfallwert, kein Pin, keine zweite Wahrheit, die von der Server-JAR abweichen könnte. Fehlt
+die JAR, bricht der Build mit einem Hinweis ab. Aus der erkannten Version leiten sich die
+compileOnly-Abhängigkeit, `api-version`, `name` und `version` in `paper-plugin.yml` sowie der
+JAR-Name ab. **Nirgends steht eine Build-Nummer von Hand**, und ein Server-Update ist damit: neue
+`server.jar` hinlegen, `.\build.ps1`.
 
-Nach einem Server-Update den Pin nachziehen (nur für Clones ohne Server) – die einzige Ausnahme von
-der `build.ps1`-Regel, weil es kein Build ist:
-
-```bash
-./gradlew syncPaperVersion
-```
+> Der **Configuration Cache muss aus bleiben** (Gradle bewirbt ihn bei jedem Lauf): Die Erkennung
+> liest die Server-JAR zur Konfigurationszeit, mit Cache friert der Wert beim ersten Lauf ein.
 
 > Ein laufender Server lädt die JAR **nicht** neu – Neustart nötig.

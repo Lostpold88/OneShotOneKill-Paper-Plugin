@@ -8,24 +8,23 @@ plugins {
 group = "de.oneshotonekill"
 
 // =============================================================================================
-// Paper-API-Version: automatisch aus dem lokalen Server
+// Paper-API-Version: einzig und allein aus Server/server.jar
 //
 // Gebaut wird gegen genau die paper-api, die der Server auch faehrt. Sonst kompiliert man gegen
 // eine andere API als die, gegen die das Plugin spaeter laeuft - und Abweichungen fallen erst zur
 // Laufzeit auf, im schlimmsten Fall als NoSuchMethodError.
 //
-// Quellen in dieser Reihenfolge:
-//   1. Server/server.jar - die Paperclip-JAR fuehrt ihre Bibliotheken unter
-//      META-INF/libraries/... mit. Das ist die Quelle der Wahrheit und funktioniert, OHNE dass
-//      der Server je gestartet wurde.
-//   2. Server/libraries/... - der Ordner, den Paper beim ersten Start anlegt. Greift, wenn nur
-//      die entpackten Bibliotheken vorliegen.
-//   3. gradle/libs.versions.toml - die gepinnte Fassung. Sie gilt nach einem frischen Clone, wo
-//      es gar keinen Server gibt; der Build laeuft damit auch ohne lokalen Paper-Server.
+// Die Paperclip-JAR fuehrt ihre Bibliotheken unter META-INF/libraries/... mit; die Version steht
+// also in der Server-JAR selbst, OHNE dass der Server je gestartet worden sein muss. Eine neue
+// Server-JAR reicht damit vollstaendig aus: Gradle holt die passende paper-api beim naechsten
+// Build aus repo.papermc.io, und api-version, Plugin-Version und JAR-Name ziehen automatisch mit.
 //
-// Weicht 1./2. vom Pin ab, meldet der Build das und verweist auf ./gradlew syncPaperVersion.
+// **Bewusst ohne Rueckfallwert.** Ein zweiter, gepinnter Wert kann von der Server-JAR abweichen -
+// und dann baut man unbemerkt gegen etwas anderes, als spaeter laeuft. Genau das soll diese
+// Mechanik verhindern. Fehlt die Server-JAR, bricht der Build mit einem Hinweis ab, statt eine
+// moeglicherweise falsche Version zu raten.
 //
-// ⚠️ Die Erkennung liest Dateien zur Konfigurationszeit. Das ist korrekt, solange der
+// ⚠️ Die Erkennung liest die JAR zur Konfigurationszeit. Das ist korrekt, solange der
 // Configuration Cache aus ist (Gradle-Standard, hier nicht aktiviert): Der Build wertet das Skript
 // dann bei jedem Lauf neu aus. Wird der Cache jemals eingeschaltet, muss dieser Block auf eine
 // ValueSource umgestellt werden - sonst friert die Version beim ersten Lauf ein und ein
@@ -33,48 +32,38 @@ group = "de.oneshotonekill"
 // tasks.jar, das fuer das stdlib-Buendeln eine Skript-Referenz haelt.)
 // =============================================================================================
 
-/** Version plus Fundort, damit der Build sagen kann, woher der Wert stammt. */
-data class PaperApiSource(val version: String, val origin: String)
-
 val paperApiPath = "io/papermc/paper/paper-api"
 
-fun paperApiFromServerJar(): PaperApiSource? {
+/** Liest die paper-api-Version aus den mitgefuehrten Bibliotheken der Paperclip-JAR. */
+fun paperApiFromServerJar(): String? {
     val serverJar = layout.projectDirectory.file("Server/server.jar").asFile
     if (!serverJar.isFile) return null
 
     val pattern = Regex("^META-INF/libraries/$paperApiPath/([^/]+)/")
     return ZipFile(serverJar).use { zip ->
-        zip.entries().asSequence()
-            .firstNotNullOfOrNull { pattern.find(it.name)?.groupValues?.get(1) }
-            ?.let { PaperApiSource(it, "Server/server.jar") }
+        zip.entries().asSequence().firstNotNullOfOrNull { pattern.find(it.name)?.groupValues?.get(1) }
     }
 }
 
-fun paperApiFromServerLibraries(): PaperApiSource? =
-    layout.projectDirectory.dir("Server/libraries/$paperApiPath").asFile
-        .listFiles { file -> file.isDirectory }
-        ?.maxByOrNull { it.name }
-        ?.let { PaperApiSource(it.name, "Server/libraries") }
+val paperApiVersion: String = paperApiFromServerJar() ?: throw GradleException(
+    """
+    Server/server.jar fehlt oder fuehrt keine paper-api mit.
 
-val pinnedPaperApi: String = libs.versions.paper.get()
+    Der Build richtet sich ausschliesslich nach der Server-JAR, damit er gegen genau die API
+    kompiliert, die der Server spaeter faehrt - einen Rueckfallwert gibt es bewusst nicht.
 
-val paperApi: PaperApiSource =
-    paperApiFromServerJar()
-        ?: paperApiFromServerLibraries()
-        ?: PaperApiSource(pinnedPaperApi, "gradle/libs.versions.toml (kein lokaler Server)")
+    Paper herunterladen und als Server/server.jar ablegen:
+        https://papermc.io/downloads/paper
+    Gestartet werden muss der Server dafuer nicht.
+    """.trimIndent()
+)
 
-/** Aus "26.2.build.110-stable" wird "26.2" - der Wert fuer api-version in paper-plugin.yml. */
-val minecraftVersion: String = paperApi.version.substringBefore(".build.")
+/** Aus "26.2.build.111-stable" wird "26.2" - der Wert fuer api-version in paper-plugin.yml. */
+val minecraftVersion: String = paperApiVersion.substringBefore(".build.")
 
 version = "1.0.0-$minecraftVersion"
 
-logger.lifecycle("Paper-API: ${paperApi.version}  (aus ${paperApi.origin})")
-if (paperApi.version != pinnedPaperApi) {
-    logger.lifecycle(
-        "  Der Pin in gradle/libs.versions.toml steht auf $pinnedPaperApi. " +
-            "Uebernehmen mit: ./gradlew syncPaperVersion"
-    )
-}
+logger.lifecycle("Paper-API: $paperApiVersion  (aus Server/server.jar)")
 
 // ---------------------------------------------------------------------------------------------
 // kotlin-stdlib wandert in die JAR
@@ -92,9 +81,10 @@ if (paperApi.version != pinnedPaperApi) {
 val bundled: Configuration = configurations.create("bundled")
 
 dependencies {
-    // Bewusst nicht libs.paper.api: Die Version kommt aus der Erkennung oben, damit gegen genau
-    // die API kompiliert wird, die der Server faehrt.
-    compileOnly("io.papermc.paper:paper-api:${paperApi.version}")
+    // Die Version kommt aus der Erkennung oben und steht deshalb bewusst nicht im
+    // Versionskatalog: Gradle loest damit bei jeder neuen Server-JAR automatisch die passende
+    // paper-api auf und laedt sie aus repo.papermc.io nach.
+    compileOnly("io.papermc.paper:paper-api:$paperApiVersion")
 
     // In die JAR gebuendelt und gleichzeitig der Compile-Klassenpfad
     bundled(libs.kotlin.stdlib)
@@ -147,49 +137,33 @@ tasks.jar {
 }
 
 // ---------------------------------------------------------------------------------------------
-// syncPaperVersion: erkannte Version in den Catalog schreiben
-//
-// Der Build kompiliert ohnehin schon gegen die erkannte Version. Dieser Task haelt zusaetzlich den
-// Pin nach, der nach einem frischen Clone ohne Server greift - bewusst als eigener Aufruf, denn
-// ein Build soll keine Quelldateien im Arbeitsbaum veraendern.
-// ---------------------------------------------------------------------------------------------
-tasks.register("syncPaperVersion") {
-    group = "build setup"
-    description = "Schreibt die aus dem Server erkannte paper-api-Version in gradle/libs.versions.toml."
-
-    val catalogFile = layout.projectDirectory.file("gradle/libs.versions.toml").asFile
-    val detected = paperApi.version
-    val origin = paperApi.origin
-    val pinned = pinnedPaperApi
-
-    doLast {
-        if (detected == pinned) {
-            logger.lifecycle("Pin ist bereits aktuell: $pinned")
-            return@doLast
-        }
-        if (origin.startsWith("gradle/")) {
-            logger.lifecycle("Kein lokaler Server gefunden - es gibt nichts zu uebernehmen.")
-            return@doLast
-        }
-
-        val text = catalogFile.readText()
-        val updated = text.replace(Regex("""(?m)^paper\s*=\s*".*"$"""), "paper = \"$detected\"")
-        if (updated == text) {
-            throw GradleException("Zeile 'paper = \"…\"' in ${catalogFile.name} nicht gefunden.")
-        }
-        catalogFile.writeText(updated)
-        logger.lifecycle("gradle/libs.versions.toml: paper $pinned -> $detected (aus $origin)")
-    }
-}
-
-// ---------------------------------------------------------------------------------------------
 // deployPlugin: bauen und in den Testserver kopieren - der bisherige Ein-Befehl-Workflow.
+//
+// Raeumt vorher JARs frueherer Minecraft-Versionen weg. Der Dateiname traegt die Version
+// (OneShotOneKill_26.2.jar), nach einem Server-Update entsteht also ein neuer Name - der alte
+// bliebe liegen, und Paper laedt dann **beide** Plugins mit demselben Namen. Genau die Sorte
+// Ueberbleibsel, die eine automatische Versionsfuehrung sonst wieder von Hand einzusammeln gibt.
 // ---------------------------------------------------------------------------------------------
 tasks.register<Copy>("deployPlugin") {
     group = "distribution"
     description = "Baut die Plugin-JAR und kopiert sie nach Server/plugins/."
     from(tasks.jar)
-    into(layout.projectDirectory.dir("Server/plugins"))
+
+    val pluginsDir = layout.projectDirectory.dir("Server/plugins")
+    into(pluginsDir)
+
+    doFirst {
+        pluginsDir.asFile
+            .listFiles { file -> file.isFile && file.name.startsWith("OneShotOneKill_") }
+            ?.filter { it.name != pluginJarName }
+            ?.forEach { stale ->
+                if (stale.delete()) {
+                    logger.lifecycle("Alte Plugin-JAR entfernt: ${stale.name}")
+                } else {
+                    logger.warn("Alte Plugin-JAR ${stale.name} liess sich nicht entfernen - laeuft der Server?")
+                }
+            }
+    }
 
     doLast {
         logger.lifecycle("Plugin deployt nach Server/plugins/$pluginJarName")

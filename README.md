@@ -273,8 +273,8 @@ Die fertige `build/libs/OneShotOneKill_26.2.jar` in den `plugins/`-Ordner des Se
 den Server neu starten — ein laufender Server lädt die JAR nicht neu.
 
 **Was der Build macht:**
-1. Ermittelt die `paper-api`-Version **automatisch aus `Server/server.jar`** und kompiliert gegen
-   genau die API, die dein Server fährt (siehe unten).
+1. Ermittelt die `paper-api`-Version **ausschließlich aus `Server/server.jar`** und kompiliert gegen
+   genau die API, die dein Server fährt (siehe unten). Ohne Server-JAR bricht er ab.
 2. Bündelt die `kotlin-stdlib` in die JAR — Paper bringt sie nicht mit, und `paper-plugin.yml` hat
    kein `libraries:`-Feld.
 3. Packt `paper-plugin.yml` sowie `Standard.zip` und `DustPvP.zip` dazu.
@@ -282,31 +282,37 @@ den Server neu starten — ein laufender Server lädt die JAR nicht neu.
 ### 🔄 Paper-Version: keine Handarbeit
 
 Gebaut wird immer gegen die API, die der Server tatsächlich benutzt — sonst fallen Abweichungen
-erst zur Laufzeit auf, im schlimmsten Fall als `NoSuchMethodError`. Die Version wird in dieser
-Reihenfolge gesucht:
+erst zur Laufzeit auf, im schlimmsten Fall als `NoSuchMethodError`. Die **einzige** Quelle dafür ist
+`Server/server.jar`: Die Paperclip-JAR führt ihre Bibliotheken unter `META-INF/libraries/…` mit, die
+Version steht also in der Server-JAR selbst. **Gestartet werden muss der Server dafür nie.**
 
-| Quelle | Wann sie greift |
-| :--- | :--- |
-| `Server/server.jar` | Immer, wenn eine Server-JAR da ist — die Paperclip-JAR führt ihre Bibliotheken unter `META-INF/libraries/…` mit. **Der Server muss dafür nie gestartet worden sein.** |
-| `Server/libraries/…` | Wenn nur die entpackten Bibliotheken vorliegen |
-| `gradle/libs.versions.toml` | Frischer Clone ohne Server |
+**Es gibt bewusst keinen Rückfallwert.** Ein zweiter, gepinnter Wert kann von der Server-JAR
+abweichen — und dann baut man unbemerkt gegen etwas anderes, als später läuft. Genau das soll die
+Mechanik verhindern. Fehlt die Server-JAR, bricht der Build mit einem Hinweis ab, statt eine
+möglicherweise falsche Version zu raten.
 
-Der Build sagt bei jedem Lauf, was er gewählt hat:
+Der Build sagt bei jedem Lauf, was er benutzt:
 
 ```
-Paper-API: 26.2.build.110-stable  (aus Server/server.jar)
+Paper-API: 26.2.build.111-stable  (aus Server/server.jar)
 ```
 
-Daraus leiten sich `api-version`, `name` und `version` in `paper-plugin.yml` sowie der
-JAR-Dateiname ab. Nach einem Server-Update passiert also **nichts weiter als ein erneuter Build**.
-Nur der Rückfallwert für Clones ohne Server will einmal nachgezogen werden:
+**Ein Server-Update besteht damit aus genau zwei Schritten**: neue `server.jar` nach `Server/`
+legen, `.\build.ps1` ausführen. Alles Weitere zieht mit:
 
-```bash
-./gradlew syncPaperVersion
-```
+- Gradle löst `io.papermc.paper:paper-api` auf die erkannte Version auf und lädt sie aus
+  `repo.papermc.io` nach.
+- `api-version`, `name` und `version` in `paper-plugin.yml` sowie der JAR-Dateiname leiten sich aus
+  ihr ab — bei einem Sprung auf 26.3 entsteht also automatisch `OneShotOneKill_26.3.jar` mit
+  `api-version: '26.3'`.
+- Der Deploy räumt JARs früherer Versionen aus `Server/plugins/` weg. Ohne das läge die alte neben
+  der neuen, und Paper lüde **beide** Plugins.
 
-Wer einen Testserver unter `Server/` liegen hat (nicht versioniert), bekommt die JAR mit
-`./gradlew deployPlugin` direkt dorthin kopiert. `build.ps1` ist ein Wrapper auf genau diesen Task.
+Zwei Dinge, die dabei zu erwarten sind: Deprecatet die neue API etwas, das hier benutzt wird,
+**bricht der Build** — `allWarningsAsErrors` ist Absicht, so fällt es beim Bauen auf statt zur
+Laufzeit. Und der **Configuration Cache muss aus bleiben** (Gradle bewirbt ihn bei jedem Lauf): Die
+Erkennung liest die Server-JAR zur Konfigurationszeit, mit Cache friert der Wert beim ersten Lauf
+ein und genau ein Server-Update ginge daran vorbei.
 
 ---
 
