@@ -4,11 +4,13 @@ import de.oneshotonekill.manager.WorldManager
 import de.oneshotonekill.util.mini
 import io.papermc.paper.event.world.WorldGameRuleChangeEvent
 import org.bukkit.GameRules
+import org.bukkit.entity.Mob
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.weather.ThunderChangeEvent
 import org.bukkit.event.weather.WeatherChangeEvent
+import org.bukkit.event.world.EntitiesLoadEvent
 import org.bukkit.event.world.WorldInitEvent
 import org.bukkit.event.world.WorldLoadEvent
 
@@ -23,6 +25,34 @@ class WorldRuleListener : Listener {
     @EventHandler
     fun onWorldInit(event: WorldInitEvent) {
         WorldManager.applyGlobalGameRules(event.world)
+    }
+
+    /**
+     * Raeumt Tiere und Mobs weg, die **in der Map gespeichert** sind.
+     *
+     * `SPAWN_MOBS=false` verhindert nur neue Spawns, und das Aufraeumen beim Laden der Welt sieht
+     * ausschliesslich die Entities in bereits geladenen Chunks - beim Serverstart also nur die
+     * Spawn-Chunks. Alles, was in den Regionsdateien der Map schlummert, taucht deshalb erst auf,
+     * wenn ein Spieler in dessen Chunk laeuft: genau die Huehner auf BO2.
+     *
+     * Der `EntitiesLoadEvent` greift an der richtigen Stelle - dem Moment, in dem die Entities eines
+     * Chunks in die Welt kommen.
+     *
+     * Entfernt werden ausschliesslich [Mob]s, also Tiere und Monster. **Nicht** angetastet wird die
+     * Deko der Map: Ruestungsstaender, Bilderrahmen und Item-Displays sind keine Mobs - eine
+     * pauschale Entity-Keule wuerde eine nachgebaute Karte ausraeumen.
+     *
+     * **Eigene Mobs bleiben ebenfalls stehen**: Der Bomber-Drache traegt einen Schluessel im eigenen
+     * Namensraum. Ohne diese Ausnahme koennte ein Chunk-Reload ihn mitten im Angriff loeschen.
+     */
+    @EventHandler
+    fun onEntitiesLoad(event: EntitiesLoadEvent) {
+        if (!event.world.name.startsWith(WorldManager.WORLD_PREFIX)) return
+
+        event.entities
+            .filterIsInstance<Mob>()
+            .filterNot { mob -> mob.persistentDataContainer.keys.any { it.namespace == NAMESPACE } }
+            .forEach { it.remove() }
     }
 
     @EventHandler
@@ -73,5 +103,10 @@ class WorldRuleListener : Listener {
         if (event.toThunderState()) {
             event.isCancelled = true
         }
+    }
+
+    private companion object {
+        /** Namensraum aller eigenen PDC-Schluessel. */
+        const val NAMESPACE = "oneshotonekill"
     }
 }

@@ -12,11 +12,11 @@ Drei eingebaute Maps, umschaltbar im laufenden Betrieb per `/osok map`:
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Standard** | `OSOK_Standard` | Rechteck `221 / 58 / -50` → `287 / 64 / -106` | `223.5 / 48.0 / 55.5` | `61` | `69` |
 | **DustPvP** | `OSOK_DustPvP` | Rechteck `-25 / 70 / 33` → `25 / 70 / -33` | `0.5 / 90.0 / 0.5` | `71` | offen |
-| **BO2** | `OSOK_BO2` | **Umriss** aus 105 Punkten auf `Y 63` | `-1045.5 / 63.0 / 352.5` | `64` | offen |
+| **BO2** | `OSOK_BO2` | **Umriss** aus 221 Punkten auf `Y 63` | `-1045.5 / 63.0 / 352.5` | `64` | offen |
 
-**Nicht jede Arena ist ein Rechteck.** BO2 wurde als **Umriss** vermessen – 105 Eckpunkte einmal um
+**Nicht jede Arena ist ein Rechteck.** BO2 wurde als **Umriss** vermessen – 221 Eckpunkte einmal um
 die Karte herum, im Spiel mit `/punkt` mitgeschrieben. Die Kampfzone ist damit ein Polygon, kein
-Quader: Von der umschließenden Box (198 × 80 Blöcke) gehören nur **68 %** wirklich zur Arena, der
+Quader: Von der umschließenden Box (198 × 82 Blöcke) gehören nur **67 %** wirklich zur Arena, der
 Rest liegt außerhalb der Karte.
 
 Umgesetzt ist das als **vorberechnete Maske**: Beim Laden wird der Umriss einmal in ein Feld je
@@ -237,6 +237,7 @@ Die Arena-Grenzen steuern Kampfzone, Spielerspawns, Item-Spawns und die Pausensp
   - Automatische Extraktion von `Standard.zip` bzw. `DustPvP.zip` aus den Plugin-Ressourcen in die Server-Welt.
   - **`locator_bar` ist serverweit dauerhaft auf `false`**: gesetzt beim Start auf allen geladenen Welten, bei `WorldInitEvent`/`WorldLoadEvent` für später geladene Welten, und ein Reaktivieren per `/gamerule` wird über den Paper `WorldGameRuleChangeEvent` blockiert.
   - Arena-GameRules über die moderne `org.bukkit.GameRules` Registry: `IMMEDIATE_RESPAWN`, `KEEP_INVENTORY`, `SPAWN_MOBS=false`, `SPAWN_PATROLS=false`, `SPAWN_WANDERING_TRADERS=false`.
+  - **Mobs, die in der Map gespeichert sind, werden beim Laden ihres Chunks entfernt.** `SPAWN_MOBS=false` verhindert nur *neue* Spawns, und das Aufräumen beim Weltstart sieht ausschließlich geladene Chunks – auf BO2 liefen deshalb Hühner herum, sobald man ihren Bereich betrat. Der `EntitiesLoadEvent` greift genau dann, wenn die Entities eines Chunks in die Welt kommen. Entfernt werden nur **Mobs**: Rüstungsständer, Bilderrahmen und Displays gehören zur Map-Deko, und der Bomber-Drache trägt einen eigenen PDC-Schlüssel und bleibt ebenfalls stehen.
   - **☀ Immer Mittag, immer klar**: `ADVANCE_TIME` und `ADVANCE_WEATHER` stehen serverweit auf `false`, dazu werden Zeit und Wetter einmal explizit gesetzt. Die GameRules allein reichen nicht – sie halten nur den Fortlauf an, eine Welt mitten in der Nacht bliebe genau so stehen. Ein Reaktivieren per `/gamerule` wird über den `WorldGameRuleChangeEvent` abgelehnt, und `WeatherChangeEvent`/`ThunderChangeEvent` fangen zusätzlich jeden Wechsel weg von „klar" ab – etwa durch `/weather rain` oder ein anderes Plugin.
   - **Map-Wechsel ohne Neustart**: Das laufende Match wird sauber gestoppt, Boden-Items samt Chunk-Tickets sowie Drachen, fallende Bomben und platzierte C4-Ladungen werden freigegeben, und die alte Welt wird erst entladen, wenn **alle** `teleportAsync`-Vorgänge nachweislich abgeschlossen sind (`CompletableFuture.allOf`). Parallele Wechsel sind gesperrt. Der Wechsel läuft bewusst **ohne Sound-Quittung**.
 
