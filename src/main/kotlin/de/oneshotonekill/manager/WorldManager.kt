@@ -58,15 +58,16 @@ class WorldManager(private val plugin: OneShotOneKill) {
         // BO2 Map (OSOK_BO2)
         //
         // Die Kampfzone ist kein Rechteck, sondern ein abgelaufener Umriss: 221 Eckpunkte einmal um
-        // die Arena herum, mit /punkt mitgeschrieben. Der Umriss liegt vollstaendig auf Y 63; die
-        // Spielhoehe darueber deckt der Kopfraum der Arena ab (12 Bloecke).
+        // die Arena herum, mit /punkt mitgeschrieben. Der Umriss liegt auf dem Boden (Y 63), der
+        // hoechste begehbare Block der Map auf Y 81 - beides zusammen spannt die Kampfzone auf.
+        // Eine Decke gibt es nicht.
         availableMapsByKey["bo2"] = MapConfig(
             name = "BO2",
             zipResource = "BO2.zip",
             lobbyLocation = Location(null, -1045.5, 63.0, 352.5),
             regions = listOf(
                 ArenaPolygon.of(
-                    63.0, 63.0,
+                    63.0, 81.0,
                     -1147, 405, -1147, 377, -1139, 377, -1139, 379, -1137, 379, -1137, 377,
                     -1126, 377, -1126, 379, -1123, 379, -1123, 377, -1114, 377, -1114, 379,
                     -1111, 379, -1111, 377, -1109, 377, -1109, 382, -1105, 382, -1105, 377,
@@ -106,7 +107,11 @@ class WorldManager(private val plugin: OneShotOneKill) {
                     -1129, 402, -1137, 402, -1137, 401, -1139, 401, -1139, 405,
                 ),
             ),
-        )
+        ).apply {
+            // Boden-Item-Boxen bleiben auf der Grundflaeche: Ohne diese Grenze wuerde der Scan bis
+            // zur Arena-Oberkante (Y 81) laufen und Items auf Daechern ablegen.
+            maxItemSpawnY = 64.0
+        }
 
         activeMapConfig = standardMap
     }

@@ -426,6 +426,11 @@ class MapConfig(
             val blockX = floor(region.minX + Random.nextDouble() * (region.maxX - region.minX)).toInt()
             val blockZ = floor(region.minZ + Random.nextDouble() * (region.maxZ - region.minZ)).toInt()
 
+            // Gewuerfelt wird in der umschliessenden Box der Region - bei einem Umriss liegt davon
+            // ein guter Teil ausserhalb der Karte. Ohne diese Pruefung landen Spielerspawns und
+            // Boden-Items dort, wo gar keine Arena ist.
+            if (!region.containsColumn(blockX + 0.5, blockZ + 0.5)) continue
+
             for (step in 0..(scanMaxY - scanMinY)) {
                 val y = if (topDown) scanMaxY - step else scanMinY + step
                 if (isStandableAt(osokWorld, blockX, y, blockZ)) {

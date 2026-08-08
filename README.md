@@ -12,12 +12,16 @@ Drei eingebaute Maps, umschaltbar im laufenden Betrieb per `/osok map`:
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Standard** | `OSOK_Standard` | Rechteck `221 / 58 / -50` → `287 / 64 / -106` | `223.5 / 48.0 / 55.5` | `61` | `69` |
 | **DustPvP** | `OSOK_DustPvP` | Rechteck `-25 / 70 / 33` → `25 / 70 / -33` | `0.5 / 90.0 / 0.5` | `71` | offen |
-| **BO2** | `OSOK_BO2` | **Umriss** aus 221 Punkten auf `Y 63` | `-1045.5 / 63.0 / 352.5` | `64` | offen |
+| **BO2** | `OSOK_BO2` | **Umriss** aus 221 Punkten, `Y 63`–`81` | `-1045.5 / 63.0 / 352.5` | `64` | offen |
 
 **Nicht jede Arena ist ein Rechteck.** BO2 wurde als **Umriss** vermessen – 221 Eckpunkte einmal um
 die Karte herum, im Spiel mit `/punkt` mitgeschrieben. Die Kampfzone ist damit ein Polygon, kein
 Quader: Von der umschließenden Box (198 × 82 Blöcke) gehören nur **67 %** wirklich zur Arena, der
 Rest liegt außerhalb der Karte.
+
+Der Umriss liegt auf dem Boden (`Y 63`), der höchste begehbare Block der Map auf `Y 81` – beides
+zusammen spannt die Kampfzone auf, darüber kommen noch 12 Blöcke Kopfraum. Boden-Item-Boxen sind
+getrennt davon auf `Y 64` gedeckelt, sonst landeten sie auf Dächern.
 
 Umgesetzt ist das als **vorberechnete Maske**: Beim Laden wird der Umriss einmal in ein Feld je
 Spalte gerastert, danach ist `isInArenaArea` ein Array-Zugriff. Ein Punkt-in-Polygon-Test über
@@ -25,6 +29,11 @@ hundert Ecken bei jedem Schadensevent, jeder Bewegung und jedem Item-Spawn wäre
 Gerastert wird dabei **Fläche und Umrisslinie**, und das Ergebnis um eine Blocklage verbreitert –
 wer die Grenze abläuft, steht auf Blöcken, die zur Arena zählen sollen, und an einspringenden Ecken
 fielen die sonst heraus.
+
+**Spawns würfeln in der umschließenden Box und verwerfen, was daneben liegt.** Bei BO2 liegen 31 %
+der Box außerhalb der Karte – ohne diese Prüfung landet dort jedes dritte Item und jeder dritte
+Spieler-Spawn. Die Trefferquote von 69 % pro Versuch reicht bei 200 Versuchen locker; dass gar kein
+Platz gefunden wird, ist praktisch ausgeschlossen.
 
 Die **Decke** begrenzt fliegende Entities: Der Tarnkappenbomber-Drache schwebt normalerweise
 12 Blöcke über seinem Ziel, bleibt auf überdachten Maps aber immer einen Block unter der Decke
