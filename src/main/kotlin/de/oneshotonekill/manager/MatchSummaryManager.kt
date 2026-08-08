@@ -22,60 +22,65 @@ class MatchSummaryManager(private val plugin: OneShotOneKill) {
         get() = plugin.scoreboardManager
 
     /**
-     * Sendet die Zusammenfassung an alle Spieler. Ohne jede Wertung (kein Kill, keine Strecke)
-     * wird nichts ausgegeben - ein abgebrochenes Match soll keinen leeren Kasten erzeugen.
+     * Sendet die Zusammenfassung in einem Zug an alle Spieler.
+     *
+     * Das Nuke-Finale benutzt stattdessen [summaryLines] und gibt die Zeilen einzeln aus - siehe
+     * `MatchManager#celebrateWinner`.
      */
     fun broadcastSummary() {
-        val players = Bukkit.getOnlinePlayers().toList()
-        if (players.isEmpty() || !hasAnyResult(players)) return
+        val lines = summaryLines()
+        if (lines.isEmpty()) return
 
-        broadcast(" ")
-        broadcast("<gold><b>=======================================</b></gold>")
-        broadcast("<yellow><b>   📋 MATCH-ZUSAMMENFASSUNG   </b></yellow>")
-        broadcast("<gold><b>=======================================</b></gold>")
-
-        line("🏅", "MVP", players.best { mvpScore(it) }) {
-            "<gray>Wertung <white>${mvpScore(it).toInt()}</white></gray>"
-        }
-
-        line("🎯", "Meiste Kills", players.best { stats.getKills(it.uniqueId).toDouble() }) {
-            "<green>${stats.getKills(it.uniqueId)} Kills</green>"
-        }
-
-        line("⚖", "Beste K/D", players.best { stats.getKDRatioValue(it.uniqueId) }) {
-            "<aqua>${stats.getKDRatio(it.uniqueId)}</aqua>"
-        }
-
-        line("💀", "Meiste Tode", players.best { stats.getDeaths(it.uniqueId).toDouble() }) {
-            "<red>${stats.getDeaths(it.uniqueId)} Tode</red>"
-        }
-
-        line("🎁", "Meiste Items", players.best { stats.getItemsCollected(it.uniqueId).toDouble() }) {
-            "<light_purple>${stats.getItemsCollected(it.uniqueId)} Items</light_purple>"
-        }
-
-        line("👟", "Längste Strecke", players.best { stats.getDistance(it.uniqueId) }) {
-            "<yellow>${formatDistance(stats.getDistance(it.uniqueId))}</yellow>"
-        }
-
-        broadcast("<gold><b>=======================================</b></gold>")
-        broadcast(" ")
-
+        lines.forEach { broadcast(it) }
         Bukkit.getServer().playSound(
             Sound.sound(BukkitSound.BLOCK_NOTE_BLOCK_CHIME, Sound.Source.MASTER, 1.0f, 1.2f)
         )
     }
 
-    /** Schreibt eine Zeile, oder einen Platzhalter, wenn niemand gewertet wurde. */
-    private inline fun line(icon: String, label: String, winner: Player?, value: (Player) -> String) {
-        if (winner == null) {
-            broadcast("<gray>  $icon $label: <dark_gray>—</dark_gray></gray>")
-            return
-        }
-        broadcast(
-            "<gray>  $icon $label: <white><b>${winner.name}</b></white> " +
-                "<dark_gray>»</dark_gray> ${value(winner)}</gray>"
+    /**
+     * Die Zeilen der Zusammenfassung als MiniMessage.
+     *
+     * Ohne jede Wertung (kein Kill, keine Strecke) ist die Liste **leer** - ein abgebrochenes Match
+     * soll keinen leeren Kasten erzeugen.
+     */
+    fun summaryLines(): List<String> {
+        val players = Bukkit.getOnlinePlayers().toList()
+        if (players.isEmpty() || !hasAnyResult(players)) return emptyList()
+
+        return listOf(
+            "<gold><b>=======================================</b></gold>",
+            "<yellow><b>   📋 MATCH-ZUSAMMENFASSUNG   </b></yellow>",
+            "<gold><b>=======================================</b></gold>",
+
+            line("🏅", "MVP", players.best { mvpScore(it) }) {
+                "<gray>Wertung <white>${mvpScore(it).toInt()}</white></gray>"
+            },
+            line("🎯", "Meiste Kills", players.best { stats.getKills(it.uniqueId).toDouble() }) {
+                "<green>${stats.getKills(it.uniqueId)} Kills</green>"
+            },
+            line("⚖", "Beste K/D", players.best { stats.getKDRatioValue(it.uniqueId) }) {
+                "<aqua>${stats.getKDRatio(it.uniqueId)}</aqua>"
+            },
+            line("💀", "Meiste Tode", players.best { stats.getDeaths(it.uniqueId).toDouble() }) {
+                "<red>${stats.getDeaths(it.uniqueId)} Tode</red>"
+            },
+            line("🎁", "Meiste Items", players.best { stats.getItemsCollected(it.uniqueId).toDouble() }) {
+                "<light_purple>${stats.getItemsCollected(it.uniqueId)} Items</light_purple>"
+            },
+            line("👟", "Längste Strecke", players.best { stats.getDistance(it.uniqueId) }) {
+                "<yellow>${formatDistance(stats.getDistance(it.uniqueId))}</yellow>"
+            },
+
+            "<gold><b>=======================================</b></gold>",
         )
+    }
+
+    /** Eine Zeile, oder ein Platzhalter, wenn niemand gewertet wurde. */
+    private inline fun line(icon: String, label: String, winner: Player?, value: (Player) -> String): String {
+        if (winner == null) return "<gray>  $icon $label: <dark_gray>—</dark_gray></gray>"
+
+        return "<gray>  $icon $label: <white><b>${winner.name}</b></white> " +
+            "<dark_gray>»</dark_gray> ${value(winner)}</gray>"
     }
 
     /** Spieler mit dem hoechsten Wert, oder `null`, wenn alle Werte bei 0 liegen. */

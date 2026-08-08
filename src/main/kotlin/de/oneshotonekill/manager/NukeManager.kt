@@ -717,8 +717,17 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
         }
     }
 
+    /**
+     * Ebnet eine Spalte ein - oder laesst einen Rest davon als Ruine stehen.
+     *
+     * Der unterste feste Block wird immer zu verbranntem Gestein. In einer Ruinenzelle bleiben
+     * darueber noch ein paar Blocklagen stehen, ebenfalls verkohlt: Eine vollstaendig
+     * plattgewalzte Flaeche sieht nach Baustelle aus, ein paar stehengebliebene Mauerreste nach
+     * Einschlag.
+     */
     private fun flattenColumn(world: World, x: Int, z: Int, scanBottom: Int, scanTop: Int) {
-        var floorFound = false
+        val ruinHeight = ruinHeightAt(x, z)
+        var kept = 0
 
         for (y in scanBottom..scanTop) {
             val block = world.getBlockAt(x, y, z)
@@ -726,13 +735,32 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
 
             mapSnapshot[Position.block(x, y, z)] = block.blockData
 
-            if (!floorFound) {
-                floorFound = true
+            if (kept <= ruinHeight) {
+                // Der unterste Block (kept == 0) steht immer, darueber nur in Ruinenzellen
+                kept++
                 block.setType(SCORCHED[Random.nextInt(SCORCHED.size)], false)
             } else {
                 block.setType(Material.AIR, false)
             }
         }
+    }
+
+    /**
+     * Wie viele Blocklagen ueber dem Boden an dieser Stelle stehen bleiben - 0 fuer die freie
+     * Flaeche, sonst ein paar Lagen Ruine.
+     *
+     * Entschieden wird **zellenweise** statt je Block: Ein Wuerfel pro Spalte ergaebe einzelne
+     * Pilzsaeulen, ein grobes Raster dagegen zusammenhaengende Mauerreste. Die Zelle wird aus den
+     * Koordinaten gehasht und ist damit ohne gespeicherten Zustand ueberall gleich.
+     */
+    private fun ruinHeightAt(x: Int, z: Int): Int {
+        val cellX = Math.floorDiv(x, RUIN_CELL_SIZE)
+        val cellZ = Math.floorDiv(z, RUIN_CELL_SIZE)
+        val hash = (cellX * RUIN_HASH_X) xor (cellZ * RUIN_HASH_Z)
+
+        if (Math.floorMod(hash, 100) >= RUIN_PERCENT) return 0
+
+        return 1 + Math.floorMod(hash / 100, RUIN_MAX_HEIGHT)
     }
 
     private fun drawShockwaveRing(world: World, center: Location, radius: Double) {
@@ -945,39 +973,43 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
      * flache Wand.
      */
     private fun renderFog(viewer: Player) {
-        val chest = viewer.location.add(0.0, FOG_EYE_HEIGHT, 0.0)
+        val feet = viewer.location
 
-        // Fallout: Asche rieselt von oben durch die Schwaden. Kommt aus derselben Ueberlegung wie
-        // der Nebel - hoch angesetzt, weit gestreut, ein Aufruf pro Betrachter.
-        viewer.spawnParticle(
-            Particle.ASH, chest.clone().add(0.0, FALLOUT_HEIGHT, 0.0), FALLOUT_DENSITY,
-            FOG_RADIUS, FALLOUT_SPREAD, FOG_RADIUS, 0.0,
-        )
-        viewer.spawnParticle(
-            Particle.WHITE_ASH, chest.clone().add(0.0, FALLOUT_HEIGHT, 0.0), FALLOUT_DENSITY / 2,
-            FOG_RADIUS, FALLOUT_SPREAD, FOG_RADIUS, 0.0,
-        )
+        // **Mehrere flache Schichten uebereinander** statt eines einzigen Quaders: Ein Quader
+        // verteilt seine Partikel gleichmaessig ueber die ganze Hoehe und wirkt dadurch duenn. Ein
+        // Stapel flacher, dichter Lagen vom Boden bis ueber Kopfhoehe fuellt den Raum wirklich -
+        // und zwischen zwei Lagen wechselt der Farbton, was der Wand Tiefe gibt.
+        for (layer in 0 until FOG_LAYERS) {
+            val at = feet.clone().add(0.0, FOG_LAYER_BASE + layer * FOG_LAYER_SPACING, 0.0)
+            val dust = if (layer % 2 == 0) GAS_DUST_BRIGHT else GAS_DUST_DARK
 
-        viewer.spawnParticle(
-            Particle.DUST, chest, FOG_DENSITY_BRIGHT,
-            FOG_RADIUS, FOG_HEIGHT, FOG_RADIUS, 0.0, GAS_DUST_BRIGHT,
-        )
-        viewer.spawnParticle(
-            Particle.DUST, chest, FOG_DENSITY_DARK,
-            FOG_RADIUS, FOG_HEIGHT, FOG_RADIUS, 0.0, GAS_DUST_DARK,
-        )
+            viewer.spawnParticle(
+                Particle.DUST, at, FOG_DENSITY_LAYER,
+                FOG_RADIUS, FOG_LAYER_HEIGHT, FOG_RADIUS, 0.0, dust,
+            )
+        }
 
         // Bodenteppich: haengt an den Fuessen des Betrachters und liegt damit auf jeder Ebene der
-        // Arena auf - auch auf Bruecken und Plattformen.
+        // Arena auf - auch auf stehengebliebenen Ruinen.
         viewer.spawnParticle(
-            Particle.DUST, viewer.location, FOG_DENSITY_GROUND,
+            Particle.DUST, feet, FOG_DENSITY_GROUND,
             FOG_RADIUS, FOG_GROUND_HEIGHT, FOG_RADIUS, 0.0, GAS_DUST_GROUND,
         )
 
         // Etwas Rauch dazwischen, damit die Wolke Struktur bekommt und nicht nur flimmert
+        val chest = feet.clone().add(0.0, FOG_EYE_HEIGHT, 0.0)
         viewer.spawnParticle(
             Particle.LARGE_SMOKE, chest, FOG_DENSITY_SMOKE,
-            FOG_RADIUS, FOG_HEIGHT * 0.6, FOG_RADIUS, 0.01,
+            FOG_RADIUS, FOG_LAYER_SPACING * FOG_LAYERS * 0.4, FOG_RADIUS, 0.01,
+        )
+
+        // Fallout: Asche rieselt von oben durch die Schwaden
+        val above = feet.clone().add(0.0, FALLOUT_HEIGHT, 0.0)
+        viewer.spawnParticle(
+            Particle.ASH, above, FALLOUT_DENSITY, FOG_RADIUS, FALLOUT_SPREAD, FOG_RADIUS, 0.0,
+        )
+        viewer.spawnParticle(
+            Particle.WHITE_ASH, above, FALLOUT_DENSITY / 2, FOG_RADIUS, FALLOUT_SPREAD, FOG_RADIUS, 0.0,
         )
     }
 
@@ -990,7 +1022,16 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
      */
     private fun spawnGasClouds(world: World) {
         val map = plugin.worldManager.activeMapConfig
-        val cloudY = map.minY + GAS_CLOUD_HEIGHT
+
+        // Mehrere Ebenen uebereinander: Eine einzelne Schicht liegt wie ein Teppich am Boden,
+        // gestapelt steht das Gas dagegen bis ueber Kopfhoehe in der Arena.
+        for (layer in 0 until GAS_CLOUD_LAYERS) {
+            spawnGasCloudLayer(world, map.minY + GAS_CLOUD_HEIGHT + layer * GAS_CLOUD_LAYER_SPACING)
+        }
+    }
+
+    private fun spawnGasCloudLayer(world: World, cloudY: Double) {
+        val map = plugin.worldManager.activeMapConfig
 
         var x = map.minX
         while (x <= map.maxX) {
@@ -1327,6 +1368,16 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
         private const val SCAN_BELOW = 2.0
         private const val SCAN_ABOVE = 10.0
 
+        /**
+         * Ruinen: Anteil der Flaeche, auf dem etwas stehen bleibt, Groesse einer Ruinenzelle und
+         * ihre hoechste Restlage. Die beiden Primzahlen streuen den Zellen-Hash.
+         */
+        private const val RUIN_PERCENT = 18
+        private const val RUIN_CELL_SIZE = 4
+        private const val RUIN_MAX_HEIGHT = 4
+        private const val RUIN_HASH_X = 73856093
+        private const val RUIN_HASH_Z = 19349663
+
         /** Womit der Boden nach dem Einschlag belegt wird - verkohlt, nicht bunt. */
         val SCORCHED: List<Material> = listOf(
             Material.BLACKSTONE,
@@ -1353,11 +1404,15 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
         private const val CLOUD_CAP_POINTS = 28
 
         // ---------------- Gas ----------------
-        /** Abstand der Gaswolken im Raster; deutlich enger als ihr Radius, damit sie ueberlappen. */
-        private const val GAS_CLOUD_SPACING = 10.0
-        private const val GAS_CLOUD_RADIUS = 10.0f
+        /** Abstand der Gaswolken im Raster; enger als ihr Radius, damit sie ueberlappen. */
+        private const val GAS_CLOUD_SPACING = 14.0
+        private const val GAS_CLOUD_RADIUS = 12.0f
         private const val GAS_CLOUD_HEIGHT = 1.5
         private const val GAS_CLOUD_DURATION_TICKS = 12000
+
+        /** Ebenen des Wolkenrasters uebereinander - das Gas soll nicht nur am Boden liegen. */
+        private const val GAS_CLOUD_LAYERS = 3
+        private const val GAS_CLOUD_LAYER_SPACING = 4.5
 
         /**
          * Giftgruen in zwei Toenen: Der helle Ton traegt die Wolke, der dunkle liegt als Schatten
@@ -1378,14 +1433,20 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
 
         /** Halbe Kantenlaenge des Quaders, in dem der Client die Schwaden verteilt. */
         private const val FOG_RADIUS = 14.0
-        private const val FOG_HEIGHT = 5.0
         private const val FOG_GROUND_HEIGHT = 0.8
         private const val FOG_EYE_HEIGHT = 1.4
 
+        /** Schichten des Nebels: von knapp unter den Fuessen bis deutlich ueber Kopfhoehe. */
+        private const val FOG_LAYERS = 6
+        private const val FOG_LAYER_BASE = -0.5
+        private const val FOG_LAYER_SPACING = 1.6
+
+        /** Halbe Hoehe einer Schicht - flach, damit sie als dichte Lage wirkt statt als Dunst. */
+        private const val FOG_LAYER_HEIGHT = 0.9
+
         /** Partikel je Aufruf - der Client verteilt sie selbst, der Server schickt nur ein Paket. */
-        private const val FOG_DENSITY_BRIGHT = 200
-        private const val FOG_DENSITY_DARK = 120
-        private const val FOG_DENSITY_GROUND = 140
+        private const val FOG_DENSITY_LAYER = 95
+        private const val FOG_DENSITY_GROUND = 150
         private const val FOG_DENSITY_SMOKE = 30
 
         /** Schwaden vor dem Gesicht des Erstickenden. */
@@ -1395,10 +1456,10 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
         private const val GAS_PERIOD_TICKS = 20L
 
         /** So viele Takte haelt ein Spieler die Luft an - danach erstickt er. */
-        private const val GAS_DOSE_TO_DEATH = 25
+        private const val GAS_DOSE_TO_DEATH = 12
 
         /** Ab so vielen verbleibenden Sekunden wird es schwarz vor Augen. */
-        private const val GAS_DARKNESS_FROM = 8
+        private const val GAS_DARKNESS_FROM = 5
 
         /** Fallout: Asche rieselt aus dieser Hoehe ueber dem Betrachter herunter. */
         private const val FALLOUT_HEIGHT = 6.0

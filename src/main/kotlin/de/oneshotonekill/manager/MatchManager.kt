@@ -2,26 +2,18 @@ package de.oneshotonekill.manager
 
 import de.oneshotonekill.OneShotOneKill
 import de.oneshotonekill.util.mini
-import io.papermc.paper.datacomponent.DataComponentTypes
-import io.papermc.paper.datacomponent.item.Fireworks
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask
 import net.kyori.adventure.sound.Sound
+import net.kyori.adventure.text.Component
 import net.kyori.adventure.title.Title
 import net.kyori.adventure.util.Ticks
 import org.bukkit.Bukkit
-import org.bukkit.Color
-import org.bukkit.FireworkEffect
 import org.bukkit.Location
-import org.bukkit.Material
-import org.bukkit.Particle
 import org.bukkit.command.CommandSender
-import org.bukkit.entity.Firework
 import org.bukkit.entity.Player
-import org.bukkit.inventory.ItemStack
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 import java.util.Locale
-import kotlin.math.sin
 import org.bukkit.Sound as BukkitSound
 
 class MatchManager(private val plugin: OneShotOneKill) {
@@ -53,8 +45,9 @@ class MatchManager(private val plugin: OneShotOneKill) {
         private set
 
     private var timerTask: ScheduledTask? = null
-    private var victoryEffectsTask: ScheduledTask? = null
-    private var victoryTitleTask: ScheduledTask? = null
+
+    /** Gibt den After-Action-Report Zeile fuer Zeile aus. */
+    private var victoryReportTask: ScheduledTask? = null
 
     /**
      * Schaltet die Statistik-Erfassung um. Im eingefrorenen Zustand zaehlen Kills, Tode und Streaks
@@ -286,10 +279,8 @@ class MatchManager(private val plugin: OneShotOneKill) {
     }
 
     fun stopVictoryTasks() {
-        victoryEffectsTask?.cancel()
-        victoryEffectsTask = null
-        victoryTitleTask?.cancel()
-        victoryTitleTask = null
+        victoryReportTask?.cancel()
+        victoryReportTask = null
     }
 
     /**
@@ -333,120 +324,105 @@ class MatchManager(private val plugin: OneShotOneKill) {
     }
 
     /**
-     * Sieger-Zeremonie. Bewusst **ohne Musik**: Der Notenblock-Song lief frueher in Dauerschleife
-     * bis zum naechsten Match-Start.
+     * Das Ende einer Runde - im Stil eines After-Action-Reports.
+     *
+     * Bewusst kein Feuerwerk und kein Regenbogen: Nach einer Nuke, die die Arena eingeebnet hat,
+     * waere Jahrmarkt der falsche Ton. Der Ablauf ist deshalb gebaut wie der Abspann eines
+     * Shooters - erst Stille und Schwarzbild, dann der harte Einschlag mit dem Namen des Siegers,
+     * danach der Bericht Zeile fuer Zeile.
+     *
+     * Aufgerufen wird das ausschliesslich aus dem Nuke-Finale: Kill-Ziel und Zeitablauf schalten nur
+     * noch den Ausloeser frei, beendet wird eine Runde nur ueber die Nuke.
      */
     fun celebrateWinner(winner: Player) {
         beginFinale()
+        stopVictoryTasks()
 
         val winnerKills = plugin.scoreboardManager.getKills(winner.uniqueId)
 
-        // Chat-Ankuendigung mit Regenbogen-Gradient
-        broadcast(" ")
-        broadcast("<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff><b>=======================================</b></gradient>")
-        broadcast("<rainbow><b>   🏆 MATCH BEENDET - MATCH GEWINNER!   </b></rainbow>")
-        broadcast(
-            "<white>  Gewinner: <yellow><b>${winner.name}</b></yellow> " +
-                    "<gray>mit <green><b>$winnerKills Kills</b></green>!</gray></white>"
+        // 1. Schwarzbild und Stille. Der Bildschirm ist leer, damit der Einschlag danach sitzt.
+        Bukkit.getOnlinePlayers().forEach {
+            it.addPotionEffect(PotionEffect(PotionEffectType.DARKNESS, BLACKOUT_TICKS + 20, 0, false, false))
+        }
+        Bukkit.getServer().showTitle(
+            Title.title(
+                Component.empty(),
+                Component.empty(),
+                Title.Times.times(Ticks.duration(10), Ticks.duration(BLACKOUT_TICKS.toLong()), Ticks.duration(10)),
+            )
         )
-        broadcast("<gray>  Starte ein neues Match mit: <yellow>/start</yellow></gray>")
-        broadcast("<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff><b>=======================================</b></gradient>")
-        broadcast(" ")
 
-        // Zusammenfassung direkt nach dem Sieger - die Statistiken stehen hier noch
-        plugin.matchSummaryManager.broadcastSummary()
-
-        // Gewinner-Effekte
-        winner.addPotionEffect(PotionEffect(PotionEffectType.GLOWING, WINNER_EFFECT_TICKS, 0))
-        winner.addPotionEffect(PotionEffect(PotionEffectType.SPEED, WINNER_EFFECT_TICKS, 2))
-
-        // Regenbogen-Title-Animation & Sieger-Spektakel starten
-        playWinnerCelebrationLoop(winner, winnerKills)
+        // 2. Der Einschlag: Name des Siegers, ein tiefer Schlag, sonst nichts.
+        Bukkit.getGlobalRegionScheduler().runDelayed(
+            plugin,
+            { revealWinner(winner, winnerKills) },
+            BLACKOUT_TICKS.toLong(),
+        )
     }
 
-    private fun playWinnerCelebrationLoop(winner: Player, winnerKills: Int) {
-        stopVictoryTasks()
-
-        var titleTicks = 0
-
-        // 1. Paper Native Global Region Scheduler: Animierter Regenbogen-Titel auf dem Bildschirm!
-        victoryTitleTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
-            plugin,
-            { task ->
-                if (!isMatchEnded) {
-                    task.cancel()
-                    victoryTitleTask = null
-                    return@runAtFixedRate
-                }
-
-                val rainbowPhase = titleTicks * 3
-                val gradPhase = String.format(Locale.US, "%.2f", sin(titleTicks * 0.15).toFloat())
-
-                val mainTitle = "<rainbow:$rainbowPhase><b>🏆 GEWINNER! 🏆</b></rainbow>".mini()
-                val subTitle = (
-                        "<gradient:#ff5555:#ffff55:#55ff55:#55ffff:#5555ff:#ff55ff:$gradPhase>" +
-                                "<b>${winner.name}</b></gradient> <gray>hat gewonnen! " +
-                                "(<green>$winnerKills Kills</green>)</gray>"
-                        ).mini()
-
-                val times = Title.Times.times(Ticks.duration(0), Ticks.duration(30), Ticks.duration(10))
-
-                // Server ist eine ForwardingAudience - erreicht alle Spieler ohne Iteration
-                Bukkit.getServer().showTitle(Title.title(mainTitle, subTitle, times))
-
-                titleTicks++
-            },
-            1L,
-            2L,
+    /** Der harte Schnitt: Titel, tiefer Schlag - und danach laeuft der Bericht an. */
+    private fun revealWinner(winner: Player, winnerKills: Int) {
+        Bukkit.getServer().showTitle(
+            Title.title(
+                "<white><b>MISSION ABGESCHLOSSEN</b></white>".mini(),
+                "<gold><b>${winner.name}</b></gold> <gray>hat die Runde gewonnen</gray>".mini(),
+                Title.Times.times(Ticks.duration(5), Ticks.duration(70), Ticks.duration(20)),
+            )
         )
 
-        // 2. Paper Native Global Region Scheduler: Feuerwerk & Partikel-Spektakel
-        var effectTicks = 0
-        victoryEffectsTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
+        val server = Bukkit.getServer()
+        server.playSound(Sound.sound(BukkitSound.BLOCK_BEACON_DEACTIVATE, Sound.Source.MASTER, 1.0f, 0.5f))
+        server.playSound(Sound.sound(BukkitSound.ENTITY_WITHER_SPAWN, Sound.Source.MASTER, 0.6f, 0.5f))
+
+        broadcast(" ")
+        broadcast("<dark_gray><b>=======================================</b></dark_gray>")
+        broadcast("<white><b>   MISSION ABGESCHLOSSEN   </b></white>")
+        broadcast(
+            "<gray>  Sieger: <gold><b>${winner.name}</b></gold> " +
+                "<dark_gray>»</dark_gray> <white>$winnerKills Kills</white></gray>"
+        )
+        broadcast("<dark_gray><b>=======================================</b></dark_gray>")
+
+        startAfterActionReport()
+    }
+
+    /**
+     * Der Bericht laeuft Zeile fuer Zeile ein, nicht als Block.
+     *
+     * Das ist der ganze Trick am Abspann eines Shooters: Jede Zeile bekommt einen eigenen Moment.
+     * Die Statistiken stehen zu diesem Zeitpunkt noch - zurueckgesetzt wird erst beim naechsten
+     * `/osok start`.
+     */
+    private fun startAfterActionReport() {
+        val lines = plugin.matchSummaryManager.summaryLines()
+        if (lines.isEmpty()) {
+            broadcast("<gray>  Neues Match starten mit: <yellow>/osok start</yellow></gray>")
+            broadcast(" ")
+            return
+        }
+
+        var index = 0
+        victoryReportTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
             plugin,
             { task ->
-                if (!isMatchEnded || !winner.isOnline) {
+                if (!isMatchEnded || index >= lines.size) {
                     task.cancel()
-                    victoryEffectsTask = null
+                    victoryReportTask = null
+                    if (isMatchEnded) {
+                        broadcast("<gray>  Neues Match starten mit: <yellow>/osok start</yellow></gray>")
+                        broadcast(" ")
+                    }
                     return@runAtFixedRate
                 }
 
-                val world = winner.location.world ?: return@runAtFixedRate
-                val effectLoc = winner.location.clone().add(0.0, 1.0, 0.0)
-                world.spawnParticle(Particle.TOTEM_OF_UNDYING, effectLoc, 20, 0.5, 1.0, 0.5, 0.2)
-                world.spawnParticle(Particle.FIREWORK, effectLoc, 15, 0.5, 1.0, 0.5, 0.1)
-
-                if (effectTicks % 2 == 0) {
-                    // Paper spawn(..., Consumer): Effekt und Staerke stehen fest, BEVOR die Rakete
-                    // in der Welt erscheint. Kein Cast, kein Meta-Nachtrag.
-                    world.spawn(effectLoc, Firework::class.java) { firework ->
-                        // Paper DataComponents statt FireworkMeta: Effekt und Flugdauer stehen als
-                        // FIREWORKS-Komponente am Raketen-Stack, den die Entity uebernimmt.
-                        firework.setItem(
-                            ItemStack.of(Material.FIREWORK_ROCKET).apply {
-                                setData(
-                                    DataComponentTypes.FIREWORKS,
-                                    Fireworks.fireworks(
-                                        listOf(
-                                            FireworkEffect.builder()
-                                                .withColor(Color.YELLOW, Color.ORANGE, Color.PURPLE)
-                                                .withFade(Color.WHITE)
-                                                .with(FireworkEffect.Type.BALL_LARGE)
-                                                .withFlicker()
-                                                .build()
-                                        ),
-                                        1,
-                                    ),
-                                )
-                            }
-                        )
-                    }
-                }
-
-                effectTicks++
+                broadcast(lines[index])
+                Bukkit.getServer().playSound(
+                    Sound.sound(BukkitSound.BLOCK_NOTE_BLOCK_HAT, Sound.Source.MASTER, 0.7f, 1.4f)
+                )
+                index++
             },
-            1L,
-            10L,
+            REPORT_LINE_DELAY_TICKS,
+            REPORT_LINE_DELAY_TICKS,
         )
     }
 
@@ -576,7 +552,10 @@ class MatchManager(private val plugin: OneShotOneKill) {
         /** Bei diesen Restsekunden gibt es eine Ansage (unterhalb von 5s ohnehin jede Sekunde). */
         val COUNTDOWN_ANNOUNCEMENTS = setOf(60, 30, 10)
 
-        /** Leuchten und Tempo des Siegers: 6 Minuten. */
-        const val WINNER_EFFECT_TICKS = 7200
+        /** Schwarzbild vor dem Siegertitel - die Stille, die den Einschlag traegt. */
+        const val BLACKOUT_TICKS = 45
+
+        /** Abstand zwischen zwei Zeilen des After-Action-Reports. */
+        const val REPORT_LINE_DELAY_TICKS = 12L
     }
 }
