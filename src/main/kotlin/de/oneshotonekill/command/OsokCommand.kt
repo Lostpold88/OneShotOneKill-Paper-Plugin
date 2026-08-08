@@ -103,7 +103,9 @@ class OsokCommand(private val plugin: OneShotOneKill) : BasicCommand {
         if (args.size != 2) return emptyList()
 
         return when (args[0].lowercase()) {
-            "map", "arena", "welt" -> MAP_NAMES.matching(args[1])
+            // Aus der Registrierung statt aus einer Liste: Eine neue Map soll nicht an zwei
+            // Stellen gepflegt werden muessen.
+            "map", "arena", "welt" -> plugin.worldManager.availableMaps.map { it.name }.matching(args[1])
             "dauer", "limit", "timer" -> LIMIT_TYPES.matching(args[1])
             "itemmode", "itemmodus", "mode" -> ITEM_MODES.matching(args[1])
             // itemgewichtung und camper nehmen keine Argumente - sie oeffnen direkt ihr Menue
@@ -287,7 +289,6 @@ class OsokCommand(private val plugin: OneShotOneKill) : BasicCommand {
             "resetstats", "resetmap", "help",
         )
 
-        val MAP_NAMES = listOf("Standard", "DustPvP")
         val LIMIT_TYPES = listOf("kills", "minuten", "sekunden", "off")
         val ITEM_MODES = listOf("streak", "spawn", "both", "kombi")
         val LIMIT_OFF_ALIASES = setOf("off", "none", "disable")

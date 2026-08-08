@@ -469,10 +469,17 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
         startApproach()
     }
 
-    /** Bodennullpunkt: Mitte der Arena, auf Hoehe der Arena-Unterkante. */
+    /**
+     * Bodennullpunkt: Mitte der Arena, auf Hoehe der Arena-Unterkante.
+     *
+     * Bewusst ueber [de.oneshotonekill.model.MapConfig.arenaCenter] und nicht ueber die Mitte der
+     * umschliessenden Box: Bei einer Arena mit Umriss - BO2 - liegt die Boxmitte leicht ausserhalb
+     * der Kampfzone, die Nuke detonierte dann neben der Karte.
+     */
     private fun groundZero(world: World): Location {
         val map = plugin.worldManager.activeMapConfig
-        return Location(world, (map.minX + map.maxX) / 2.0, map.minY, (map.minZ + map.maxZ) / 2.0)
+        val center = map.arenaCenter()
+        return Location(world, center.blockX() + 0.5, map.minY, center.blockZ() + 0.5)
     }
 
     /**
@@ -711,6 +718,11 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
                 val dz = z + 0.5 - center.z
                 val distance = sqrt(dx * dx + dz * dz)
                 if (distance < inner || distance >= outer) continue
+
+                // Die umschliessende Box ist nur der Suchrahmen - eingeebnet wird ausschliesslich,
+                // was wirklich ueber der Arena liegt. Bei einer Arena aus mehreren Quadern
+                // (BO2) traefe die Welle sonst auch die Luecken dazwischen.
+                if (!map.containsColumn(x + 0.5, z + 0.5)) continue
 
                 flattenColumn(world, x, z, scanBottom, scanTop)
             }
@@ -1215,16 +1227,10 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
     private fun arenaViewpoint(): Location? {
         val world = plugin.worldManager.osokWorld ?: return null
         val map = plugin.worldManager.activeMapConfig
+        val center = map.arenaCenter()
 
         val y = minOf(map.maxY + VIEWPOINT_HEIGHT_ABOVE_ARENA, map.maxFlyY)
-        return Location(
-            world,
-            (map.minX + map.maxX) / 2.0,
-            y,
-            (map.minZ + map.maxZ) / 2.0,
-            0f,
-            VIEWPOINT_PITCH,
-        )
+        return Location(world, center.blockX() + 0.5, y, center.blockZ() + 0.5, 0f, VIEWPOINT_PITCH)
     }
 
     // ==================================================================

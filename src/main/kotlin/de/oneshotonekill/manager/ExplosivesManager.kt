@@ -180,7 +180,8 @@ class ExplosivesManager(private val plugin: OneShotOneKill) : Listener {
 
         for (row in 0 until GUI_ROWS) {
             for (col in 0 until GUI_COLS) {
-                gui.setItem(row * GUI_COLS + col, createTerrainCell(cellCenter(map, world, col, row)))
+                val cell = cellCenter(map, world, col, row)
+                gui.setItem(row * GUI_COLS + col, createTerrainCell(cell, map.containsColumn(cell.x, cell.z)))
             }
         }
 
@@ -218,9 +219,22 @@ class ExplosivesManager(private val plugin: OneShotOneKill) : Listener {
         return row * GUI_COLS + col
     }
 
-    private fun createTerrainCell(cell: Location): ItemStack =
-        ItemStack.of(Material.LIGHT_GRAY_STAINED_GLASS_PANE)
-            .also { writeCellData(it, "<gray>Sektor</gray>".mini(), cell, null) }
+    /**
+     * Ein Rasterfeld der Karte.
+     *
+     * Felder, deren Mitte gar nicht ueber der Arena liegt, werden dunkel dargestellt: Das Raster
+     * spannt die umschliessende Box auf, und bei einer Arena mit Umriss (BO2) faellt ein guter Teil
+     * davon neben die Kampfzone. Ohne die Unterscheidung sieht die Karte rechteckig aus und man
+     * wirft Bomben ins Nichts.
+     */
+    private fun createTerrainCell(cell: Location, inArena: Boolean): ItemStack =
+        if (inArena) {
+            ItemStack.of(Material.LIGHT_GRAY_STAINED_GLASS_PANE)
+                .also { writeCellData(it, "<gray>Sektor</gray>".mini(), cell, null) }
+        } else {
+            ItemStack.of(Material.BLACK_STAINED_GLASS_PANE)
+                .also { writeCellData(it, "<dark_gray>Ausserhalb der Arena</dark_gray>".mini(), cell, null) }
+        }
 
     /**
      * Kopf-Feld eines Spielers. Der Zielpunkt ist seine **eigene** Position, nicht die Sektormitte -

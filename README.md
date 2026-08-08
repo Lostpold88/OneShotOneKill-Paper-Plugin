@@ -6,19 +6,32 @@ Ein 100% **natives Paper 26.2 PvP Minigame Plugin**, vollständig in **Kotlin** 
 
 ## 🗺️ Arenen
 
-Zwei eingebaute Maps, umschaltbar im laufenden Betrieb per `/osok map`:
+Drei eingebaute Maps, umschaltbar im laufenden Betrieb per `/osok map`:
 
-| Map | Welt | Arena-Ecke 1 | Arena-Ecke 2 | Lobby | Max. Item-Höhe | Decke |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Standard** | `OSOK_Standard` | `221 / 58 / -50` | `287 / 64 / -106` | `223.5 / 48.0 / 55.5` | `61` | `69` |
-| **DustPvP** | `OSOK_DustPvP` | `-25 / 70 / 33` | `25 / 70 / -33` | `0.5 / 90.0 / 0.5` | `71` | offen |
+| Map | Welt | Kampfzone | Lobby | Max. Item-Höhe | Decke |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Standard** | `OSOK_Standard` | Rechteck `221 / 58 / -50` → `287 / 64 / -106` | `223.5 / 48.0 / 55.5` | `61` | `69` |
+| **DustPvP** | `OSOK_DustPvP` | Rechteck `-25 / 70 / 33` → `25 / 70 / -33` | `0.5 / 90.0 / 0.5` | `71` | offen |
+| **BO2** | `OSOK_BO2` | **Umriss** aus 105 Punkten auf `Y 63` | `-1045.5 / 63.0 / 352.5` | `64` | offen |
+
+**Nicht jede Arena ist ein Rechteck.** BO2 wurde als **Umriss** vermessen – 105 Eckpunkte einmal um
+die Karte herum, im Spiel mit `/punkt` mitgeschrieben. Die Kampfzone ist damit ein Polygon, kein
+Quader: Von der umschließenden Box (198 × 80 Blöcke) gehören nur **68 %** wirklich zur Arena, der
+Rest liegt außerhalb der Karte.
+
+Umgesetzt ist das als **vorberechnete Maske**: Beim Laden wird der Umriss einmal in ein Feld je
+Spalte gerastert, danach ist `isInArenaArea` ein Array-Zugriff. Ein Punkt-in-Polygon-Test über
+hundert Ecken bei jedem Schadensevent, jeder Bewegung und jedem Item-Spawn wäre pure Verschwendung.
+Gerastert wird dabei **Fläche und Umrisslinie**, und das Ergebnis um eine Blocklage verbreitert –
+wer die Grenze abläuft, steht auf Blöcken, die zur Arena zählen sollen, und an einspringenden Ecken
+fielen die sonst heraus.
 
 Die **Decke** begrenzt fliegende Entities: Der Tarnkappenbomber-Drache schwebt normalerweise
 12 Blöcke über seinem Ziel, bleibt auf überdachten Maps aber immer einen Block unter der Decke
 (auf Standard also maximal `Y 68`). Auf DustPvP gilt keine Begrenzung.
 
-Die Reihenfolge der Ecken ist egal – sie werden automatisch normalisiert. Die Arena-Grenzen steuern
-Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
+Bei rechteckigen Arenen ist die Reihenfolge der Ecken egal – sie werden automatisch normalisiert.
+Die Arena-Grenzen steuern Kampfzone, Spielerspawns, Item-Spawns und die Pausensperre.
 
 > **Hinweis zur DustPvP-Lobby**: Sie liegt bei `Y=90` direkt über der Arena-Grundfläche. Damit sie nicht
 > als „innerhalb der Arena" gilt, ist der vertikale Spielraum über der Arena-Oberkante auf 12 Blöcke
@@ -356,6 +369,8 @@ ein und genau ein Server-Update ginge daran vorbei.
 | `/osok setspawn` | Setzt den Lobby-Spawnpunkt der aktiven Map | Operator (OP) |
 | `/osok resetstats` | Setzt Kills, Tode & Scoreboard-Statistiken zurück | Operator (OP) |
 | `/osok resetmap` | Entpackt die saubere Map aus der JAR & startet den Server neu | Operator (OP) |
+| `/punkt` | Schreibt die eigenen Blockkoordinaten als nächste Zeile in `punkte.txt` – Werkzeug zum Einmessen neuer Arenen | Operator (OP) |
+| `/punkt reset` | Leert `punkte.txt` | Operator (OP) |
 
 ---
 

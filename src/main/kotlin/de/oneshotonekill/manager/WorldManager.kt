@@ -1,6 +1,7 @@
 package de.oneshotonekill.manager
 
 import de.oneshotonekill.OneShotOneKill
+import de.oneshotonekill.model.ArenaPolygon
 import de.oneshotonekill.model.MapConfig
 import de.oneshotonekill.util.mini
 import org.bukkit.Bukkit
@@ -53,6 +54,40 @@ class WorldManager(private val plugin: OneShotOneKill) {
             // DustPvP ist eine flache Ebene auf Y=70, die Box liegt also auf Y=71
             maxItemSpawnY = 71.0
         }
+
+        // BO2 Map (OSOK_BO2)
+        //
+        // Die Kampfzone ist kein Rechteck, sondern ein abgelaufener Umriss: 105 Eckpunkte einmal um
+        // die Arena herum, mit /punkt mitgeschrieben. Der Umriss liegt vollstaendig auf Y 63; die
+        // Spielhoehe darueber deckt der Kopfraum der Arena ab (12 Bloecke).
+        availableMapsByKey["bo2"] = MapConfig(
+            name = "BO2",
+            zipResource = "BO2.zip",
+            lobbyLocation = Location(null, -1045.5, 63.0, 352.5),
+            regions = listOf(
+                ArenaPolygon.of(
+                    63.0, 63.0,
+                    -950, 369, -950, 386, -957, 386, -957, 384, -965, 384, -965, 396,
+                    -962, 396, -962, 403, -964, 403, -964, 406, -962, 406, -962, 414,
+                    -971, 414, -971, 411, -977, 411, -977, 414, -1007, 414, -1018, 429,
+                    -1023, 424, -1024, 424, -1024, 427, -1019, 432, -1027, 440, -1045, 440,
+                    -1045, 438, -1052, 438, -1052, 436, -1056, 436, -1056, 435, -1058, 435,
+                    -1058, 433, -1062, 433, -1063, 433, -1063, 429, -1065, 429, -1068, 432,
+                    -1069, 430, -1069, 429, -1072, 429, -1072, 428, -1080, 428, -1080, 430,
+                    -1106, 430, -1106, 424, -1115, 424, -1115, 430, -1135, 430, -1135, 409,
+                    -1133, 409, -1133, 406, -1128, 406, -1128, 402, -1137, 402, -1137, 401,
+                    -1139, 401, -1139, 405, -1147, 405, -1147, 377, -1139, 377, -1139, 379,
+                    -1137, 379, -1137, 377, -1126, 377, -1126, 379, -1123, 379, -1123, 377,
+                    -1114, 377, -1114, 379, -1111, 379, -1111, 377, -1109, 377, -1109, 382,
+                    -1105, 382, -1105, 377, -1094, 377, -1094, 379, -1091, 379, -1091, 377,
+                    -1070, 377, -1070, 379, -1066, 379, -1066, 381, -1061, 381, -1061, 379,
+                    -1060, 379, -1060, 361, -1029, 361, -1029, 374, -1028, 374, -1028, 376,
+                    -1024, 376, -1024, 374, -1015, 374, -1015, 369, -980, 369, -980, 375,
+                    -974, 375, -974, 369, -960, 369, -960, 370, -960, 371, -958, 371,
+                    -958, 370, -957, 370, -957, 369,
+                ),
+            ),
+        )
 
         activeMapConfig = standardMap
     }

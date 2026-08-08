@@ -4,6 +4,7 @@ import de.oneshotonekill.command.CamperGui
 import de.oneshotonekill.command.ItemTestCommand
 import de.oneshotonekill.command.ItemWeightGui
 import de.oneshotonekill.command.OsokCommand
+import de.oneshotonekill.command.PunktCommand
 import de.oneshotonekill.listener.CombatListener
 import de.oneshotonekill.listener.PlayerConnectionListener
 import de.oneshotonekill.listener.SpecialItemListener
@@ -146,8 +147,10 @@ class OneShotOneKill : JavaPlugin() {
 
         // 4. Paper Dynamic Lifecycle Command Registration (Brigadier BasicCommand)
         lifecycleManager.registerEventHandler(LifecycleEvents.COMMANDS) { event ->
-            // Bewusst ohne Aliase: Alle Befehle sind ausschliesslich ueber /osok erreichbar.
+            // Bewusst ohne Aliase: Der Spielbetrieb laeuft ausschliesslich ueber /osok.
             event.registrar().register("osok", "OneShotOneKill Hauptbefehl", OsokCommand(this))
+            // Werkzeug zum Einmessen neuer Arenen - kein Spielinhalt, deshalb ein eigener Befehl
+            event.registrar().register("punkt", "Koordinaten in punkte.txt sichern", PunktCommand(this))
         }
 
         // 5. Scoreboards fuer alle bereits verbundenen Spieler aktualisieren
