@@ -4,6 +4,7 @@ import de.oneshotonekill.OneShotOneKill
 import de.oneshotonekill.util.mini
 import io.papermc.paper.datacomponent.DataComponentTypes
 import io.papermc.paper.datacomponent.item.ItemLore
+import io.papermc.paper.math.Position
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
@@ -17,13 +18,13 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.Particle
 import org.bukkit.World
+import org.bukkit.block.data.BlockData
 import org.bukkit.entity.AreaEffectCloud
+import org.bukkit.entity.BlockDisplay
+import org.bukkit.entity.Display
 import org.bukkit.entity.Player
-import org.bukkit.entity.TNTPrimed
 import org.bukkit.event.EventHandler
-import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
-import org.bukkit.event.entity.EntityExplodeEvent
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.inventory.InventoryDragEvent
 import org.bukkit.event.player.PlayerQuitEvent
@@ -32,10 +33,17 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
-import org.bukkit.util.Vector
+import org.bukkit.util.Transformation
+import org.joml.AxisAngle4f
+import org.joml.Vector3f
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
+import kotlin.math.ceil
+import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.sin
+import kotlin.math.sqrt
 import kotlin.random.Random
 import org.bukkit.Sound as BukkitSound
 
@@ -112,8 +120,23 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
     /** Wen **wir** in den Zuschauermodus gesetzt haben - nur die holen wir auch zurueck. */
     private val spectators = mutableSetOf<UUID>()
 
-    private var bombardmentTask: ScheduledTask? = null
+    private var approachTask: ScheduledTask? = null
+    private var shockwaveTask: ScheduledTask? = null
+    private var cloudTask: ScheduledTask? = null
     private var gasTask: ScheduledTask? = null
+
+    /** Der sichtbare Sprengkopf waehrend des Anflugs. */
+    private var warheadDisplay: BlockDisplay? = null
+
+    /**
+     * Jeder von der Druckwelle veraenderte Block in seinem Zustand **davor**.
+     *
+     * [Position] statt [Location] als Schluessel: unveraenderlich und ohne Welt-Referenz, damit sie
+     * als Schluessel taugt. Die Welt steht separat in [snapshotWorldId] - passt sie beim
+     * Wiederherstellen nicht mehr, ist der Krater ohnehin mit der alten Welt verschwunden.
+     */
+    private val mapSnapshot = mutableMapOf<Position, BlockData>()
+    private var snapshotWorldId: UUID? = null
 
     /**
      * Zeichnet die Schwaden. Laeuft bewusst **ueber das Ende hinaus**, damit die Zuschauer die
@@ -411,7 +434,7 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
     }
 
     // ==================================================================
-    // Abschuss & Bombardement
+    // Abschuss, Anflug und Detonation
     // ==================================================================
 
     private fun launch(owner: Player) {
@@ -435,7 +458,7 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
         Bukkit.getServer().showTitle(
             Title.title(
                 "<dark_red><b>☢ NUKE ☢</b></dark_red>".mini(),
-                "<red>Einschlag in Kürze…</red>".mini(),
+                "<red>Der Sprengkopf ist unterwegs…</red>".mini(),
                 Title.Times.times(Ticks.duration(10), Ticks.duration(50), Ticks.duration(20)),
             )
         )
@@ -443,75 +466,404 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
             Sound.sound(BukkitSound.EVENT_RAID_HORN, Sound.Source.MASTER, 1.0f, 0.7f)
         )
 
-        startBombardment()
+        startApproach()
+    }
+
+    /** Bodennullpunkt: Mitte der Arena, auf Hoehe der Arena-Unterkante. */
+    private fun groundZero(world: World): Location {
+        val map = plugin.worldManager.activeMapConfig
+        return Location(world, (map.minX + map.maxX) / 2.0, map.minY, (map.minZ + map.maxZ) / 2.0)
     }
 
     /**
-     * TNT-Regen ueber der gesamten Arena.
+     * Anflug: Der Sprengkopf sinkt sichtbar auf die Arenamitte zu, waehrend die Sirene laeuft und
+     * ein Countdown ueber den Bildschirm geht.
      *
-     * Reine Kulisse: Die Bloecke schuetzt [onEntityExplode], die Spieler der `CombatListener`. Die
-     * Zuendschnur ist je Bombe leicht verschieden, damit die Einschlaege prasseln statt im
-     * Gleichtakt zu knallen.
+     * Der Sprengkopf ist ein vergroessertes [BlockDisplay] statt einer fallenden Entity: Er soll
+     * exakt auf die Sekunde einschlagen, nicht der Schwerkraft folgen, und weder von Bloecken
+     * aufgehalten noch von der Physik abgelenkt werden.
      */
-    private fun startBombardment() {
+    private fun startApproach() {
+        val world = plugin.worldManager.osokWorld
+        if (world == null) {
+            detonate()
+            return
+        }
+
+        val map = plugin.worldManager.activeMapConfig
+        val target = groundZero(world)
+
+        // Unter der Decke bleiben: Auf einer ueberdachten Map (Standard) haenge der Sprengkopf
+        // sonst ueber dem Dach und waere fuer alle in der Arena unsichtbar - Anflug ohne Bild.
+        val approachHeight = if (map.hasCeiling) {
+            minOf(BOMB_APPROACH_HEIGHT, map.maxFlyY - map.minY - 1.0)
+        } else {
+            BOMB_APPROACH_HEIGHT
+        }
+        val start = target.clone().add(0.0, approachHeight, 0.0)
+
+        val warhead = world.spawn(start, BlockDisplay::class.java) { display ->
+            display.block = Material.TNT.createBlockData()
+            // Skalierung ueber die Transformation - ein einzelner Block waere aus der Distanz
+            // ueberhaupt nicht zu sehen. Die Verschiebung zentriert den vergroesserten Block.
+            display.transformation = Transformation(
+                Vector3f(-BOMB_SCALE / 2f, -BOMB_SCALE / 2f, -BOMB_SCALE / 2f),
+                AxisAngle4f(),
+                Vector3f(BOMB_SCALE, BOMB_SCALE, BOMB_SCALE),
+                AxisAngle4f(),
+            )
+            display.brightness = Display.Brightness(15, 15)
+            display.isGlowing = true
+            display.glowColorOverride = Color.RED
+            display.isPersistent = false
+            display.persistentDataContainer.set(KEY_NUKE_WARHEAD, PersistentDataType.BYTE, 1.toByte())
+        }
+        warheadDisplay = warhead
+
+        var ticks = 0
+        approachTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
+            plugin,
+            { task ->
+                if (phase != Phase.RUNNING) {
+                    task.cancel()
+                    approachTask = null
+                    return@runAtFixedRate
+                }
+
+                val progress = ticks.toDouble() / BOMB_APPROACH_TICKS
+                if (progress >= 1.0 || !warhead.isValid) {
+                    task.cancel()
+                    approachTask = null
+                    detonate()
+                    return@runAtFixedRate
+                }
+
+                // Fallhoehe quadratisch: Der Sprengkopf wird sichtbar schneller, je naeher er kommt
+                val height = approachHeight * (1.0 - progress * progress)
+                val at = target.clone().add(0.0, height, 0.0)
+                // Synchrones teleport ist hier die richtige Wahl (Vorgabe 6): dieselbe Welt, jeder
+                // Takt, geladener Chunk, Aufruf auf dem Main-Thread. Ein teleportAsync waere
+                // mehrfach offen, bevor der vorherige aufgeloest ist, und der Sprengkopf ruckelte.
+                warhead.teleport(at)
+
+                world.spawnParticle(Particle.LARGE_SMOKE, at, 12, 0.6, 0.6, 0.6, 0.02)
+                world.spawnParticle(Particle.FLAME, at, 8, 0.4, 0.4, 0.4, 0.01)
+
+                // Zielsaeule vom Boden bis zum Sprengkopf - die Arena sieht, wo es einschlaegt
+                var y = target.y
+                while (y < at.y) {
+                    world.spawnParticle(Particle.SMALL_FLAME, target.x, y, target.z, 2, 0.2, 0.2, 0.2, 0.0)
+                    y += 3.0
+                }
+
+                val secondsLeft = ((BOMB_APPROACH_TICKS - ticks) / 20.0).toInt() + 1
+                if (ticks % 20 == 0) {
+                    Bukkit.getServer().showTitle(
+                        Title.title(
+                            "<dark_red><b>☢ $secondsLeft ☢</b></dark_red>".mini(),
+                            "<red>Einschlag steht bevor</red>".mini(),
+                            Title.Times.times(Ticks.duration(0), Ticks.duration(25), Ticks.duration(5)),
+                        )
+                    )
+                    Bukkit.getServer().playSound(
+                        Sound.sound(
+                            BukkitSound.BLOCK_NOTE_BLOCK_BASS, Sound.Source.MASTER, 1.0f,
+                            0.5f + (1.0f - progress.toFloat()) * 0.2f,
+                        )
+                    )
+                }
+
+                ticks += BOMB_APPROACH_PERIOD_TICKS.toInt()
+            },
+            BOMB_APPROACH_PERIOD_TICKS,
+            BOMB_APPROACH_PERIOD_TICKS,
+        )
+    }
+
+    /**
+     * Der Einschlag: Blitz, Druckwelle, Pilzwolke - und die Arena wird tatsaechlich zerstoert.
+     *
+     * Druckwelle und Pilzwolke laufen **nebeneinander**: Die Welle ist nach gut vier Sekunden durch
+     * und uebergibt an das Gas, waehrend die Wolke noch rund zwanzig Sekunden weitersteigt.
+     */
+    private fun detonate() {
+        removeWarhead()
+
         val world = plugin.worldManager.osokWorld
         if (world == null) {
             startGas()
             return
         }
+        val center = groundZero(world)
 
+        Bukkit.broadcast(" ".mini())
+        Bukkit.broadcast(
+            ("<dark_red><b>[OSOK] ☢ DETONATION!</b> <gray>Die Arena ist nicht mehr " +
+                "das, was sie war.</gray></dark_red>").mini()
+        )
+        Bukkit.broadcast(" ".mini())
+
+        Bukkit.getServer().showTitle(
+            Title.title(
+                "<white><b>☢</b></white>".mini(),
+                "<dark_red><b>DETONATION</b></dark_red>".mini(),
+                Title.Times.times(Ticks.duration(0), Ticks.duration(40), Ticks.duration(20)),
+            )
+        )
+
+        // Der weisse Blitz zuerst - Particle.FLASH braucht zwingend ein Color-Datenobjekt,
+        // sonst bricht der ganze Aufruf mit "missing required data class" ab.
+        repeat(FLASH_BURSTS) {
+            world.spawnParticle(Particle.FLASH, center, 1, 0.0, 0.0, 0.0, 0.0, Color.WHITE)
+        }
+        world.spawnParticle(Particle.EXPLOSION_EMITTER, center, 24, 8.0, 4.0, 8.0, 0.0)
+        world.spawnParticle(Particle.SONIC_BOOM, center, 3, 2.0, 1.0, 2.0, 0.0)
+        world.spawnParticle(Particle.GUST_EMITTER_LARGE, center, 12, 10.0, 3.0, 10.0, 0.0)
+
+        // Vier Schichten Krach: der Knall, das Grollen, das Nachhallen, das Kreischen
+        val server = Bukkit.getServer()
+        server.playSound(Sound.sound(BukkitSound.ENTITY_GENERIC_EXPLODE, Sound.Source.MASTER, 1.0f, 0.4f))
+        server.playSound(Sound.sound(BukkitSound.ENTITY_LIGHTNING_BOLT_THUNDER, Sound.Source.MASTER, 1.0f, 0.5f))
+        server.playSound(Sound.sound(BukkitSound.ENTITY_ENDER_DRAGON_GROWL, Sound.Source.MASTER, 1.0f, 0.4f))
+        server.playSound(Sound.sound(BukkitSound.ENTITY_WARDEN_SONIC_BOOM, Sound.Source.MASTER, 1.0f, 0.6f))
+
+        // Kurz blind und taub: Der Blitz soll auch spuerbar sein, nicht nur sichtbar
+        Bukkit.getOnlinePlayers().forEach { player ->
+            player.addPotionEffect(PotionEffect(PotionEffectType.BLINDNESS, FLASH_BLIND_TICKS, 0, false, false))
+            player.addPotionEffect(PotionEffect(PotionEffectType.NAUSEA, FLASH_BLIND_TICKS * 2, 0, false, false))
+        }
+
+        startShockwave(world, center)
+        startMushroomCloud(world, center)
+    }
+
+    /**
+     * Die Druckwelle: ein Ring, der von der Mitte nach aussen laeuft und alles einebnet, was er
+     * ueberrollt.
+     *
+     * Zerstoert wird **spaltenweise und nur innerhalb der Arena-Grenzen** - die Lobby liegt
+     * ausserhalb und muss stehen bleiben, sonst gaebe es nach der Runde keinen Ort mehr, an den die
+     * Spieler zurueckkoennen.
+     *
+     * Jeder veraenderte Block wird vorher gesichert ([mapSnapshot]) und beim naechsten
+     * `/osok start` wiederhergestellt. Ohne das waere die Karte nach der ersten Runde dauerhaft ein
+     * Krater, und jede weitere Runde faende auf Schutt statt auf der Map statt.
+     */
+    private fun startShockwave(world: World, center: Location) {
         val map = plugin.worldManager.activeMapConfig
-        val dropY = minOf(map.maxY + BOMB_HEIGHT_ABOVE_ARENA, map.maxFlyY)
-        var wave = 0
+        val maxRadius = maxOf(map.maxX - map.minX, map.maxZ - map.minZ)
+        snapshotWorldId = world.uid
+        var step = 0
 
-        bombardmentTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
+        shockwaveTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
             plugin,
             { task ->
                 if (phase != Phase.RUNNING) {
                     task.cancel()
-                    bombardmentTask = null
+                    shockwaveTask = null
                     return@runAtFixedRate
                 }
-                if (wave >= BOMB_WAVES) {
+                if (step >= SHOCKWAVE_STEPS) {
                     task.cancel()
-                    bombardmentTask = null
+                    shockwaveTask = null
                     startGas()
                     return@runAtFixedRate
                 }
 
-                repeat(BOMBS_PER_WAVE) {
-                    val x = map.minX + Random.nextDouble() * (map.maxX - map.minX)
-                    val z = map.minZ + Random.nextDouble() * (map.maxZ - map.minZ)
-                    dropBomb(world, Location(world, x, dropY, z))
-                }
-                wave++
+                val inner = maxRadius * step / SHOCKWAVE_STEPS.toDouble()
+                val outer = maxRadius * (step + 1) / SHOCKWAVE_STEPS.toDouble()
+                flattenRing(world, center, inner, outer)
+                drawShockwaveRing(world, center, outer)
+                pushPlayers(center, outer)
+
+                step++
             },
-            10L,
-            BOMB_WAVE_PERIOD_TICKS,
+            1L,
+            SHOCKWAVE_PERIOD_TICKS,
         )
     }
 
-    private fun dropBomb(world: World, loc: Location) {
-        world.spawn(loc, TNTPrimed::class.java) { tnt ->
-            tnt.fuseTicks = BOMB_FUSE_TICKS + Random.nextInt(BOMB_FUSE_SPREAD_TICKS)
-            tnt.setIsIncendiary(false)
-            tnt.velocity = Vector(0.0, BOMB_DROP_VELOCITY, 0.0)
-            tnt.isPersistent = false
-            tnt.persistentDataContainer.set(KEY_NUKE_TNT, PersistentDataType.BYTE, 1.toByte())
+    /**
+     * Ebnet alle Spalten im Ring zwischen [inner] und [outer] ein.
+     *
+     * Pro Spalte bleibt der **unterste** feste Block stehen und wird zu verbranntem Gestein; alles
+     * darueber verschwindet. Das ergibt eine flache, verkohlte Flaeche statt eines Lochs - wichtig,
+     * weil die Spieler bis zum Gas noch darauf stehen und sonst ins Leere fielen.
+     *
+     * `setType(..., applyPhysics = false)` ist Pflicht: Mit Physik loesen tausende Aenderungen
+     * Nachbar-Updates, Sandfall und Lichtneuberechnungen aus - das legt den Server lahm.
+     */
+    private fun flattenRing(world: World, center: Location, inner: Double, outer: Double) {
+        val map = plugin.worldManager.activeMapConfig
+        val scanBottom = (map.minY - SCAN_BELOW).toInt()
+        val scanTop = (map.maxY + SCAN_ABOVE).toInt()
+
+        // floor/ceil statt toInt(): toInt() schneidet Richtung null ab und liesse bei negativen
+        // Koordinaten - DustPvP faengt bei x = -25 an - den Randstreifen der Arena stehen.
+        val minX = floor(maxOf(map.minX, center.x - outer)).toInt()
+        val maxX = ceil(minOf(map.maxX, center.x + outer)).toInt()
+        val minZ = floor(maxOf(map.minZ, center.z - outer)).toInt()
+        val maxZ = ceil(minOf(map.maxZ, center.z + outer)).toInt()
+
+        for (x in minX..maxX) {
+            for (z in minZ..maxZ) {
+                val dx = x + 0.5 - center.x
+                val dz = z + 0.5 - center.z
+                val distance = sqrt(dx * dx + dz * dz)
+                if (distance < inner || distance >= outer) continue
+
+                flattenColumn(world, x, z, scanBottom, scanTop)
+            }
         }
     }
 
-    /**
-     * Die Nuke darf die Karte **nicht** beschaedigen. Anders als bei Air-Strike und C4 laeuft hier
-     * die Vanilla-Explosion des TNT - deren Blockliste wird geleert, statt eine eigene Sprengung zu
-     * bauen: Es geht nur um Optik und Krach, nicht um Schaden.
-     */
-    @EventHandler(priority = EventPriority.HIGHEST)
-    fun onEntityExplode(event: EntityExplodeEvent) {
-        if (!event.entity.persistentDataContainer.has(KEY_NUKE_TNT, PersistentDataType.BYTE)) return
+    private fun flattenColumn(world: World, x: Int, z: Int, scanBottom: Int, scanTop: Int) {
+        var floorFound = false
 
-        event.blockList().clear()
-        event.yield = 0.0f
+        for (y in scanBottom..scanTop) {
+            val block = world.getBlockAt(x, y, z)
+            if (block.type.isAir) continue
+
+            mapSnapshot[Position.block(x, y, z)] = block.blockData
+
+            if (!floorFound) {
+                floorFound = true
+                block.setType(SCORCHED[Random.nextInt(SCORCHED.size)], false)
+            } else {
+                block.setType(Material.AIR, false)
+            }
+        }
+    }
+
+    private fun drawShockwaveRing(world: World, center: Location, radius: Double) {
+        if (radius < 1.0) return
+
+        val points = (radius * SHOCKWAVE_POINTS_PER_BLOCK).toInt().coerceIn(16, SHOCKWAVE_MAX_POINTS)
+        for (index in 0 until points) {
+            val angle = 2.0 * Math.PI * index / points
+            val x = center.x + cos(angle) * radius
+            val z = center.z + sin(angle) * radius
+
+            world.spawnParticle(Particle.LARGE_SMOKE, x, center.y + 1.5, z, 3, 0.4, 1.2, 0.4, 0.02)
+            world.spawnParticle(Particle.FLAME, x, center.y + 0.8, z, 2, 0.3, 0.3, 0.3, 0.02)
+            if (index % 4 == 0) {
+                world.spawnParticle(Particle.GUST, x, center.y + 2.0, z, 1, 0.2, 0.2, 0.2, 0.0)
+            }
+        }
+    }
+
+    /** Die Welle wirft die Getroffenen um - Schaden nimmt dabei niemand, der ist abgeschaltet. */
+    private fun pushPlayers(center: Location, radius: Double) {
+        center.getNearbyPlayers(radius + 2.0)
+            .filter { it.gameMode == GameMode.SURVIVAL || it.gameMode == GameMode.ADVENTURE }
+            .forEach { player ->
+                val away = player.location.toVector().subtract(center.toVector())
+                if (away.lengthSquared() < 0.01) return@forEach
+
+                val push = away.normalize().multiply(SHOCKWAVE_PUSH)
+                push.y = SHOCKWAVE_LIFT
+                player.velocity = player.velocity.add(push)
+            }
+    }
+
+    /**
+     * Die Pilzwolke: ein aufsteigender Stiel, der sich oben zu einem Hut oeffnet.
+     *
+     * Gezeichnet wird ueber `World#spawnParticle` - anders als beim Gas ist das hier richtig: Die
+     * Wolke ist ein Objekt in der Welt, das alle aus derselben Richtung sehen sollen, nicht eine
+     * Huelle um den einzelnen Betrachter.
+     */
+    private fun startMushroomCloud(world: World, center: Location) {
+        var step = 0
+
+        cloudTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(
+            plugin,
+            { task ->
+                if (phase == Phase.IDLE || step >= CLOUD_STEPS) {
+                    task.cancel()
+                    cloudTask = null
+                    return@runAtFixedRate
+                }
+
+                val progress = step / CLOUD_STEPS.toDouble()
+                val topY = center.y + CLOUD_MAX_HEIGHT * minOf(1.0, progress * CLOUD_RISE_SPEED)
+
+                // Stiel: mehrere Ringe uebereinander, unten breiter als oben
+                var y = center.y
+                while (y < topY) {
+                    val heightShare = (y - center.y) / CLOUD_MAX_HEIGHT
+                    val radius = CLOUD_STEM_RADIUS * (1.0 - heightShare * 0.4)
+                    drawCloudRing(world, center, y, radius, CLOUD_STEM_POINTS)
+                    y += CLOUD_STEM_SPACING
+                }
+
+                // Hut: oeffnet sich, sobald der Stiel Hoehe hat, und waechst weiter
+                if (progress > CLOUD_CAP_FROM) {
+                    val capShare = (progress - CLOUD_CAP_FROM) / (1.0 - CLOUD_CAP_FROM)
+                    val capRadius = CLOUD_CAP_RADIUS * capShare
+                    for (ring in 0 until CLOUD_CAP_RINGS) {
+                        val ringY = topY - ring * CLOUD_CAP_SPACING
+                        val shrink = 1.0 - ring / CLOUD_CAP_RINGS.toDouble() * 0.5
+                        drawCloudRing(world, center, ringY, capRadius * shrink, CLOUD_CAP_POINTS)
+                    }
+                }
+
+                // Glut im Fuss der Wolke
+                world.spawnParticle(Particle.LAVA, center.clone().add(0.0, 1.0, 0.0), 4, 3.0, 1.0, 3.0, 0.0)
+                world.spawnParticle(Particle.FLAME, center.clone().add(0.0, 1.0, 0.0), 12, 4.0, 1.5, 4.0, 0.02)
+
+                step++
+            },
+            1L,
+            CLOUD_PERIOD_TICKS,
+        )
+    }
+
+    private fun drawCloudRing(world: World, center: Location, y: Double, radius: Double, points: Int) {
+        if (radius <= 0.1) return
+
+        for (index in 0 until points) {
+            val angle = 2.0 * Math.PI * index / points + y * 0.15
+            val x = center.x + cos(angle) * radius
+            val z = center.z + sin(angle) * radius
+            world.spawnParticle(Particle.LARGE_SMOKE, x, y, z, 2, 0.8, 0.8, 0.8, 0.01)
+            if (index % 3 == 0) {
+                world.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, x, y, z, 1, 0.5, 0.5, 0.5, 0.005)
+            }
+        }
+    }
+
+    private fun removeWarhead() {
+        warheadDisplay?.takeIf { it.isValid }?.remove()
+        warheadDisplay = null
+    }
+
+    /**
+     * Stellt die eingeebnete Arena wieder her.
+     *
+     * Laeuft beim naechsten `/osok start` (ueber [clearAll]) und damit **bevor** die Spieler in die
+     * Arena teleportiert werden. Ohne Physik zurueckgesetzt, sonst loest jeder Block beim Einsetzen
+     * Nachbar-Updates aus.
+     */
+    private fun restoreMap() {
+        if (mapSnapshot.isEmpty()) return
+
+        val world = snapshotWorldId?.let { Bukkit.getWorld(it) }
+        if (world == null) {
+            // Die Welt ist weg (Map-Wechsel, Neustart) - dann ist auch der Krater weg
+            mapSnapshot.clear()
+            snapshotWorldId = null
+            return
+        }
+
+        mapSnapshot.forEach { (position, data) ->
+            world.getBlockAt(position.blockX(), position.blockY(), position.blockZ())
+                .setBlockData(data, false)
+        }
+        plugin.logger.info("[OSOK] ${mapSnapshot.size} Bloecke der Arena wiederhergestellt.")
+
+        mapSnapshot.clear()
+        snapshotWorldId = null
     }
 
     // ==================================================================
@@ -594,6 +946,17 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
      */
     private fun renderFog(viewer: Player) {
         val chest = viewer.location.add(0.0, FOG_EYE_HEIGHT, 0.0)
+
+        // Fallout: Asche rieselt von oben durch die Schwaden. Kommt aus derselben Ueberlegung wie
+        // der Nebel - hoch angesetzt, weit gestreut, ein Aufruf pro Betrachter.
+        viewer.spawnParticle(
+            Particle.ASH, chest.clone().add(0.0, FALLOUT_HEIGHT, 0.0), FALLOUT_DENSITY,
+            FOG_RADIUS, FALLOUT_SPREAD, FOG_RADIUS, 0.0,
+        )
+        viewer.spawnParticle(
+            Particle.WHITE_ASH, chest.clone().add(0.0, FALLOUT_HEIGHT, 0.0), FALLOUT_DENSITY / 2,
+            FOG_RADIUS, FALLOUT_SPREAD, FOG_RADIUS, 0.0,
+        )
 
         viewer.spawnParticle(
             Particle.DUST, chest, FOG_DENSITY_BRIGHT,
@@ -712,6 +1075,18 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
         victim.spawnParticle(
             Particle.DUST, victim.eyeLocation, CHOKE_DENSITY, 0.7, 0.5, 0.7, 0.0, GAS_DUST_DARK,
         )
+
+        // Herzschlag, der mit der Dosis schneller und hoeher wird - der akustische Countdown zum
+        // Ersticken. Dazu das Knistern des Geigerzaehlers.
+        val urgency = dose.toFloat() / GAS_DOSE_TO_DEATH
+        victim.playSound(
+            Sound.sound(BukkitSound.BLOCK_NOTE_BLOCK_BASEDRUM, Sound.Source.MASTER, 0.8f, 0.5f + urgency * 0.8f)
+        )
+        repeat(1 + (urgency * GEIGER_MAX_CLICKS).toInt()) {
+            victim.playSound(
+                Sound.sound(BukkitSound.BLOCK_STONE_BUTTON_CLICK_ON, Sound.Source.MASTER, 0.4f, 2.0f)
+            )
+        }
     }
 
     /** Ein Spieler ist erstickt: Zuschauermodus statt Respawn - er bleibt bis zum Ende draussen. */
@@ -848,12 +1223,20 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
      * ein Admin, der freiwillig zuschaut, bleibt, wo er ist.
      */
     fun clearAll() {
-        bombardmentTask?.cancel()
-        bombardmentTask = null
+        approachTask?.cancel()
+        approachTask = null
+        shockwaveTask?.cancel()
+        shockwaveTask = null
+        cloudTask?.cancel()
+        cloudTask = null
         gasTask?.cancel()
         gasTask = null
         fogTask?.cancel()
         fogTask = null
+
+        removeWarhead()
+        // Die eingeebnete Arena kommt zurueck, bevor wieder jemand darauf gesetzt wird
+        restoreMap()
 
         gasClouds.filter { it.isValid }.forEach { it.remove() }
         gasClouds.clear()
@@ -863,8 +1246,8 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
             world.getEntitiesByClass(AreaEffectCloud::class.java)
                 .filter { it.persistentDataContainer.has(KEY_GAS_CLOUD, PersistentDataType.BYTE) }
                 .forEach { it.remove() }
-            world.getEntitiesByClass(TNTPrimed::class.java)
-                .filter { it.persistentDataContainer.has(KEY_NUKE_TNT, PersistentDataType.BYTE) }
+            world.getEntitiesByClass(BlockDisplay::class.java)
+                .filter { it.persistentDataContainer.has(KEY_NUKE_WARHEAD, PersistentDataType.BYTE) }
                 .forEach { it.remove() }
         }
 
@@ -917,15 +1300,57 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
         private const val SLOT_CANCEL = COLS * 5 + 2
         private const val SLOT_CONFIRM = COLS * 5 + 6
 
-        // ---------------- Bombardement ----------------
-        /** Abwurfhoehe ueber der Arena-Oberkante, sofern keine Decke im Weg ist. */
-        private const val BOMB_HEIGHT_ABOVE_ARENA = 14.0
-        private const val BOMB_WAVES = 12
-        private const val BOMBS_PER_WAVE = 6
-        private const val BOMB_WAVE_PERIOD_TICKS = 10L
-        private const val BOMB_FUSE_TICKS = 20
-        private const val BOMB_FUSE_SPREAD_TICKS = 20
-        private const val BOMB_DROP_VELOCITY = -0.8
+        // ---------------- Anflug ----------------
+        /** 8 Sekunden Anflug - Zeit genug fuer Sirene, Countdown und Gaensehaut. */
+        private const val BOMB_APPROACH_TICKS = 160
+        private const val BOMB_APPROACH_PERIOD_TICKS = 2L
+
+        /** Aus dieser Hoehe ueber dem Bodennullpunkt kommt der Sprengkopf. */
+        private const val BOMB_APPROACH_HEIGHT = 70.0
+
+        /** Kantenlaenge des Sprengkopfs - ein einzelner Block waere aus der Ferne unsichtbar. */
+        private const val BOMB_SCALE = 3.0f
+
+        // ---------------- Detonation ----------------
+        private const val FLASH_BURSTS = 6
+        private const val FLASH_BLIND_TICKS = 40
+
+        /** Druckwelle: 40 Ringe zu je 2 Ticks - gut vier Sekunden, bis die Arena flach ist. */
+        private const val SHOCKWAVE_STEPS = 40
+        private const val SHOCKWAVE_PERIOD_TICKS = 2L
+        private const val SHOCKWAVE_POINTS_PER_BLOCK = 3.0
+        private const val SHOCKWAVE_MAX_POINTS = 180
+        private const val SHOCKWAVE_PUSH = 1.1
+        private const val SHOCKWAVE_LIFT = 0.55
+
+        /** Suchfenster der Einebnung relativ zu den Arena-Grenzen. */
+        private const val SCAN_BELOW = 2.0
+        private const val SCAN_ABOVE = 10.0
+
+        /** Womit der Boden nach dem Einschlag belegt wird - verkohlt, nicht bunt. */
+        val SCORCHED: List<Material> = listOf(
+            Material.BLACKSTONE,
+            Material.BASALT,
+            Material.COBBLED_DEEPSLATE,
+            Material.MAGMA_BLOCK,
+            Material.TUFF,
+        )
+
+        // ---------------- Pilzwolke ----------------
+        private const val CLOUD_STEPS = 200
+        private const val CLOUD_PERIOD_TICKS = 2L
+        private const val CLOUD_MAX_HEIGHT = 55.0
+        private const val CLOUD_RISE_SPEED = 2.5
+        private const val CLOUD_STEM_RADIUS = 6.0
+        private const val CLOUD_STEM_SPACING = 3.0
+        private const val CLOUD_STEM_POINTS = 12
+
+        /** Ab welchem Anteil der Laufzeit sich der Hut oeffnet. */
+        private const val CLOUD_CAP_FROM = 0.25
+        private const val CLOUD_CAP_RADIUS = 24.0
+        private const val CLOUD_CAP_RINGS = 4
+        private const val CLOUD_CAP_SPACING = 3.5
+        private const val CLOUD_CAP_POINTS = 28
 
         // ---------------- Gas ----------------
         /** Abstand der Gaswolken im Raster; deutlich enger als ihr Radius, damit sie ueberlappen. */
@@ -970,10 +1395,18 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
         private const val GAS_PERIOD_TICKS = 20L
 
         /** So viele Takte haelt ein Spieler die Luft an - danach erstickt er. */
-        private const val GAS_DOSE_TO_DEATH = 12
+        private const val GAS_DOSE_TO_DEATH = 25
 
         /** Ab so vielen verbleibenden Sekunden wird es schwarz vor Augen. */
-        private const val GAS_DARKNESS_FROM = 5
+        private const val GAS_DARKNESS_FROM = 8
+
+        /** Fallout: Asche rieselt aus dieser Hoehe ueber dem Betrachter herunter. */
+        private const val FALLOUT_HEIGHT = 6.0
+        private const val FALLOUT_SPREAD = 4.0
+        private const val FALLOUT_DENSITY = 60
+
+        /** Hoechstzahl der Geigerzaehler-Klicks pro Takt, kurz vor dem Ersticken. */
+        private const val GEIGER_MAX_CLICKS = 4
 
         /** Laufzeit der Wirkungen: etwas laenger als ein Takt, damit sie nicht flackern. */
         private const val GAS_EFFECT_TICKS = 45
@@ -989,7 +1422,7 @@ class NukeManager(private val plugin: OneShotOneKill) : Listener {
 
         private val KEY_ACTION = NamespacedKey("oneshotonekill", "nuke_action")
         private val KEY_DIGIT = NamespacedKey("oneshotonekill", "nuke_digit")
-        private val KEY_NUKE_TNT = NamespacedKey("oneshotonekill", "nuke_tnt")
+        private val KEY_NUKE_WARHEAD = NamespacedKey("oneshotonekill", "nuke_warhead")
         private val KEY_GAS_CLOUD = NamespacedKey("oneshotonekill", "nuke_gas_cloud")
 
         private const val ACTION_DIGIT = "digit"
