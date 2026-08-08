@@ -251,7 +251,7 @@ G1-Werte). Der Paper-Server selbst, Welten, Logs und Konfigurationen gehören ni
 So kommst du zu einem laufenden Testserver:
 
 1. [Paper 26.2](https://papermc.io/downloads/paper) herunterladen und als `Server/server.jar` ablegen.
-2. `./gradlew deployPlugin` — baut die JAR und legt sie in `Server/plugins/`.
+2. `.\build.ps1` — baut die JAR und legt sie in `Server/plugins/`.
 3. `Server/start.bat` ausführen. Beim ersten Start legt Paper `eula.txt` an; darin `eula=true`
    setzen und erneut starten.
 

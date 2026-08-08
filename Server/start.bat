@@ -25,15 +25,19 @@ if not exist "%~dp0server.jar" (
   exit /b 1
 )
 
-if not exist "%~dp0plugins\OneShotOneKill_26.2.jar" (
+REM  Bewusst mit Platzhalter: Der JAR-Name traegt die Minecraft-Version und
+REM  wechselt mit dem Server automatisch mit (OneShotOneKill_26.2.jar,
+REM  _26.3.jar, ...). Ein fester Name wuerde nach dem naechsten Paper-Update
+REM  faelschlich melden, das Plugin fehle.
+if not exist "%~dp0plugins\OneShotOneKill_*.jar" (
   echo.
   echo ###################################################################
-  echo  HINWEIS: plugins\OneShotOneKill_26.2.jar fehlt.
+  echo  HINWEIS: plugins\OneShotOneKill_^<version^>.jar fehlt.
   echo.
   echo  Die JAR ist ein Build-Artefakt - 23 MB, weil die beiden Maps
   echo  eingebettet sind - und wird nicht versioniert. Bauen und
   echo  hierher kopieren im Projektverzeichnis mit:
-  echo      gradlew.bat deployPlugin
+  echo      .\build.ps1
   echo.
   echo  Der Build braucht kein laufendes Paper: Die API kommt von
   echo  repo.papermc.io, Gradle und den Kotlin-Compiler holt sich der
@@ -63,29 +67,6 @@ REM  -XX:+UnlockExperimentalVMOptions MUSS vor G1NewSizePercent und
 REM  G1MaxNewSizePercent stehen, sonst weist die JVM sie ab.
 REM ===================================================================
 
-java ^
-  -Xms6G -Xmx6G ^
-  --add-modules=jdk.incubator.vector ^
-  -XX:+UseG1GC ^
-  -XX:+ParallelRefProcEnabled ^
-  -XX:MaxGCPauseMillis=200 ^
-  -XX:+UnlockExperimentalVMOptions ^
-  -XX:+DisableExplicitGC ^
-  -XX:+AlwaysPreTouch ^
-  -XX:G1NewSizePercent=30 ^
-  -XX:G1MaxNewSizePercent=40 ^
-  -XX:G1HeapRegionSize=8M ^
-  -XX:G1ReservePercent=20 ^
-  -XX:G1HeapWastePercent=5 ^
-  -XX:G1MixedGCCountTarget=4 ^
-  -XX:InitiatingHeapOccupancyPercent=15 ^
-  -XX:G1MixedGCLiveThresholdPercent=90 ^
-  -XX:G1RSetUpdatingPauseTimePercent=5 ^
-  -XX:SurvivorRatio=32 ^
-  -XX:+PerfDisableSharedMem ^
-  -XX:MaxTenuringThreshold=1 ^
-  -Dusing.aikars.flags=https://mcflags.emc.gs ^
-  -Daikars.new.flags=true ^
-  -jar server.jar nogui
+java -Xms6144M -Xmx6144M -XX:+AlwaysPreTouch -XX:+DisableExplicitGC -XX:+ParallelRefProcEnabled -XX:+PerfDisableSharedMem -XX:+UnlockExperimentalVMOptions -XX:+UseG1GC -XX:G1HeapRegionSize=8M -XX:G1HeapWastePercent=5 -XX:G1MaxNewSizePercent=40 -XX:G1MixedGCCountTarget=4 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1NewSizePercent=30 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:G1ReservePercent=20 -XX:InitiatingHeapOccupancyPercent=15 -XX:MaxGCPauseMillis=200 -XX:MaxTenuringThreshold=1 -XX:SurvivorRatio=32 -Dusing.aikars.flags=https://mcflags.emc.gs -Daikars.new.flags=true -jar server.jar --nogui
 
 pause
